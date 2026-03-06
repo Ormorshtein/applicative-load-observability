@@ -229,26 +229,27 @@ Calculated by `stress.py`. All missing fields default to 0. No upper bound — e
 
 **Baselines:**
 
-| Input | Baseline |
-|-------|----------|
-| `took_ms` | 1000 ms |
-| `hits` | 10 000 docs |
-| `shards_total` | 10 shards |
-| `size` | 100 docs |
-| `docs_affected` | 100 docs |
-| `query_complexity` | 10 |
+| Input | Baseline | Rationale |
+|-------|----------|-----------|
+| `took_ms` | 100 ms | Elastic slow-log default starts at 500ms; healthy queries are <100ms |
+| `hits` | 1 000 docs | Reasonable result set; scoring + sorting scales with hits |
+| `shards_total` | 5 shards | Typical primary count; each shard is CPU + JVM overhead |
+| `size` | 100 docs | 10× ES default of 10; drives fetch-phase heap |
+| `docs_affected` | 100 docs | Bulk/update/delete volume |
+| `query_complexity` | 10 | Weighted complexity units |
 
 **Formulas:**
 
 *Query:*
 ```
-stress = 0.4·norm(took_ms) + 0.2·norm(hits) + 0.15·norm(shards_total)
-       + 0.1·norm(size) + 0.15·norm(query_complexity)
+stress = 0.40·norm(took_ms, 100)  + 0.20·norm(hits, 1000)
+       + 0.15·norm(query_complexity, 10) + 0.15·norm(size, 100)
+       + 0.10·norm(shards_total, 5)
 
 Operation type multipliers (resource profile):
-  agg    → × 1.3  (memory-heavy: bucket accumulation)
-  knn    → × 1.5  (memory + CPU: vector similarity)
-  geo    → × 1.2  (CPU-heavy: distance computation)
+  agg    → × 1.3  (memory-heavy: field data cache, bucket accumulation)
+  knn    → × 1.2  (HNSW approximate search — well-optimised, took_ms captures exact-kNN cost)
+  geo    → × 1.2  (CPU-heavy: per-document distance computation)
   text   → × 1.0  (baseline)
   single → × 1.0  (baseline)
 
@@ -347,26 +348,33 @@ Written by NiFi. One document per analyzed operation.
 ```
 applicative-load-observability/
 ├── README.md                        # product spec
+├── docker-compose.yml               # full-stack orchestration
 ├── docs/
 │   ├── ARCHITECTURE.md              # this file
 │   └── dashboard-wireframes.html    # visual dashboard mockup
 │
 ├── gateway/
-│   ├── nginx.conf                   # Nginx reverse-proxy + ~25 lines Lua
+│   ├── nginx.conf                   # Nginx reverse-proxy + Lua fire-and-forget
 │   └── Dockerfile                   # FROM openresty/openresty:alpine
 │
 ├── analyzer/
 │   ├── main.py                      # FastAPI — POST /analyze
-│   ├── parser.py                    # all extraction logic
+│   ├── parser.py                    # all extraction logic (pure functions)
 │   ├── stress.py                    # stress score calculation
-│   ├── requirements.txt
+│   ├── requirements.txt             # fastapi, uvicorn
 │   └── Dockerfile                   # FROM python:3.12-slim
 │
-├── nifi/
-│   └── flow.json                    # NiFi flow definition
-│
-└── docker-compose.yml               # all services
+└── nifi/
+    └── flow.json                    # NiFi flow: ListenHTTP → InvokeHTTP → PutElasticsearchRecord
 ```
+
+**To run the full stack:**
+
+```bash
+docker-compose up --build
+```
+
+Clients connect to `localhost:9200` (gateway) instead of Elasticsearch directly.
 
 ---
 

@@ -1,0 +1,316 @@
+{
+  "encodingVersion": {
+    "majorVersion": 2,
+    "minorVersion": 0
+  },
+  "maxTimerDrivenThreadCount": 10,
+  "maxEventDrivenThreadCount": 5,
+  "registries": [],
+  "parameterContexts": [],
+  "controllerServices": [
+    {
+      "identifier": "json-tree-reader",
+      "name": "JsonTreeReader",
+      "type": "org.apache.nifi.json.JsonTreeReader",
+      "bundle": {
+        "group": "org.apache.nifi",
+        "artifact": "nifi-record-serialization-services-nar",
+        "version": "2.0.0"
+      },
+      "properties": {
+        "schema-access-strategy": "infer-schema"
+      },
+      "controllerServiceApis": [
+        {
+          "type": "org.apache.nifi.serialization.RecordReaderFactory"
+        }
+      ],
+      "schedulingPeriod": "0 sec",
+      "yieldDuration": "1 sec",
+      "bulletinLevel": "WARN"
+    }
+  ],
+  "processGroups": [
+    {
+      "identifier": "root-group",
+      "name": "Observability Pipeline",
+      "position": { "x": 0.0, "y": 0.0 },
+      "processGroups": [],
+      "remoteProcessGroups": [],
+      "processors": [
+        {
+          "identifier": "listen-http",
+          "name": "ListenHTTP",
+          "type": "org.apache.nifi.processors.standard.ListenHTTP",
+          "bundle": {
+            "group": "org.apache.nifi",
+            "artifact": "nifi-standard-nar",
+            "version": "2.0.0"
+          },
+          "position": { "x": 100.0, "y": 200.0 },
+          "properties": {
+            "Listening Port": "8080",
+            "Base Path": "observe",
+            "Max Data to Receive per Second": "",
+            "Max Unconfirmed FlowFile Time": "60 secs",
+            "HTTP Headers to receive as Attributes (Regex)": "",
+            "Return Code": "200"
+          },
+          "schedulingStrategy": "TIMER_DRIVEN",
+          "schedulingPeriod": "0 sec",
+          "maxConcurrentTasks": 1,
+          "penaltyDuration": "30 sec",
+          "yieldDuration": "1 sec",
+          "bulletinLevel": "WARN",
+          "runDurationMillis": 0,
+          "relationships": [
+            { "name": "success", "autoTerminate": false }
+          ]
+        },
+        {
+          "identifier": "invoke-http",
+          "name": "InvokeHTTP — POST /analyze",
+          "type": "org.apache.nifi.processors.standard.InvokeHTTP",
+          "bundle": {
+            "group": "org.apache.nifi",
+            "artifact": "nifi-standard-nar",
+            "version": "2.0.0"
+          },
+          "position": { "x": 500.0, "y": 200.0 },
+          "properties": {
+            "HTTP Method": "POST",
+            "Remote URL": "http://analyzer:8000/analyze",
+            "Content-Type": "application/json",
+            "Connection Timeout": "5 secs",
+            "Read Timeout": "5 secs",
+            "Include Date Header": "True",
+            "Follow Redirects": "True",
+            "Attributes to Send": "",
+            "Put Response Body In Attribute": "",
+            "Max Length To Put In Attribute": "256",
+            "Digest Authentication": "false",
+            "Use Chunked Encoding": "false",
+            "Send Message Body": "true",
+            "Use HTTP ETag": "false",
+            "Ignore response's content": "false"
+          },
+          "schedulingStrategy": "TIMER_DRIVEN",
+          "schedulingPeriod": "0 sec",
+          "maxConcurrentTasks": 4,
+          "penaltyDuration": "30 sec",
+          "yieldDuration": "1 sec",
+          "bulletinLevel": "WARN",
+          "runDurationMillis": 0,
+          "relationships": [
+            { "name": "Original",         "autoTerminate": true  },
+            { "name": "Response",         "autoTerminate": false },
+            { "name": "No Retry",         "autoTerminate": false },
+            { "name": "Retry",            "autoTerminate": false },
+            { "name": "Failure",          "autoTerminate": false }
+          ]
+        },
+        {
+          "identifier": "log-invoke-failure",
+          "name": "LogMessage — InvokeHTTP failure",
+          "type": "org.apache.nifi.processors.standard.LogMessage",
+          "bundle": {
+            "group": "org.apache.nifi",
+            "artifact": "nifi-standard-nar",
+            "version": "2.0.0"
+          },
+          "position": { "x": 500.0, "y": 400.0 },
+          "properties": {
+            "log-level": "warn",
+            "log-prefix": "[observability] analyzer unreachable or error — dropping"
+          },
+          "schedulingStrategy": "TIMER_DRIVEN",
+          "schedulingPeriod": "0 sec",
+          "maxConcurrentTasks": 1,
+          "penaltyDuration": "30 sec",
+          "yieldDuration": "1 sec",
+          "bulletinLevel": "WARN",
+          "runDurationMillis": 0,
+          "relationships": [
+            { "name": "success", "autoTerminate": true }
+          ]
+        },
+        {
+          "identifier": "put-elasticsearch",
+          "name": "PutElasticsearchRecord",
+          "type": "org.apache.nifi.processors.elasticsearch.PutElasticsearchRecord",
+          "bundle": {
+            "group": "org.apache.nifi",
+            "artifact": "nifi-elasticsearch-restapi-nar",
+            "version": "2.0.0"
+          },
+          "position": { "x": 900.0, "y": 200.0 },
+          "properties": {
+            "el-rest-client-service": "",
+            "el-rest-fetch-index": "applicative-load-observability",
+            "el-rest-type": "",
+            "el-rest-id-attribute": "",
+            "el-rest-op-type": "index",
+            "put-es-record-batch-size": "200",
+            "put-es-record-index": "applicative-load-observability",
+            "record-reader": "json-tree-reader",
+            "el-rest-index": "applicative-load-observability",
+            "Elasticsearch URL": "http://elasticsearch:9200",
+            "Index": "applicative-load-observability",
+            "Type": "_doc",
+            "ID": "",
+            "Op Type": "index",
+            "Batch Size": "200",
+            "Record Reader": "json-tree-reader"
+          },
+          "schedulingStrategy": "TIMER_DRIVEN",
+          "schedulingPeriod": "0 sec",
+          "maxConcurrentTasks": 2,
+          "penaltyDuration": "30 sec",
+          "yieldDuration": "1 sec",
+          "bulletinLevel": "WARN",
+          "runDurationMillis": 0,
+          "relationships": [
+            { "name": "success",  "autoTerminate": true  },
+            { "name": "retry",    "autoTerminate": false },
+            { "name": "failure",  "autoTerminate": false }
+          ]
+        },
+        {
+          "identifier": "retry-es-write",
+          "name": "RetryFlowFile — ES write retry",
+          "type": "org.apache.nifi.processors.standard.RetryFlowFile",
+          "bundle": {
+            "group": "org.apache.nifi",
+            "artifact": "nifi-standard-nar",
+            "version": "2.0.0"
+          },
+          "position": { "x": 900.0, "y": 400.0 },
+          "properties": {
+            "retry-attribute": "flowfile.retries",
+            "maximum-retries": "5",
+            "penalize-retried": "true",
+            "fail-on-non-integer-value": "true"
+          },
+          "schedulingStrategy": "TIMER_DRIVEN",
+          "schedulingPeriod": "0 sec",
+          "maxConcurrentTasks": 1,
+          "penaltyDuration": "30 sec",
+          "yieldDuration": "1 sec",
+          "bulletinLevel": "WARN",
+          "runDurationMillis": 0,
+          "relationships": [
+            { "name": "retry",   "autoTerminate": false },
+            { "name": "retries_exceeded", "autoTerminate": true }
+          ]
+        }
+      ],
+      "connections": [
+        {
+          "identifier": "conn-listen-invoke",
+          "name": "",
+          "source": {
+            "id": "listen-http",
+            "type": "PROCESSOR",
+            "groupId": "root-group"
+          },
+          "destination": {
+            "id": "invoke-http",
+            "type": "PROCESSOR",
+            "groupId": "root-group"
+          },
+          "selectedRelationships": ["success"],
+          "backPressureObjectThreshold": 1000,
+          "backPressureDataSizeThreshold": "1 GB",
+          "flowFileExpiration": "0 sec",
+          "prioritizers": [],
+          "bends": []
+        },
+        {
+          "identifier": "conn-invoke-response-put",
+          "name": "",
+          "source": {
+            "id": "invoke-http",
+            "type": "PROCESSOR",
+            "groupId": "root-group"
+          },
+          "destination": {
+            "id": "put-elasticsearch",
+            "type": "PROCESSOR",
+            "groupId": "root-group"
+          },
+          "selectedRelationships": ["Response"],
+          "backPressureObjectThreshold": 10000,
+          "backPressureDataSizeThreshold": "1 GB",
+          "flowFileExpiration": "0 sec",
+          "prioritizers": [],
+          "bends": []
+        },
+        {
+          "identifier": "conn-invoke-failure-log",
+          "name": "",
+          "source": {
+            "id": "invoke-http",
+            "type": "PROCESSOR",
+            "groupId": "root-group"
+          },
+          "destination": {
+            "id": "log-invoke-failure",
+            "type": "PROCESSOR",
+            "groupId": "root-group"
+          },
+          "selectedRelationships": ["Failure", "No Retry", "Retry"],
+          "backPressureObjectThreshold": 10000,
+          "backPressureDataSizeThreshold": "1 GB",
+          "flowFileExpiration": "0 sec",
+          "prioritizers": [],
+          "bends": []
+        },
+        {
+          "identifier": "conn-put-retry",
+          "name": "",
+          "source": {
+            "id": "put-elasticsearch",
+            "type": "PROCESSOR",
+            "groupId": "root-group"
+          },
+          "destination": {
+            "id": "retry-es-write",
+            "type": "PROCESSOR",
+            "groupId": "root-group"
+          },
+          "selectedRelationships": ["retry"],
+          "backPressureObjectThreshold": 10000,
+          "backPressureDataSizeThreshold": "1 GB",
+          "flowFileExpiration": "0 sec",
+          "prioritizers": [],
+          "bends": []
+        },
+        {
+          "identifier": "conn-retry-back-to-put",
+          "name": "",
+          "source": {
+            "id": "retry-es-write",
+            "type": "PROCESSOR",
+            "groupId": "root-group"
+          },
+          "destination": {
+            "id": "put-elasticsearch",
+            "type": "PROCESSOR",
+            "groupId": "root-group"
+          },
+          "selectedRelationships": ["retry"],
+          "backPressureObjectThreshold": 10000,
+          "backPressureDataSizeThreshold": "1 GB",
+          "flowFileExpiration": "0 sec",
+          "prioritizers": [],
+          "bends": []
+        }
+      ],
+      "labels": [],
+      "funnels": [],
+      "inputPorts": [],
+      "outputPorts": [],
+      "variables": {}
+    }
+  ]
+}
