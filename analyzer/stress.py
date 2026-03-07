@@ -12,6 +12,31 @@ BASELINES = {
     "query_complexity":  10,
 }
 
+# Clause keys that map 1:1 to a count field (used in walk())
+_SINGLE_CLAUSE_KEYS = {
+    "wildcard": "wildcard_clause_count",
+    "fuzzy":    "fuzzy_clause_count",
+    "nested":   "nested_clause_count",
+    "bool":     "bool_clause_count",
+    "knn":      "knn_clause_count",
+    "script":   "script_clause_count",
+}
+
+_GEO_CLAUSE_KEYS = {"geo_distance", "geo_shape", "geo_bounding_box", "geo_polygon", "geo_grid"}
+
+CLAUSE_WEIGHTS = {
+    "wildcard_clause_count":  4,
+    "fuzzy_clause_count":     2,
+    "geo_clause_count":       3,
+    "nested_clause_count":    4,
+    "bool_clause_count":      1,
+    "terms_values_count":     1,
+    "knn_clause_count":       2,
+    "agg_clause_count":       3,
+    "runtime_mapping_count":  5,
+    "script_clause_count":    6,
+}
+
 
 def norm(value: float, baseline: float) -> float:
     return value / baseline
@@ -20,21 +45,9 @@ def norm(value: float, baseline: float) -> float:
 def calc_query_complexity(body: dict) -> dict:
     """
     Count clause types and return raw counts + weighted score.
-    Searches recursively through the query tree; handles top-level
-    aggs, knn, and runtime_mappings specially.
+    Handles top-level aggs, knn, and runtime_mappings; recurses into body["query"].
     """
-    counts = {
-        "wildcard_clause_count": 0,
-        "fuzzy_clause_count": 0,
-        "geo_clause_count": 0,
-        "nested_clause_count": 0,
-        "bool_clause_count": 0,
-        "terms_values_count": 0,
-        "knn_clause_count": 0,
-        "agg_clause_count": 0,
-        "runtime_mapping_count": 0,
-        "script_clause_count": 0,
-    }
+    counts = {k: 0 for k in CLAUSE_WEIGHTS}
 
     # Top-level batch counts
     aggs = body.get("aggs") or body.get("aggregations")
@@ -50,26 +63,14 @@ def calc_query_complexity(body: dict) -> dict:
     def walk(obj):
         if isinstance(obj, dict):
             for k, v in obj.items():
-                if k == "wildcard":
-                    counts["wildcard_clause_count"] += 1
-                elif k == "fuzzy":
-                    counts["fuzzy_clause_count"] += 1
-                elif k in {"geo_distance", "geo_shape", "geo_bounding_box",
-                           "geo_polygon", "geo_grid"}:
+                if k in _SINGLE_CLAUSE_KEYS:
+                    counts[_SINGLE_CLAUSE_KEYS[k]] += 1
+                elif k in _GEO_CLAUSE_KEYS:
                     counts["geo_clause_count"] += 1
-                elif k == "nested":
-                    counts["nested_clause_count"] += 1
-                elif k == "bool":
-                    counts["bool_clause_count"] += 1
                 elif k == "terms" and isinstance(v, dict):
-                    # terms: { "field": ["val1", "val2"] }
                     for field_vals in v.values():
                         if isinstance(field_vals, list):
                             counts["terms_values_count"] += len(field_vals)
-                elif k == "knn":
-                    counts["knn_clause_count"] += 1
-                elif k == "script":
-                    counts["script_clause_count"] += 1
                 walk(v)
         elif isinstance(obj, list):
             for item in obj:
@@ -77,25 +78,70 @@ def calc_query_complexity(body: dict) -> dict:
 
     walk(body.get("query", {}))
 
-    score = (
-        4 * counts["wildcard_clause_count"]
-        + 2 * counts["fuzzy_clause_count"]
-        + 3 * counts["geo_clause_count"]
-        + 4 * counts["nested_clause_count"]
-        + 1 * counts["bool_clause_count"]
-        + 1 * counts["terms_values_count"]
-        + 2 * counts["knn_clause_count"]
-        + 3 * counts["agg_clause_count"]
-        + 5 * counts["runtime_mapping_count"]
-        + 6 * counts["script_clause_count"]
-    )
-
+    score = sum(w * counts[k] for k, w in CLAUSE_WEIGHTS.items())
     return {**counts, "query_complexity": score}
 
 
+# ---------------------------------------------------------------------------
+# Stress formulas — one function per operation class
+# ---------------------------------------------------------------------------
+
+def _stress_query(es_took_ms, hits, size, shards_total, docs_affected, query_complexity):
+    return (
+        0.40 * norm(es_took_ms, BASELINES["took_ms"])
+        + 0.20 * norm(hits, BASELINES["hits"])
+        + 0.15 * norm(query_complexity, BASELINES["query_complexity"])
+        + 0.15 * norm(size, BASELINES["size"])
+        + 0.10 * norm(shards_total, BASELINES["shards_total"])
+    )
+
+
+def _stress_insert(es_took_ms, hits, size, shards_total, docs_affected, query_complexity):
+    return (
+        0.40 * norm(es_took_ms, BASELINES["took_ms"])
+        + 0.40 * norm(docs_affected, BASELINES["docs_affected"])
+        + 0.20 * norm(shards_total, BASELINES["shards_total"])
+    )
+
+
+def _stress_by_query(es_took_ms, hits, size, shards_total, docs_affected, query_complexity):
+    return (
+        0.35 * norm(es_took_ms, BASELINES["took_ms"])
+        + 0.30 * norm(docs_affected, BASELINES["docs_affected"])
+        + 0.20 * norm(query_complexity, BASELINES["query_complexity"])
+        + 0.15 * norm(shards_total, BASELINES["shards_total"])
+    )
+
+
+def _stress_update(es_took_ms, hits, size, shards_total, docs_affected, query_complexity):
+    return (
+        0.50 * norm(es_took_ms, BASELINES["took_ms"])
+        + 0.30 * norm(query_complexity, BASELINES["query_complexity"])
+        + 0.20 * norm(shards_total, BASELINES["shards_total"])
+    )
+
+
+def _stress_single(es_took_ms, hits, size, shards_total, docs_affected, query_complexity):
+    return (
+        0.70 * norm(es_took_ms, BASELINES["took_ms"])
+        + 0.30 * norm(shards_total, BASELINES["shards_total"])
+    )
+
+
+_STRESS_DISPATCH = {
+    "_search":          _stress_query,
+    "_bulk":            _stress_insert,
+    "_update_by_query": _stress_by_query,
+    "_delete_by_query": _stress_by_query,
+    "_update":          _stress_update,
+    "_create":          _stress_single,
+    "index":            _stress_single,
+    "delete":           _stress_single,
+}
+
+
 def calc_stress(
-    operation_kind: str,
-    operation_type: str,
+    operation: str,
     es_took_ms: float,
     hits: int,
     size: int,
@@ -103,32 +149,5 @@ def calc_stress(
     docs_affected: int,
     query_complexity: float,
 ) -> float:
-    if operation_kind == "query":
-        return (
-            0.40 * norm(es_took_ms, BASELINES["took_ms"])
-            + 0.20 * norm(hits, BASELINES["hits"])
-            + 0.15 * norm(query_complexity, BASELINES["query_complexity"])
-            + 0.15 * norm(size, BASELINES["size"])
-            + 0.10 * norm(shards_total, BASELINES["shards_total"])
-        )
-
-    if operation_kind == "insert":
-        return (
-            0.40 * norm(es_took_ms, BASELINES["took_ms"])
-            + 0.40 * norm(docs_affected, BASELINES["docs_affected"])
-            + 0.20 * norm(shards_total, BASELINES["shards_total"])
-        )
-
-    if operation_kind in ("update", "delete"):
-        if operation_type == "by_query":
-            return (
-                0.35 * norm(es_took_ms, BASELINES["took_ms"])
-                + 0.30 * norm(docs_affected, BASELINES["docs_affected"])
-                + 0.20 * norm(query_complexity, BASELINES["query_complexity"])
-                + 0.15 * norm(shards_total, BASELINES["shards_total"])
-            )
-        # single update / delete
-        return 0.5 * norm(es_took_ms, BASELINES["took_ms"]) + 0.5
-
-    # fallback
-    return 0.5 * norm(es_took_ms, BASELINES["took_ms"]) + 0.5
+    formula = _STRESS_DISPATCH.get(operation, _stress_single)
+    return formula(es_took_ms, hits, size, shards_total, docs_affected, query_complexity)

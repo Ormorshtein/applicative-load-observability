@@ -5,6 +5,18 @@ Pure extraction functions — no I/O, no side effects.
 import base64
 import json
 import re
+from typing import Callable
+
+
+# ---------------------------------------------------------------------------
+# Docs-affected extractors: (operation, response_body → count)
+# ---------------------------------------------------------------------------
+
+_DOCS_AFFECTED_EXTRACTORS: list[tuple[str, Callable[[dict], int]]] = [
+    ("_bulk",            lambda rb: len(rb.get("items", []))),
+    ("_update_by_query", lambda rb: rb.get("updated", 0)),
+    ("_delete_by_query", lambda rb: rb.get("deleted", 0)),
+]
 
 
 # ---------------------------------------------------------------------------
@@ -58,44 +70,13 @@ def parse_target(path: str) -> str:
     return "_all"
 
 
-def parse_operation_kind(method: str, path: str) -> str:
-    if "_search" in path:
-        return "query"
-    if "_bulk" in path:
-        return "insert"
-    if "_create" in path:
-        return "insert"
-    if "_update_by_query" in path:
-        return "update"
-    if "_update" in path:
-        return "update"
-    if "_delete_by_query" in path:
-        return "delete"
-    if method == "DELETE":
-        return "delete"
-    if method == "PUT" or "_doc" in path:
-        return "insert"
-    return "query"
-
-
-def parse_operation_type(method: str, path: str, body: dict) -> str:
-    if path.endswith("_bulk"):
-        return "bulk"
-    if path.endswith("_update_by_query") or path.endswith("_delete_by_query"):
-        return "by_query"
-    if "aggs" in body or "aggregations" in body:
-        return "agg"
-    if "knn" in body or (isinstance(body.get("query"), dict) and "knn" in body["query"]):
-        return "knn"
-    query = body.get("query", {})
-    if isinstance(query, dict):
-        geo_types = {"geo_distance", "geo_shape", "geo_bounding_box", "geo_polygon", "geo_grid"}
-        if any(k in query for k in geo_types):
-            return "geo"
-        text_types = {"match", "multi_match", "query_string", "simple_query_string"}
-        if any(k in query for k in text_types):
-            return "text"
-    return "single"
+def parse_operation(method: str, path: str) -> str:
+    for seg in reversed(path.split("/")):
+        if seg.startswith("_"):
+            if seg == "_doc":
+                return "index" if method == "PUT" else "delete"
+            return seg
+    return "_search"
 
 
 # ---------------------------------------------------------------------------
@@ -148,13 +129,10 @@ def parse_shards_total(response_body: dict) -> int:
     return response_body.get("_shards", {}).get("total", 0)
 
 
-def parse_docs_affected(path: str, response_body: dict) -> int:
-    if "_bulk" in path:
-        return len(response_body.get("items", []))
-    if "_update_by_query" in path:
-        return response_body.get("updated", 0)
-    if "_delete_by_query" in path:
-        return response_body.get("deleted", 0)
+def parse_docs_affected(operation: str, response_body: dict) -> int:
+    for op, extractor in _DOCS_AFFECTED_EXTRACTORS:
+        if operation == op:
+            return extractor(response_body)
     return 0
 
 

@@ -150,14 +150,9 @@ NiFi forwards the raw Nginx payload to the analyzer as-is — no transformation.
 
 | Condition | `operation` |
 |-----------|-------------|
-| path contains `_search` | `_search` |
-| path contains `_bulk` | `_bulk` |
-| path contains `_create` | `_create` |
-| path contains `_update_by_query` | `_update_by_query` |
-| path contains `_update` | `_update` |
-| path contains `_delete_by_query` | `_delete_by_query` |
-| path contains `_doc` or method is `PUT` or `DELETE` | `_doc` |
-| default | `_search` |
+| path contains `_doc`, method `PUT` | `index` |
+| path contains `_doc`, method `DELETE` | `delete` |
+| default | last `_`-prefixed segment in path (`_search`, `_bulk`, `_create`, `_update`, `_update_by_query`, `_delete_by_query`, …) |
 
 #### Request Body Extraction
 
@@ -273,12 +268,12 @@ stress = 0.50·norm(es_took_ms, 100)
 ```
 `query_complexity` captures the cost of scripted updates. For partial-doc updates (no script), `query_complexity` is 0 and the formula reduces to latency + shards.
 
-*`_create` / `_doc`:*
+*`_create` / `index` / `delete`:*
 ```
 stress = 0.70·norm(es_took_ms, 100)
        + 0.30·norm(shards_total, 5)
 ```
-Single-document writes. `_doc` covers both index (PUT) and delete (DELETE) — `method` in the record distinguishes them. All three share this formula as a baseline; see Future Ideas for per-operation weight refinement.
+Single-document writes. All three share this formula as a baseline; see Future Ideas for per-operation weight refinement.
 
 > All weights and complexity scores are best-effort initial values grounded in ES documentation
 > and benchmarks. They must be tuned with real production data over time.
