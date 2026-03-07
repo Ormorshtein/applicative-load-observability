@@ -16,6 +16,7 @@ from parser import (
     parse_hits,
     parse_operation,
     parse_shards_total,
+    parse_shards_total_bulk,
     parse_size,
     parse_target,
     parse_user_agent,
@@ -75,7 +76,10 @@ def build_record(raw: RawFields) -> dict:
     user_agent           = parse_user_agent(raw.headers)
 
     hits                 = parse_hits(raw.response_body)
-    shards_total         = parse_shards_total(raw.response_body)
+    if operation == "_bulk":
+        shards_total     = parse_shards_total_bulk(raw.response_body)
+    else:
+        shards_total     = parse_shards_total(raw.response_body)
     docs_affected        = parse_docs_affected(operation, raw.response_body)
     size                 = parse_size(raw.request_body)
     has_script           = parse_has_script(raw.request_body)

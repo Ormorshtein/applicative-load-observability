@@ -129,6 +129,20 @@ def parse_shards_total(response_body: dict) -> int:
     return response_body.get("_shards", {}).get("total", 0)
 
 
+def parse_shards_total_bulk(response_body: dict) -> int:
+    """Aggregate unique-index shard counts from bulk response items."""
+    seen = set()
+    total = 0
+    for item in response_body.get("items", []):
+        for action_result in item.values():
+            idx = action_result.get("_index", "")
+            shards = action_result.get("_shards", {}).get("total", 0)
+            if idx and idx not in seen and shards:
+                seen.add(idx)
+                total += shards
+    return total
+
+
 def parse_docs_affected(operation: str, response_body: dict) -> int:
     for registered_op, extractor in _DOCS_AFFECTED_EXTRACTORS:
         if operation == registered_op:

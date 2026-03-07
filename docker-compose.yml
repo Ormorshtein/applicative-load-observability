@@ -39,6 +39,14 @@ services:
 
   analyzer:
     build: ./analyzer
+    # Uncomment to override stress baselines per cluster:
+    # environment:
+    #   - STRESS_BASELINE_TOOK_MS=100
+    #   - STRESS_BASELINE_HITS=10000
+    #   - STRESS_BASELINE_SHARDS_TOTAL=5
+    #   - STRESS_BASELINE_SIZE=100
+    #   - STRESS_BASELINE_DOCS_AFFECTED=500
+    #   - STRESS_BASELINE_QUERY_COMPLEXITY=10
     networks:
       - obs-net
     depends_on:
