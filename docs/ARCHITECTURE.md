@@ -174,25 +174,37 @@ Recursively walks the full query body and counts all structurally expensive patt
 | `knn_clause_count` | Number of `knn` vector similarity queries | 2 | HNSW is well-optimised (~850 QPS); exact kNN cost is already captured in `took_ms` |
 | `fuzzy_clause_count` | Number of `fuzzy` clauses | 2 | Levenshtein automata construction; bounded by fuzziness parameter |
 | `geo_clause_count` | Number of `geo_distance` / `geo_shape` / `geo_bounding_box` / `geo_polygon` clauses | 3 | All geo types treated uniformly for now. Cost varies significantly by type (`geo_distance` is non-cacheable and per-document; `geo_bounding_box` is cacheable and cheap) — see Future Ideas for per-type breakdown |
-| `agg_clause_count` | Number of top-level aggregation definitions in `aggs` / `aggregations` | 3 | Heap-resident bucket accumulation; global ordinals loading; circuit breaker risk on high-cardinality fields |
+| `agg_node_count` | Total aggregation nodes at all nesting levels (recursive walk of `aggs`/`aggregations`) | depth-weighted (see below) | Nested aggs multiply bucket cardinality; depth 1→weight 3, depth 2→5, depth 3+→8 |
+| `agg_max_depth` | Deepest aggregation nesting level (0 if no aggs) | — | Diagnostic field, not directly weighted |
+| `pagination_depth` | `from + size` — total documents ES must score and collect | log-scaled ×4 (see below) | Deep pagination (`from > 0`) forces ES to score and discard all preceding documents |
+| `has_scroll` | 1 if request body contains `scroll` parameter, else 0 | 3 | Long-lived shard-level search context; holds resources across requests |
 | `wildcard_clause_count` | Number of `wildcard`, `regexp`, and `prefix` clauses | 4 | Full term-dictionary scan + regex compilation per document; blocked by `allow_expensive_queries` |
 | `nested_clause_count` | Number of `nested` clauses | 4 | Sub-query executed per nested object (distributed join); real-world cases show 90% p99 improvement after removing nested |
 | `runtime_mapping_count` | Number of fields defined in `runtime_mappings` | 5 | ES docs: same per-document execution cost as scripts; each field computed on every document touched |
 | `script_clause_count` | Number of `script` occurrences anywhere in the query body | 6 | Worst category: user-defined Painless code executed per document, no caching possible; explicitly blocked by `allow_expensive_queries` |
 
 ```
-query_complexity = (
+clause_score = (
     1 * bool_clause_count
   + 1 * terms_values_count
   + 2 * knn_clause_count
   + 2 * fuzzy_clause_count
   + 3 * geo_clause_count
-  + 3 * agg_clause_count
+  + 3 * has_scroll
   + 4 * wildcard_clause_count
   + 4 * nested_clause_count
   + 5 * runtime_mapping_count
   + 6 * script_clause_count
 )
+
+agg_depth_weighted_score = sum of depth-weight per agg node
+    depth 1 → weight 3, depth 2 → weight 5, depth 3+ → weight 8
+    Example: terms → terms → avg = 3 + 5 + 8 = 16
+
+pagination_score = log10(1 + from) * 4   (0 when from ≤ 0)
+    Example: from=100 → 8.0, from=10000 → 16.0
+
+query_complexity = clause_score + agg_depth_weighted_score + pagination_score
 ```
 
 All raw counts and `query_complexity` are stored in the observability record.
@@ -312,7 +324,10 @@ Single-document writes. All three share this formula as a baseline; see Future I
   "knn_clause_count":       0,
   "fuzzy_clause_count":     0,
   "geo_clause_count":       0,
-  "agg_clause_count":       1,
+  "agg_node_count":         1,
+  "agg_max_depth":          1,
+  "pagination_depth":       10,
+  "has_scroll":             0,
   "wildcard_clause_count":  0,
   "nested_clause_count":    0,
   "runtime_mapping_count":  0,
@@ -401,7 +416,6 @@ Clients connect to `localhost:9200` (gateway) instead of Elasticsearch directly.
 - Auto-generated vs user-provided `_id` — `POST /<index>/_doc` (no ID in path) lets ES generate a UUID and skip the existence check entirely, making it a pure write. `PUT /<index>/_doc/<id>` (user-provided ID) requires an existence check before writing to handle version conflicts. Detectable by checking whether the path segment after `_doc` is present. The `index` operation formula should weight user-provided-ID writes higher once this is implemented.
 - Bulk action breakdown — `_bulk` requests can mix `index`, `create`, `update`, and `delete` actions. Counting each action type within the bulk would allow a more precise stress signal than `docs_affected` alone.
 - `has_highlight` — extra CPU cost per result document
-- `is_deep_pagination` — `from > 1000`, significant heap pressure
 - `timed_out` — query hit ES timeout threshold
 - Separate `cpu_stress_score` and `memory_stress_score` — once real data allows accurate resource-type attribution
 - Per-type geo complexity: split `geo_clause_count` into `geo_distance_count` (×3, non-cacheable per-document), `geo_shape_count` (×2, complex polygon), and `geo_bounding_box_count` (×1, cacheable fast check)

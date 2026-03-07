@@ -3,6 +3,7 @@ Stress score calculation — research-backed formula.
 All values default to 0; score is unbounded above.
 """
 
+import math
 from dataclasses import dataclass
 from typing import Callable
 
@@ -35,7 +36,7 @@ CLAUSE_WEIGHTS = {
     "bool_clause_count":      1,
     "terms_values_count":     1,
     "knn_clause_count":       2,
-    "agg_clause_count":       3,
+    "has_scroll":             3,
     "runtime_mapping_count":  5,
     "script_clause_count":    6,
 }
@@ -72,12 +73,55 @@ def _walk_query_clauses(node, counts: dict) -> None:
             _walk_query_clauses(item, counts)
 
 
-def _count_clauses(body: dict) -> dict:
+def _count_agg_nodes(aggs_dict, depth=1):
+    """Walk aggregation tree recursively.
+    Returns (total_node_count, max_depth, depth_weighted_score).
+    Deeper aggs are weighted heavier: depth 1→3, 2→5, 3+→8.
+    """
+    _DEPTH_WEIGHT = {1: 3, 2: 5}
+    total = 0
+    max_depth = depth
+    weighted = 0
+    for agg_def in aggs_dict.values():
+        if not isinstance(agg_def, dict):
+            continue
+        total += 1
+        w = _DEPTH_WEIGHT.get(depth, 8)
+        weighted += w
+        nested_aggs = agg_def.get("aggs") or agg_def.get("aggregations")
+        if isinstance(nested_aggs, dict):
+            sub_total, sub_max, sub_weighted = _count_agg_nodes(nested_aggs, depth + 1)
+            total += sub_total
+            max_depth = max(max_depth, sub_max)
+            weighted += sub_weighted
+    return total, max_depth, weighted
+
+
+def _deep_pagination_score(body: dict) -> float:
+    from_val = body.get("from", 0) or 0
+    if from_val <= 0:
+        return 0.0
+    return math.log10(1 + from_val) * 4
+
+
+def _count_clauses(body: dict) -> tuple[dict, int]:
     counts = {k: 0 for k in CLAUSE_WEIGHTS}
+    counts["agg_node_count"] = 0
+    counts["agg_max_depth"] = 0
+    counts["pagination_depth"] = 0
 
     aggs = body.get("aggs") or body.get("aggregations")
+    agg_weighted = 0
     if isinstance(aggs, dict):
-        counts["agg_clause_count"] = len(aggs)
+        total, max_depth, agg_weighted = _count_agg_nodes(aggs)
+        counts["agg_node_count"] = total
+        counts["agg_max_depth"] = max_depth
+
+    from_val = body.get("from", 0) or 0
+    size_val = body.get("size", 0) or 0
+    counts["pagination_depth"] = from_val + size_val
+
+    counts["has_scroll"] = 1 if "scroll" in body else 0
 
     if isinstance(body.get("runtime_mappings"), dict):
         counts["runtime_mapping_count"] = len(body["runtime_mappings"])
@@ -86,13 +130,15 @@ def _count_clauses(body: dict) -> dict:
         counts["knn_clause_count"] += 1
 
     _walk_query_clauses(body.get("query", {}), counts)
-    return counts
+    return counts, agg_weighted
 
 
 def calc_query_complexity(body: dict) -> dict:
     """Count clause types and return raw counts + weighted score."""
-    counts = _count_clauses(body)
-    score = sum(w * counts[k] for k, w in CLAUSE_WEIGHTS.items())
+    counts, agg_weighted = _count_clauses(body)
+    clause_score = sum(w * counts[k] for k, w in CLAUSE_WEIGHTS.items())
+    pagination_score = _deep_pagination_score(body)
+    score = clause_score + agg_weighted + pagination_score
     return {**counts, "query_complexity": score}
 
 
