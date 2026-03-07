@@ -1,0 +1,36 @@
+# VCS
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Docker
+docker-compose.yml
+docker-compose.override.yml
+.dockerignore
+
+# Documentation
+README.md
+docs/
+
+# NiFi flow (not needed in service image builds)
+nifi/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment / secrets
+.env
+.env.*
+
+# Logs
+*.log
