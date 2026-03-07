@@ -173,8 +173,10 @@ Recursively walks the full query body and counts all structurally expensive patt
 | `terms_values_count` | Total number of values across all `terms: {field: [...]}` queries | 1 | Cardinality lookup; cost is bounded |
 | `knn_clause_count` | Number of `knn` vector similarity queries | 2 | HNSW is well-optimised (~850 QPS); exact kNN cost is already captured in `took_ms` |
 | `fuzzy_clause_count` | Number of `fuzzy` clauses | 2 | Levenshtein automata construction; bounded by fuzziness parameter |
-| `geo_clause_count` | Number of `geo_distance` / `geo_shape` / `geo_bounding_box` / `geo_polygon` clauses | 3 | All geo types treated uniformly for now. Cost varies significantly by type (`geo_distance` is non-cacheable and per-document; `geo_bounding_box` is cacheable and cheap) — see Future Ideas for per-type breakdown |
-| `agg_clause_count` | Number of top-level aggregation definitions in `aggs` / `aggregations` | 3 | Heap-resident bucket accumulation; global ordinals loading; circuit breaker risk on high-cardinality fields |
+| `geo_bbox_count` | Number of `geo_bounding_box` / `geo_grid` clauses | 1 | Simple range check on encoded values, cacheable |
+| `geo_distance_count` | Number of `geo_distance` clauses | 3 | Non-cacheable, per-document haversine calculation |
+| `geo_shape_count` | Number of `geo_shape` / `geo_polygon` clauses | 3 | Complex polygon intersection, BKD tree traversal |
+| `agg_clause_count` | Total number of aggregation definitions at all nesting levels in `aggs` / `aggregations` (recursive) | 3 | Heap-resident bucket accumulation; global ordinals loading; cardinality multiplies at each sub-aggregation level |
 | `wildcard_clause_count` | Number of `wildcard`, `regexp`, and `prefix` clauses | 4 | Full term-dictionary scan + regex compilation per document; blocked by `allow_expensive_queries` |
 | `nested_clause_count` | Number of `nested` clauses | 4 | Sub-query executed per nested object (distributed join); real-world cases show 90% p99 improvement after removing nested |
 | `runtime_mapping_count` | Number of fields defined in `runtime_mappings` | 5 | ES docs: same per-document execution cost as scripts; each field computed on every document touched |
@@ -184,9 +186,11 @@ Recursively walks the full query body and counts all structurally expensive patt
 query_complexity = (
     1 * bool_clause_count
   + 1 * terms_values_count
+  + 1 * geo_bbox_count
   + 2 * knn_clause_count
   + 2 * fuzzy_clause_count
-  + 3 * geo_clause_count
+  + 3 * geo_distance_count
+  + 3 * geo_shape_count
   + 3 * agg_clause_count
   + 4 * wildcard_clause_count
   + 4 * nested_clause_count
@@ -311,7 +315,9 @@ Single-document writes. All three share this formula as a baseline; see Future I
   "terms_values_count":     0,
   "knn_clause_count":       0,
   "fuzzy_clause_count":     0,
-  "geo_clause_count":       0,
+  "geo_distance_count":     0,
+  "geo_shape_count":        0,
+  "geo_bbox_count":         0,
   "agg_clause_count":       1,
   "wildcard_clause_count":  0,
   "nested_clause_count":    0,
@@ -404,5 +410,6 @@ Clients connect to `localhost:9200` (gateway) instead of Elasticsearch directly.
 - `is_deep_pagination` — `from > 1000`, significant heap pressure
 - `timed_out` — query hit ES timeout threshold
 - Separate `cpu_stress_score` and `memory_stress_score` — once real data allows accurate resource-type attribution
-- Per-type geo complexity: split `geo_clause_count` into `geo_distance_count` (×3, non-cacheable per-document), `geo_shape_count` (×2, complex polygon), and `geo_bounding_box_count` (×1, cacheable fast check)
+- Join queries: `has_child` / `has_parent` clauses (weight 5) — distributed join across parent-child relations, expensive index lookup
+- `function_score` queries (weight 3) — custom scoring functions executed per document
 - Stress score formula weight tuning based on real production data

@@ -18,19 +18,26 @@ BASELINES = {
 # Clause keys that map 1:1 to a count field (used in _walk_query_clauses)
 _SINGLE_CLAUSE_KEYS = {
     "wildcard": "wildcard_clause_count",
+    "regexp":   "wildcard_clause_count",
+    "prefix":   "wildcard_clause_count",
     "fuzzy":    "fuzzy_clause_count",
     "nested":   "nested_clause_count",
     "bool":     "bool_clause_count",
     "knn":      "knn_clause_count",
     "script":   "script_clause_count",
+    "geo_distance":     "geo_distance_count",
+    "geo_shape":        "geo_shape_count",
+    "geo_polygon":      "geo_shape_count",
+    "geo_bounding_box": "geo_bbox_count",
+    "geo_grid":         "geo_bbox_count",
 }
-
-_GEO_CLAUSE_KEYS = {"geo_distance", "geo_shape", "geo_bounding_box", "geo_polygon", "geo_grid"}
 
 CLAUSE_WEIGHTS = {
     "wildcard_clause_count":  4,
     "fuzzy_clause_count":     2,
-    "geo_clause_count":       3,
+    "geo_distance_count":     3,
+    "geo_shape_count":        3,
+    "geo_bbox_count":         1,
     "nested_clause_count":    4,
     "bool_clause_count":      1,
     "terms_values_count":     1,
@@ -60,8 +67,6 @@ def _walk_query_clauses(node, counts: dict) -> None:
         for key, value in node.items():
             if key in _SINGLE_CLAUSE_KEYS:
                 counts[_SINGLE_CLAUSE_KEYS[key]] += 1
-            elif key in _GEO_CLAUSE_KEYS:
-                counts["geo_clause_count"] += 1
             elif key == "terms" and isinstance(value, dict):
                 for field_vals in value.values():
                     if isinstance(field_vals, list):
@@ -72,12 +77,23 @@ def _walk_query_clauses(node, counts: dict) -> None:
             _walk_query_clauses(item, counts)
 
 
+def _count_aggs(node) -> int:
+    if not isinstance(node, dict):
+        return 0
+    count = 0
+    for key, value in node.items():
+        if isinstance(value, dict):
+            count += 1
+            count += _count_aggs(value.get("aggs") or value.get("aggregations") or {})
+    return count
+
+
 def _count_clauses(body: dict) -> dict:
     counts = {k: 0 for k in CLAUSE_WEIGHTS}
 
     aggs = body.get("aggs") or body.get("aggregations")
     if isinstance(aggs, dict):
-        counts["agg_clause_count"] = len(aggs)
+        counts["agg_clause_count"] = _count_aggs(aggs)
 
     if isinstance(body.get("runtime_mappings"), dict):
         counts["runtime_mapping_count"] = len(body["runtime_mappings"])
