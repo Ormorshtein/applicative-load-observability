@@ -5,45 +5,34 @@
 This system wraps any Elasticsearch deployment with a transparent observability pipeline. Every request that passes through the gateway is analyzed for load, stress-scored, and written to a dedicated observability index — with zero impact on the client and zero risk of cascading failure.
 
 ```
-┌─────────────┐        ┌───────────────────────────────────────────────┐
-│   Client    │──────▶ │                   GATEWAY                     │
-│ (any app)   │◀────── │  Nginx / OpenResty  (pure proxy, no logic)    │
-└─────────────┘        │                                               │
-                       │  1. Forward request → Elasticsearch           │
-                       │  2. Return ES response to client immediately  │
-                       │  3. ngx.timer.at(0) → NiFi (after response)  │
-                       └───────────────┬───────────────────────────────┘
-                                       │ HTTP POST (async, fire-and-forget)
-                                       │ drop if NiFi down or full
-                                       ▼
-                       ┌───────────────────────────────────────────────┐
-                       │                    NIFI                       │
-                       │                                               │
-                       │  ListenHTTP ──▶ InvokeHTTP (analyzer)         │
-                       │                      │                        │
-                       │                      ▼                        │
-                       │             PutElasticsearchRecord            │
-                       │             (observability index)             │
-                       └───────────────┬───────────────────────────────┘
-                                       │ POST /analyze
-                                       ▼
-                       ┌───────────────────────────────────────────────┐
-                       │           ANALYZER SERVICE                    │
-                       │  (Python / FastAPI)                           │
-                       │                                               │
-                       │  - Extract headers → user, provider, agent   │
-                       │  - Parse path → operation kind + target       │
-                       │  - Parse body → query type + template         │
-                       │  - Extract response metrics                   │
-                       │  - Calculate stress score                     │
-                       │  - Return structured observability record     │
-                       └───────────────────────────────────────────────┘
-                                       │ write
-                                       ▼
-                       ┌───────────────────────────────────────────────┐
-                       │         ELASTICSEARCH                         │
-                       │  index: applicative-load-observability        │
-                       └───────────────────────────────────────────────┘
+┌─────────────┐     ┌──────────────────────────────────────┐
+│   Client    │────▶│               GATEWAY                │
+│ (any app)   │◀────│   Nginx / OpenResty (pure proxy)     │
+└─────────────┘     │                                      │
+                    │  1. Forward request → Elasticsearch  │
+                    │  2. Return ES response to client     │
+                    │  3. ngx.timer.at(0) → NiFi           │
+                    └──────────────┬───────────────────────┘
+                                   │ fire-and-forget POST
+                                   │ drop if NiFi down or full
+                                   ▼
+                    ┌──────────────────────────┐     ┌──────────────────────────────┐
+                    │           NIFI           │     │       ANALYZER SERVICE       │
+                    │                          │     │       (Python / FastAPI)     │
+                    │  ListenHTTP              │     │                              │
+                    │       ↓                  │     │  - parse headers             │
+                    │  InvokeHTTP ─POST──────────────▶  - parse path + body        │
+                    │       ↓      ◀─JSON record────────  - calc stress score      │
+                    │  PutElastic              │     │  - return observability rec  │
+                    │  SearchRecord            │     └──────────────────────────────┘
+                    └──────────────┬───────────┘
+                                   │ write
+                                   ▼
+                    ┌──────────────────────────┐
+                    │      ELASTICSEARCH       │
+                    │  index: applicative-     │
+                    │  load-observability      │
+                    └──────────────────────────┘
 ```
 
 ---
@@ -192,10 +181,10 @@ A dedicated calculator that recursively walks the query body and counts all stru
 
 | Field | What is counted | Weight |
 |-------|----------------|--------|
-| `bool_clause_count` | Total items across all `must` / `should` / `filter` / `must_not` arrays, recursively | 1 |
+| `bool_clause_count` | Number of `bool` nodes anywhere in the query tree — each adds coordination overhead and scales with nesting depth | 1 |
 | `terms_values_count` | Total number of values across all `terms: {field: [...]}` queries | 1 |
 | `geo_clause_count` | Number of `geo_distance` / `geo_shape` / `geo_bounding_box` / `geo_polygon` clauses | 2 |
-| `wildcard_clause_count` | Number of `wildcard` / `regexp` / `prefix` clauses (can't use inverted index) | 3 |
+| `wildcard_clause_count` | Number of `wildcard`, `regexp`, and `prefix` clauses — all require a full term-dictionary scan, bypassing the inverted index | 3 |
 | `fuzzy_clause_count` | Number of `fuzzy` clauses (Levenshtein automata) | 2 |
 | `nested_clause_count` | Number of `nested` clauses (sub-query per nested object) | 2 |
 
@@ -258,22 +247,27 @@ Feature multipliers (applied after operation type):
   has_runtime_mappings → × 1.3
 ```
 
-*Bulk insert:*
+*Bulk insert (`operation_kind == "insert"` and `operation_type == "bulk"`):*
 ```
-stress = 0.4·norm(took_ms) + 0.4·norm(docs_affected) + 0.2·norm(shards_total)
+stress = 0.40·norm(took_ms, 100)
+       + 0.40·norm(docs_affected, 100)
+       + 0.20·norm(shards_total, 5)
 ```
 
-*Update / delete by query:*
+*Update / delete by query (`operation_type == "by_query"`):*
 ```
-stress = 0.4·norm(took_ms) + 0.4·norm(docs_affected) + 0.2·norm(shards_total)
+stress = 0.40·norm(took_ms, 100)
+       + 0.40·norm(docs_affected, 100)
+       + 0.20·norm(shards_total, 5)
 
 if has_script → × 1.5
 ```
 
-*Single insert / update / delete:*
+*Single document insert / update / delete (`operation_type == "single"`):*
 ```
-stress = 0.5·norm(took_ms) + 0.5
+stress = 0.50·norm(took_ms, 100) + 0.50
 ```
+The constant `0.50` represents the irreducible cost of any write operation regardless of latency.
 
 > All multiplier values are best-effort initial placeholders. They encode the relative resource
 > profile of each operation type (CPU vs memory intensity) and must be tuned with real data.
