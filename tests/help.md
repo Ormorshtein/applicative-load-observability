@@ -73,6 +73,11 @@ python tests/stress_scenarios.py --scenario all --duration 60 --stress-workers 6
 
 # Clean up indices after run
 python tests/stress_scenarios.py --scenario nested-deep --cleanup
+
+# Mix mode — run multiple scenarios in parallel
+python tests/stress_scenarios.py --scenario script-heavy,agg-explosion --mix
+python tests/stress_scenarios.py --scenario script-heavy,wildcard-swarm,bulk-massive --mix --duration 60
+python tests/stress_scenarios.py --scenario all --mix   # all 8 at once
 ```
 
 ### Parameters
@@ -87,6 +92,7 @@ python tests/stress_scenarios.py --scenario nested-deep --cleanup
 | `--gateway` | `http://localhost:9200` | Gateway base URL |
 | `--cleanup` | `false` | Delete stress indices after run |
 | `--pause` | `10` | Seconds to wait between scenarios (in `all`/multi mode) |
+| `--mix` | `false` | Run selected scenarios in parallel instead of sequentially |
 
 ### Available Scenarios
 
@@ -110,6 +116,7 @@ python tests/stress_scenarios.py --scenario nested-deep --cleanup
 - Some ES errors (400s) are expected — e.g., `nested-deep` queries reference unmapped nested paths — but the gateway still forwards the request body to NiFi for complexity scoring
 - Prints live progress, a per-scenario stats table, and Kibana filter instructions
 - Indices are **kept by default** for dashboard inspection; use `--cleanup` to remove them
+- **Mix mode** (`--mix`): runs all selected scenarios simultaneously with separate stats per scenario — useful for testing how different stress dimensions interact and compete
 
 ### Kibana Verification
 

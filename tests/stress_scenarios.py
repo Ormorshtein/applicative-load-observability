@@ -500,6 +500,89 @@ class ScenarioRunner:
         if self.cleanup:
             sc.delete_index()
 
+    def run_mix(self, scenario_classes):
+        """Run multiple scenarios simultaneously — all stress+noise workers in parallel."""
+        scenarios = [cls(self.gateway) for cls in scenario_classes]
+        names = ", ".join(sc.name for sc in scenarios)
+
+        print(f"\n{'#'*60}")
+        print(f"  MIX MODE — {len(scenarios)} scenarios in parallel")
+        print(f"  Scenarios: {names}")
+        print(f"  Stress workers per scenario: {self.stress_workers}")
+        print(f"  Noise workers per scenario: {self.noise_workers}")
+        print(f"  Duration: {self.duration}s")
+        print(f"  Total threads: {len(scenarios) * (self.stress_workers + self.noise_workers)}")
+        print(f"{'#'*60}\n")
+
+        # Per-scenario stats so we can report each one separately
+        sc_stats = {sc.name: Stats() for sc in scenarios}
+
+        for sc in scenarios:
+            sc.ensure_index()
+            sc.seed_data(500)
+
+        stop = threading.Event()
+        threads = []
+
+        for sc in scenarios:
+            stats = sc_stats[sc.name]
+
+            def make_stress(s=sc, st=stats):
+                def worker():
+                    while not stop.is_set():
+                        try:
+                            op, status = s.stress_op()
+                            st.record(op, status)
+                        except Exception:
+                            st.record("stress:error", 0)
+                return worker
+
+            def make_noise(s=sc, st=stats):
+                def worker():
+                    while not stop.is_set():
+                        try:
+                            op, status = s.noise_op()
+                            st.record(op, status)
+                        except Exception:
+                            st.record("noise:error", 0)
+                        time.sleep(0.05)
+                return worker
+
+            for _ in range(self.stress_workers):
+                threads.append(threading.Thread(target=make_stress(), daemon=True))
+            for _ in range(self.noise_workers):
+                threads.append(threading.Thread(target=make_noise(), daemon=True))
+
+        for t in threads:
+            t.start()
+
+        try:
+            deadline = time.time() + self.duration
+            while time.time() < deadline:
+                elapsed = time.time() - next(iter(sc_stats.values())).start
+                total = sum(s.total for s in sc_stats.values())
+                per_sc = "  ".join(f"{n}:{s.total}" for n, s in sc_stats.items())
+                print(f"\r  [MIX] [{elapsed:.0f}s / {self.duration}s]  "
+                      f"total: {total}  ({total / max(elapsed, 0.1):.0f} req/s)  |  {per_sc}  ",
+                      end="", flush=True)
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("\n\n  Interrupted.")
+
+        stop.set()
+        for t in threads:
+            t.join(timeout=5)
+
+        for sc in scenarios:
+            sc_stats[sc.name].report(label=f"MIX: {sc.name}")
+            print(f"  Kibana filter:  target: {sc.index}")
+            print(f"  Stress app:     applicative_provider: stress-{sc.name}")
+            print(f"  Noise app:      applicative_provider: noise-{sc.name}\n")
+
+        if self.cleanup:
+            for sc in scenarios:
+                sc.delete_index()
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -523,6 +606,8 @@ def main():
                         help="Delete stress indices after run")
     parser.add_argument("--pause", type=int, default=10,
                         help="Pause between scenarios in 'all' mode (default: 10s)")
+    parser.add_argument("--mix", action="store_true",
+                        help="Run selected scenarios in parallel instead of sequentially")
     args = parser.parse_args()
 
     if args.list:
@@ -563,15 +648,20 @@ def main():
         cleanup=args.cleanup,
     )
 
-    for i, cls in enumerate(to_run):
-        runner.run(cls)
-        if i < len(to_run) - 1 and len(to_run) > 1:
-            print(f"  Pausing {args.pause}s before next scenario ...\n")
-            try:
-                time.sleep(args.pause)
-            except KeyboardInterrupt:
-                print("\n  Aborted.")
-                sys.exit(0)
+    if args.mix:
+        if len(to_run) < 2:
+            parser.error("--mix requires at least 2 scenarios")
+        runner.run_mix(to_run)
+    else:
+        for i, cls in enumerate(to_run):
+            runner.run(cls)
+            if i < len(to_run) - 1 and len(to_run) > 1:
+                print(f"  Pausing {args.pause}s before next scenario ...\n")
+                try:
+                    time.sleep(args.pause)
+                except KeyboardInterrupt:
+                    print("\n  Aborted.")
+                    sys.exit(0)
 
     print("  All scenarios complete.")
 
