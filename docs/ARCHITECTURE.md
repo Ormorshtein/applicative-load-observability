@@ -163,44 +163,62 @@ NiFi forwards the raw Nginx payload to the analyzer as-is — no transformation.
 | `runtime_mapping_count` | Count of fields defined in `body["runtime_mappings"]` (0 if absent) |
 | `template` | Body with all scalar leaf values replaced by `"?"`, then `json.dumps(sort_keys=True)` |
 
-#### Query Complexity
+#### Red Flags
 
-Recursively walks the full query body and counts all structurally expensive patterns. Returns both raw counts (stored as individual fields in the observability record) and a single weighted `query_complexity` score that feeds the stress formula.
+Recursively walks the full query body and counts all structurally expensive patterns. Raw counts are stored as individual fields in the observability record. Instead of computing a weighted `query_complexity` sum (which would require production data to justify per-clause weights), the analyzer checks binary flag conditions and produces a `stress_multiplier` applied after the base stress score.
 
-| Field | What is counted | Weight | Rationale |
-|-------|----------------|--------|-----------|
-| `bool_clause_count` | Number of `bool` nodes anywhere in the query tree | 1 | Coordination overhead only; not classified as expensive by ES |
-| `terms_values_count` | Total number of values across all `terms: {field: [...]}` queries | 1 | Cardinality lookup; cost is bounded |
-| `knn_clause_count` | Number of `knn` vector similarity queries | 4 | HNSW graph traversal + vector distance computation; significant CPU and memory pressure |
-| `fuzzy_clause_count` | Number of `fuzzy` clauses | 3 | Levenshtein automata construction; bounded by fuzziness parameter |
-| `geo_bbox_count` | Number of `geo_bounding_box` / `geo_grid` clauses | 1 | Simple range check on encoded values, cacheable |
-| `geo_distance_count` | Number of `geo_distance` clauses | 3 | Non-cacheable, per-document haversine calculation |
-| `geo_shape_count` | Number of `geo_shape` / `geo_polygon` clauses | 4 | Complex polygon intersection, BKD tree traversal |
-| `agg_clause_count` | Total number of aggregation definitions at all nesting levels in `aggs` / `aggregations` (recursive) | 3 | Heap-resident bucket accumulation; global ordinals loading; cardinality multiplies at each sub-aggregation level |
-| `wildcard_clause_count` | Number of `wildcard`, `regexp`, and `prefix` clauses | 4 | Full term-dictionary scan + regex compilation per document; blocked by `allow_expensive_queries` |
-| `nested_clause_count` | Number of `nested` clauses | 5 | Sub-query executed per nested object (distributed join); real-world cases show 90% p99 improvement after removing nested |
-| `runtime_mapping_count` | Number of fields defined in `runtime_mappings` | 5 | ES docs: same per-document execution cost as scripts; each field computed on every document touched |
-| `script_clause_count` | Number of `script` occurrences anywhere in the query body | 6 | Worst category: user-defined Painless code executed per document, no caching possible; explicitly blocked by `allow_expensive_queries` |
+**Raw clause counts** (always stored for drill-down analysis):
+
+| Field | What is counted |
+|-------|----------------|
+| `bool_clause_count` | Number of `bool` nodes anywhere in the query tree |
+| `terms_values_count` | Total number of values across all `terms: {field: [...]}` queries |
+| `knn_clause_count` | Number of `knn` vector similarity queries |
+| `fuzzy_clause_count` | Number of `fuzzy` clauses |
+| `geo_bbox_count` | Number of `geo_bounding_box` / `geo_grid` clauses |
+| `geo_distance_count` | Number of `geo_distance` clauses |
+| `geo_shape_count` | Number of `geo_shape` / `geo_polygon` clauses |
+| `agg_clause_count` | Total number of aggregation definitions at all nesting levels in `aggs` / `aggregations` (recursive) |
+| `wildcard_clause_count` | Number of `wildcard`, `regexp`, and `prefix` clauses |
+| `nested_clause_count` | Number of `nested` clauses |
+| `runtime_mapping_count` | Number of fields defined in `runtime_mappings` |
+| `script_clause_count` | Number of `script` occurrences anywhere in the query body |
+
+**Presence flags** (fires if clause type exists at all):
+
+| Flag | Condition | Multiplier | Rationale |
+|------|-----------|------------|-----------|
+| `flag_has_script` | `script_clause_count >= 1` | ×1.5 | Per-doc Painless execution, no caching, gated by `allow_expensive_queries` |
+| `flag_has_runtime_mapping` | `runtime_mapping_count >= 1` | ×1.5 | ES docs: same per-doc cost as scripts |
+| `flag_has_wildcard` | `wildcard_clause_count >= 1` (includes regexp, prefix) | ×1.3 | Full term-dictionary scan, gated by `allow_expensive_queries` |
+| `flag_has_nested` | `nested_clause_count >= 1` | ×1.3 | Sub-query per nested object, distributed join |
+| `flag_has_fuzzy` | `fuzzy_clause_count >= 1` | ×1.2 | Levenshtein automata construction, non-trivial even though bounded by fuzziness param |
+| `flag_has_geo` | `geo_distance_count + geo_shape_count >= 1` | ×1.2 | Per-doc haversine/polygon intersection. Excludes `geo_bbox` (cheap range check) |
+| `flag_has_knn` | `knn_clause_count >= 1` | ×1.2 | HNSW graph traversal + vector distance |
+
+**Threshold flags** (fires when count exceeds threshold):
+
+| Flag | Condition | Multiplier | Rationale |
+|------|-----------|------------|-----------|
+| `flag_excessive_bool` | `bool_clause_count >= 50` | ×1.3 | Machine-generated OR-explosion or deep nesting; hand-written queries rarely exceed 10 |
+| `flag_large_terms_list` | `terms_values_count >= 500` | ×1.2 | Bulk ID lookups, bypasses terms query cache |
+| `flag_deep_aggs` | `agg_clause_count >= 10` | ×1.3 | Heap accumulation, cardinality explosion at each sub-agg level |
+
+Thresholds configurable via env vars (like existing `STRESS_BASELINE_*` pattern):
+`RED_FLAG_BOOL_THRESHOLD`, `RED_FLAG_TERMS_THRESHOLD`, `RED_FLAG_AGGS_THRESHOLD`
+
+**Multiplier mechanics:**
 
 ```
-query_complexity = (
-    1 * bool_clause_count
-  + 1 * terms_values_count
-  + 1 * geo_bbox_count
-  + 3 * fuzzy_clause_count
-  + 3 * geo_distance_count
-  + 3 * agg_clause_count
-  + 4 * wildcard_clause_count
-  + 4 * knn_clause_count
-  + 4 * geo_shape_count
-  + 5 * nested_clause_count
-  + 5 * runtime_mapping_count
-  + 6 * script_clause_count
-)
+stress_multiplier = product(flag.multiplier for each active flag)
 ```
 
-All raw counts and `query_complexity` are stored in the observability record.
-Baseline for stress normalisation: `query_complexity = 10`.
+- No flags → 1.0× (no change)
+- Script + wildcard → 1.5 × 1.3 = 1.95×
+- Script + nested + geo → 1.5 × 1.3 × 1.2 = 2.34×
+- Max theoretical (all 10 flags) ≈ 7.0× — rare in practice, 2-3 flags typical
+
+Why multiplicative: expensive features genuinely compound (wildcard inside nested is worse than either alone). System is for observability, not rate-limiting — explosion is a feature.
 
 #### Response Body Extraction
 
@@ -226,7 +244,6 @@ Calculated by `stress.py`. All missing fields default to 0. No upper bound — e
 | `shards_total` | 5 shards | Typical primary count; each shard is CPU + JVM overhead |
 | `size` | 100 docs | 10× ES default of 10; drives fetch-phase heap — `_search` formula only |
 | `docs_affected` | 500 docs | Bulk/update/delete volume |
-| `query_complexity` | 10 | Weighted complexity units |
 
 **Normalisation:**
 
@@ -238,15 +255,15 @@ No clamping — values above 1.0 are valid and expected. A query at 2× the base
 
 **Formulas:**
 
-All cost signals — scripts, runtime mappings, knn, geo, etc. — are captured inside `query_complexity`. No separate multiplier step.
+Each formula computes a `base` score as a weighted sum of normalised inputs, then applies the `stress_multiplier` from red flags (see §2.3). The multiplier defaults to 1.0 when no flags fire.
 
 *`_search`:*
 ```
-stress = 0.45·norm(es_took_ms, 100)
-       + 0.25·norm(query_complexity, 10)
-       + 0.15·norm(shards_total, 5)
-       + 0.10·norm(hits, 10000)
-       + 0.05·norm(size, 100)
+base = 0.55·norm(es_took_ms, 100)
+     + 0.20·norm(shards_total, 5)
+     + 0.15·norm(hits, 10000)
+     + 0.10·norm(size, 100)
+stress = base × stress_multiplier
 ```
 
 *`_bulk`:*
@@ -257,28 +274,28 @@ stress = 0.45·norm(es_took_ms, 100)
 
 *`_update_by_query` / `_delete_by_query`:*
 ```
-stress = 0.30·norm(es_took_ms, 100)
-       + 0.30·norm(docs_affected, 500)
-       + 0.25·norm(query_complexity, 10)
-       + 0.15·norm(shards_total, 5)
+base = 0.40·norm(es_took_ms, 100)
+     + 0.35·norm(docs_affected, 500)
+     + 0.25·norm(shards_total, 5)
+stress = base × stress_multiplier
 ```
 
 *`_update`:*
 ```
-stress = 0.50·norm(es_took_ms, 100)
-       + 0.30·norm(query_complexity, 10)
-       + 0.20·norm(shards_total, 5)
+base = 0.60·norm(es_took_ms, 100)
+     + 0.40·norm(shards_total, 5)
+stress = base × stress_multiplier
 ```
-`query_complexity` captures the cost of scripted updates. For partial-doc updates (no script), `query_complexity` is 0 and the formula reduces to latency + shards.
+For partial-doc updates (no script), no flags fire and `stress_multiplier` is 1.0, so the formula reduces to latency + shards.
 
 *`_create` / `index` / `delete`:*
 ```
 stress = 0.70·norm(es_took_ms, 100)
        + 0.30·norm(shards_total, 5)
 ```
-Single-document writes. All three share this formula as a baseline; see Future Ideas for per-operation weight refinement.
+Single-document writes. No query body → no red flags → no multiplier. All three share this formula as a baseline; see Future Ideas for per-operation weight refinement.
 
-> All weights and complexity scores are best-effort initial values grounded in ES documentation
+> All weights, flag multipliers, and thresholds are best-effort initial values grounded in ES documentation
 > and benchmarks. They must be tuned with real production data over time.
 
 ---
@@ -322,7 +339,10 @@ Single-document writes. All three share this formula as a baseline; see Future I
   "nested_clause_count":    0,
   "runtime_mapping_count":  0,
   "script_clause_count":    0,
-  "query_complexity":       15,
+
+  "red_flags":              [],
+  "red_flag_count":         0,
+  "stress_multiplier":      1.0,
 
   "stress_score":           0.87
 }
@@ -400,7 +420,8 @@ Clients connect to `localhost:9200` (gateway) instead of Elasticsearch directly.
 
 ## 7. Future Implementation Ideas
 
-- `search_type` classification (`agg` / `knn` / `geo` / `text` / `simple`) — applies to `_search`, `_update_by_query`, and `_delete_by_query` (all carry a query body). Deferred because naive top-level detection (e.g. "body has `query.geo_*`") misclassifies queries where the expensive clause is nested inside a `bool`. Since `query_complexity` already captures these signals recursively and correctly, adding a shallow `search_type` label would produce inconsistent dashboard data. Requires recursive detection with a priority order (most expensive type wins).
+- Red flag threshold and multiplier tuning — current thresholds (`bool >= 50`, `terms >= 500`, `aggs >= 10`) and multiplier values (1.2–1.5) are initial estimates. Once production data is available, analyse flag firing rates and correlation with `es_took_ms` to validate and adjust these values.
+- `search_type` classification (`agg` / `knn` / `geo` / `text` / `simple`) — applies to `_search`, `_update_by_query`, and `_delete_by_query` (all carry a query body). Deferred because naive top-level detection (e.g. "body has `query.geo_*`") misclassifies queries where the expensive clause is nested inside a `bool`. Since red flags already capture these signals recursively and correctly, adding a shallow `search_type` label would produce inconsistent dashboard data. Requires recursive detection with a priority order (most expensive type wins).
 - Per-operation write weights — current formulas treat `_create`, `_doc` PUT, and `_doc` DELETE identically. In reality their read depth differs: `_doc` PUT (index) is a pure write with no prior read; `_doc` DELETE reads document metadata (version/seq_no) before writing a tombstone; `_update` reads the full `_source` for a read-modify-write cycle. Separate weight sets should be validated against real production latency distributions before applying.
 - Upsert detection — `_update` requests with `"upsert"` or `"doc_as_upsert": true` in the body follow a conditional path: create-path (cheap, no source read) if the document is absent, update-path (full read-modify-write) if it exists. Probabilistic cost modeling once hit/miss rates are observable.
 - Auto-generated vs user-provided `_id` — `POST /<index>/_doc` (no ID in path) lets ES generate a UUID and skip the existence check entirely, making it a pure write. `PUT /<index>/_doc/<id>` (user-provided ID) requires an existence check before writing to handle version conflicts. Detectable by checking whether the path segment after `_doc` is present. The `index` operation formula should weight user-provided-ID writes higher once this is implemented.
@@ -411,4 +432,4 @@ Clients connect to `localhost:9200` (gateway) instead of Elasticsearch directly.
 - Separate `cpu_stress_score` and `memory_stress_score` — once real data allows accurate resource-type attribution
 - Join queries: `has_child` / `has_parent` clauses (weight 5) — distributed join across parent-child relations, expensive index lookup
 - `function_score` queries (weight 3) — custom scoring functions executed per document
-- Stress score formula weight tuning based on real production data
+- Stress score formula weight tuning and red flag multiplier calibration based on real production data
