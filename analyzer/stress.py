@@ -12,16 +12,6 @@ BASELINES = {
     "query_complexity":  10,
 }
 
-OP_MULTIPLIERS = {
-    "agg":    1.3,
-    "geo":    1.2,
-    "knn":    1.2,
-    "text":   1.0,
-    "single": 1.0,
-    "bulk":   1.0,
-    "by_query": 1.0,
-}
-
 
 def norm(value: float, baseline: float) -> float:
     return value / baseline
@@ -30,7 +20,8 @@ def norm(value: float, baseline: float) -> float:
 def calc_query_complexity(body: dict) -> dict:
     """
     Count clause types and return raw counts + weighted score.
-    Searches recursively through the query tree.
+    Searches recursively through the query tree; handles top-level
+    aggs, knn, and runtime_mappings specially.
     """
     counts = {
         "wildcard_clause_count": 0,
@@ -39,7 +30,22 @@ def calc_query_complexity(body: dict) -> dict:
         "nested_clause_count": 0,
         "bool_clause_count": 0,
         "terms_values_count": 0,
+        "knn_clause_count": 0,
+        "agg_clause_count": 0,
+        "runtime_mapping_count": 0,
+        "script_clause_count": 0,
     }
+
+    # Top-level batch counts
+    aggs = body.get("aggs") or body.get("aggregations")
+    if isinstance(aggs, dict):
+        counts["agg_clause_count"] = len(aggs)
+
+    if isinstance(body.get("runtime_mappings"), dict):
+        counts["runtime_mapping_count"] = len(body["runtime_mappings"])
+
+    if "knn" in body:
+        counts["knn_clause_count"] += 1
 
     def walk(obj):
         if isinstance(obj, dict):
@@ -60,6 +66,10 @@ def calc_query_complexity(body: dict) -> dict:
                     for field_vals in v.values():
                         if isinstance(field_vals, list):
                             counts["terms_values_count"] += len(field_vals)
+                elif k == "knn":
+                    counts["knn_clause_count"] += 1
+                elif k == "script":
+                    counts["script_clause_count"] += 1
                 walk(v)
         elif isinstance(obj, list):
             for item in obj:
@@ -68,12 +78,16 @@ def calc_query_complexity(body: dict) -> dict:
     walk(body.get("query", {}))
 
     score = (
-        3 * counts["wildcard_clause_count"]
+        4 * counts["wildcard_clause_count"]
         + 2 * counts["fuzzy_clause_count"]
-        + 2 * counts["geo_clause_count"]
-        + 2 * counts["nested_clause_count"]
+        + 3 * counts["geo_clause_count"]
+        + 4 * counts["nested_clause_count"]
         + 1 * counts["bool_clause_count"]
         + 1 * counts["terms_values_count"]
+        + 2 * counts["knn_clause_count"]
+        + 3 * counts["agg_clause_count"]
+        + 5 * counts["runtime_mapping_count"]
+        + 6 * counts["script_clause_count"]
     )
 
     return {**counts, "query_complexity": score}
@@ -82,49 +96,39 @@ def calc_query_complexity(body: dict) -> dict:
 def calc_stress(
     operation_kind: str,
     operation_type: str,
-    took_ms: float,
+    es_took_ms: float,
     hits: int,
     size: int,
     shards_total: int,
     docs_affected: int,
     query_complexity: float,
-    has_script: bool,
-    has_runtime_mappings: bool,
 ) -> float:
     if operation_kind == "query":
-        base = (
-            0.40 * norm(took_ms, BASELINES["took_ms"])
+        return (
+            0.40 * norm(es_took_ms, BASELINES["took_ms"])
             + 0.20 * norm(hits, BASELINES["hits"])
             + 0.15 * norm(query_complexity, BASELINES["query_complexity"])
             + 0.15 * norm(size, BASELINES["size"])
             + 0.10 * norm(shards_total, BASELINES["shards_total"])
         )
-        stress = base * OP_MULTIPLIERS.get(operation_type, 1.0)
-        if has_script:
-            stress *= 1.5
-        if has_runtime_mappings:
-            stress *= 1.3
-        return stress
 
     if operation_kind == "insert":
         return (
-            0.40 * norm(took_ms, BASELINES["took_ms"])
+            0.40 * norm(es_took_ms, BASELINES["took_ms"])
             + 0.40 * norm(docs_affected, BASELINES["docs_affected"])
             + 0.20 * norm(shards_total, BASELINES["shards_total"])
         )
 
     if operation_kind in ("update", "delete"):
         if operation_type == "by_query":
-            stress = (
-                0.40 * norm(took_ms, BASELINES["took_ms"])
-                + 0.40 * norm(docs_affected, BASELINES["docs_affected"])
-                + 0.20 * norm(shards_total, BASELINES["shards_total"])
+            return (
+                0.35 * norm(es_took_ms, BASELINES["took_ms"])
+                + 0.30 * norm(docs_affected, BASELINES["docs_affected"])
+                + 0.20 * norm(query_complexity, BASELINES["query_complexity"])
+                + 0.15 * norm(shards_total, BASELINES["shards_total"])
             )
-            if has_script:
-                stress *= 1.5
-            return stress
         # single update / delete
-        return 0.5 * norm(took_ms, BASELINES["took_ms"]) + 0.5
+        return 0.5 * norm(es_took_ms, BASELINES["took_ms"]) + 0.5
 
     # fallback
-    return 0.5 * norm(took_ms, BASELINES["took_ms"]) + 0.5
+    return 0.5 * norm(es_took_ms, BASELINES["took_ms"]) + 0.5

@@ -52,8 +52,6 @@ services:
     depends_on:
       elasticsearch:
         condition: service_healthy
-      analyzer:
-        condition: service_healthy
 
 volumes:
   es-data:

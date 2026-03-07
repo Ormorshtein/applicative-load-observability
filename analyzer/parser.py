@@ -156,3 +156,7 @@ def parse_docs_affected(path: str, response_body: dict) -> int:
     if "_delete_by_query" in path:
         return response_body.get("deleted", 0)
     return 0
+
+
+def parse_es_took_ms(response_body: dict) -> float:
+    return float(response_body.get("took", 0))

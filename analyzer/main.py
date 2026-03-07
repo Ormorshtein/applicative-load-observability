@@ -14,6 +14,7 @@ from parser import (
     parse_applicative_provider,
     parse_client_host,
     parse_docs_affected,
+    parse_es_took_ms,
     parse_has_runtime_mappings,
     parse_has_script,
     parse_hits,
@@ -55,7 +56,7 @@ async def analyze(request: Request):
         request_body = _parse_json_field(payload.get("request_body", ""))
         response_body = _parse_json_field(payload.get("response_body", ""))
         response_status = payload.get("response_status", 0)
-        took_ms = float(payload.get("response_took_ms", 0))
+        gateway_took_ms = float(payload.get("gateway_took_ms", 0))
         request_size_bytes = int(payload.get("request_size_bytes", 0))
         response_size_bytes = int(payload.get("response_size_bytes", 0))
 
@@ -75,21 +76,19 @@ async def analyze(request: Request):
         size = parse_size(request_body)
         has_script = parse_has_script(request_body)
         has_runtime_mappings = parse_has_runtime_mappings(request_body)
+        es_took_ms = parse_es_took_ms(response_body)
 
         complexity_info = calc_query_complexity(request_body)
-        query_complexity = complexity_info["query_complexity"]
 
         stress_score = calc_stress(
             operation_kind=operation_kind,
             operation_type=operation_type,
-            took_ms=took_ms,
+            es_took_ms=es_took_ms or gateway_took_ms,
             hits=hits,
             size=size,
             shards_total=shards_total,
             docs_affected=docs_affected,
-            query_complexity=query_complexity,
-            has_script=has_script,
-            has_runtime_mappings=has_runtime_mappings,
+            query_complexity=complexity_info["query_complexity"],
         )
 
         record = {
@@ -102,10 +101,12 @@ async def analyze(request: Request):
             "client_host": client_host,
             "applicative_provider": applicative_provider,
             "user_agent": user_agent,
-            "response_took_ms": took_ms,
+            "gateway_took_ms": gateway_took_ms,
+            "es_took_ms": es_took_ms,
             "hits": hits,
             "shards_total": shards_total,
-            "size": size,
+            **complexity_info,
+            **({"size": size} if operation_kind == "query" else {}),
             "docs_affected": docs_affected,
             "has_script": has_script,
             "has_runtime_mappings": has_runtime_mappings,
