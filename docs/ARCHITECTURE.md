@@ -171,35 +171,39 @@ Derived from **both path and body** — path for structural operations, body for
 | Field | Logic |
 |-------|-------|
 | `size` | `body.get("size", 10)` |
-| `has_script` | Recursively search for any key named `"script"` anywhere in body |
-| `has_runtime_mappings` | `"runtime_mappings"` key exists at top level |
+| `script_clause_count` | Count of `"script"` keys found anywhere recursively in the body |
+| `runtime_mapping_count` | Count of fields defined in `body["runtime_mappings"]` (0 if absent) |
 | `template` | Body with all scalar leaf values replaced by `"?"`, then `json.dumps(sort_keys=True)` |
 
 **Query Complexity — `calc_query_complexity(body) → dict`**
 
 A dedicated calculator that recursively walks the query body and counts all structurally expensive patterns. Returns both raw counts (stored as fields) and a single weighted `query_complexity` score (feeds stress formula).
 
-| Field | What is counted | Weight |
-|-------|----------------|--------|
-| `bool_clause_count` | Number of `bool` nodes anywhere in the query tree — each adds coordination overhead and scales with nesting depth | 1 |
-| `terms_values_count` | Total number of values across all `terms: {field: [...]}` queries | 1 |
-| `geo_clause_count` | Number of `geo_distance` / `geo_shape` / `geo_bounding_box` / `geo_polygon` clauses | 2 |
-| `fuzzy_clause_count` | Number of `fuzzy` clauses (Levenshtein automata construction) | 2 |
-| `nested_clause_count` | Number of `nested` clauses (sub-query executed per nested object) | 2 |
-| `knn_clause_count` | Number of `knn` vector similarity queries — CPU-intensive per-vector comparison | 2 |
-| `wildcard_clause_count` | Number of `wildcard`, `regexp`, and `prefix` clauses — all require a full term-dictionary scan, bypassing the inverted index | 3 |
-| `agg_clause_count` | Number of top-level aggregation definitions in `aggs` / `aggregations` — each bucket accumulates heap-resident field data | 3 |
+| Field | What is counted | Weight | Rationale |
+|-------|----------------|--------|-----------|
+| `bool_clause_count` | Number of `bool` nodes anywhere in the query tree | 1 | Coordination overhead only; not classified as expensive by ES |
+| `terms_values_count` | Total number of values across all `terms: {field: [...]}` queries | 1 | Cardinality lookup; cost is bounded |
+| `knn_clause_count` | Number of `knn` vector similarity queries | 2 | HNSW is well-optimised (~850 QPS); exact kNN cost is already captured in `took_ms` |
+| `fuzzy_clause_count` | Number of `fuzzy` clauses | 2 | Levenshtein automata construction; bounded by fuzziness parameter |
+| `geo_clause_count` | Number of `geo_distance` / `geo_shape` / `geo_bounding_box` / `geo_polygon` clauses | 3 | Per-document, non-cacheable — ES groups geo_distance with scripts as the two non-cacheable filter types |
+| `agg_clause_count` | Number of top-level aggregation definitions in `aggs` / `aggregations` | 3 | Heap-resident bucket accumulation; global ordinals loading; circuit breaker risk on high-cardinality fields |
+| `wildcard_clause_count` | Number of `wildcard`, `regexp`, and `prefix` clauses | 4 | Full term-dictionary scan + regex compilation per document; blocked by `allow_expensive_queries` |
+| `nested_clause_count` | Number of `nested` clauses | 4 | Sub-query executed per nested object (distributed join); real-world cases show 90% p99 improvement after removing nested |
+| `runtime_mapping_count` | Number of fields defined in `runtime_mappings` | 5 | ES docs: same per-document execution cost as scripts; each field computed on every document touched |
+| `script_clause_count` | Number of `script` occurrences anywhere in the query body | 6 | Worst category: user-defined Painless code executed per document, no caching possible; explicitly blocked by `allow_expensive_queries` |
 
 ```
 query_complexity = (
     1 * bool_clause_count
   + 1 * terms_values_count
-  + 2 * geo_clause_count
-  + 2 * fuzzy_clause_count
-  + 2 * nested_clause_count
   + 2 * knn_clause_count
-  + 3 * wildcard_clause_count
+  + 2 * fuzzy_clause_count
+  + 3 * geo_clause_count
   + 3 * agg_clause_count
+  + 4 * wildcard_clause_count
+  + 4 * nested_clause_count
+  + 5 * runtime_mapping_count
+  + 6 * script_clause_count
 )
 ```
 
@@ -240,13 +244,9 @@ stress = 0.40·norm(took_ms, 100)
        + 0.15·norm(query_complexity, 10)
        + 0.15·norm(size, 100)
        + 0.10·norm(shards_total, 5)
-
-Feature multipliers (applied after):
-  has_script           → × 1.5
-  has_runtime_mappings → × 1.3
 ```
 
-Operation type cost (agg, knn, geo) is already captured inside `query_complexity` — no separate multiplier needed.
+All cost signals — operation type (agg, knn, geo), scripts, and runtime mappings — are captured inside `query_complexity`. No separate multiplier step.
 
 *Bulk insert (`operation_kind == "insert"` and `operation_type == "bulk"`):*
 ```
@@ -304,19 +304,19 @@ Written by NiFi. One document per analyzed operation.
   "shards_total":           5,
   "size":                   10,
   "docs_affected":          0,
-  "has_script":             false,
-  "has_runtime_mappings":   false,
   "request_size_bytes":     284,
   "response_size_bytes":    1920,
 
   "bool_clause_count":      12,
   "terms_values_count":     0,
-  "geo_clause_count":       0,
-  "fuzzy_clause_count":     0,
-  "nested_clause_count":    0,
   "knn_clause_count":       0,
-  "wildcard_clause_count":  0,
+  "fuzzy_clause_count":     0,
+  "geo_clause_count":       0,
   "agg_clause_count":       1,
+  "wildcard_clause_count":  0,
+  "nested_clause_count":    0,
+  "runtime_mapping_count":  0,
+  "script_clause_count":    0,
   "query_complexity":       15,
 
   "stress_score":           0.87
