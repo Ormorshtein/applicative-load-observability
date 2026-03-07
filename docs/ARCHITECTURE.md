@@ -144,26 +144,26 @@ NiFi forwards the raw Nginx payload to the analyzer as-is — no transformation.
 | Field | Logic |
 |-------|-------|
 | `target` | First path segment not starting with `_`. Wildcards and multi-index patterns kept verbatim (e.g. `logs-*`, `index1,index2`). Defaults to `_all`. |
-| `operation_kind` | `query` / `insert` / `update` / `delete` — derived from method + path segments |
+| `operation` | ES endpoint name extracted from path. For `_doc`, `method` in the record distinguishes index (PUT) from delete (DELETE). |
 
-**Operation kind rules:**
+**Operation rules:**
 
-| Condition | Result |
-|-----------|--------|
-| path contains `_search` | `query` |
-| path contains `_bulk` | `insert` |
-| path contains `_create` or `_doc` | `insert` |
-| path contains `_update_by_query` | `update` |
-| path contains `_update` | `update` |
-| path contains `_delete_by_query` | `delete` |
-| method `DELETE` | `delete` |
-| default | `query` |
+| Condition | `operation` |
+|-----------|-------------|
+| path contains `_search` | `_search` |
+| path contains `_bulk` | `_bulk` |
+| path contains `_create` | `_create` |
+| path contains `_update_by_query` | `_update_by_query` |
+| path contains `_update` | `_update` |
+| path contains `_delete_by_query` | `_delete_by_query` |
+| path contains `_doc` or method is `PUT` or `DELETE` | `_doc` |
+| default | `_search` |
 
 #### Request Body Extraction
 
 | Field | Logic |
 |-------|-------|
-| `size` | `body.get("size", 10)` — extracted and stored **only when `operation_kind == "query"`**; omitted for insert / update / delete (ES ignores `size` on non-search requests) |
+| `size` | `body.get("size", 10)` — extracted and stored **only when `operation == "_search"`**; omitted for all other operations (ES ignores `size` on non-search requests) |
 | `script_clause_count` | Count of `"script"` keys found anywhere recursively in the body |
 | `runtime_mapping_count` | Count of fields defined in `body["runtime_mappings"]` (0 if absent) |
 | `template` | Body with all scalar leaf values replaced by `"?"`, then `json.dumps(sort_keys=True)` |
@@ -225,7 +225,7 @@ Calculated by `stress.py`. All missing fields default to 0. No upper bound — e
 | `es_took_ms` | 100 ms | ES's own execution time — slow-log default starts at 500ms; healthy queries are <100ms |
 | `hits` | 1 000 docs | Reasonable result set; scoring + sorting scales with hits |
 | `shards_total` | 5 shards | Typical primary count; each shard is CPU + JVM overhead |
-| `size` | 100 docs | 10× ES default of 10; drives fetch-phase heap — query formula only |
+| `size` | 100 docs | 10× ES default of 10; drives fetch-phase heap — `_search` formula only |
 | `docs_affected` | 100 docs | Bulk/update/delete volume |
 | `query_complexity` | 10 | Weighted complexity units |
 
@@ -239,7 +239,9 @@ No clamping — values above 1.0 are valid and expected. A query at 2× the base
 
 **Formulas:**
 
-*Query:*
+All cost signals — scripts, runtime mappings, knn, geo, etc. — are captured inside `query_complexity`. No separate multiplier step.
+
+*`_search`:*
 ```
 stress = 0.40·norm(es_took_ms, 100)
        + 0.20·norm(hits, 1000)
@@ -248,16 +250,14 @@ stress = 0.40·norm(es_took_ms, 100)
        + 0.10·norm(shards_total, 5)
 ```
 
-All cost signals — operation type (agg, knn, geo), scripts, and runtime mappings — are captured inside `query_complexity`. No separate multiplier step.
-
-*Bulk insert (`operation_kind == "insert"` and path contains `_bulk`):*
+*`_bulk`:*
 ```
 stress = 0.40·norm(es_took_ms, 100)
        + 0.40·norm(docs_affected, 100)
        + 0.20·norm(shards_total, 5)
 ```
 
-*Update / delete by query (path contains `_update_by_query` or `_delete_by_query`):*
+*`_update_by_query` / `_delete_by_query`:*
 ```
 stress = 0.35·norm(es_took_ms, 100)
        + 0.30·norm(docs_affected, 100)
@@ -265,11 +265,20 @@ stress = 0.35·norm(es_took_ms, 100)
        + 0.15·norm(shards_total, 5)
 ```
 
-*Single document insert / update / delete (`operation_kind` is `insert` / `update` / `delete` and not by_query or bulk):*
+*`_update`:*
 ```
-stress = 0.50·norm(es_took_ms, 100) + 0.50
+stress = 0.50·norm(es_took_ms, 100)
+       + 0.30·norm(query_complexity, 10)
+       + 0.20·norm(shards_total, 5)
 ```
-The constant `0.50` represents the irreducible cost of any write operation regardless of latency.
+`query_complexity` captures the cost of scripted updates. For partial-doc updates (no script), `query_complexity` is 0 and the formula reduces to latency + shards.
+
+*`_create` / `_doc`:*
+```
+stress = 0.70·norm(es_took_ms, 100)
+       + 0.30·norm(shards_total, 5)
+```
+Single-document writes. `_doc` covers both index (PUT) and delete (DELETE) — `method` in the record distinguishes them. All three share this formula as a baseline; see Future Ideas for per-operation weight refinement.
 
 > All weights and complexity scores are best-effort initial values grounded in ES documentation
 > and benchmarks. They must be tuned with real production data over time.
@@ -282,7 +291,8 @@ The constant `0.50` represents the irreducible cost of any write operation regar
 {
   "timestamp":              "2026-03-07T10:00:00.000Z",
 
-  "operation_kind":         "query",
+  "operation":              "_search",
+  "method":                 "POST",
   "target":                 "products",
   "template":               "{\"aggs\":{\"?\":{\"terms\":{\"field\":\"?\"}}}}",
 
@@ -388,7 +398,10 @@ Clients connect to `localhost:9200` (gateway) instead of Elasticsearch directly.
 
 ## 7. Future Implementation Ideas
 
-- `operation_type` classification (`agg` / `knn` / `geo` / `text` / `single`) — deferred because naive top-level detection (e.g. "body has `query.geo_*`") misclassifies queries where the expensive clause is nested inside a `bool`. Since `query_complexity` already captures these signals recursively and correctly, adding a shallow `operation_type` label would produce inconsistent dashboard data. Requires recursive detection with a priority order (most expensive type wins).
+- `search_type` classification (`agg` / `knn` / `geo` / `text` / `simple`) — applies to `_search`, `_update_by_query`, and `_delete_by_query` (all carry a query body). Deferred because naive top-level detection (e.g. "body has `query.geo_*`") misclassifies queries where the expensive clause is nested inside a `bool`. Since `query_complexity` already captures these signals recursively and correctly, adding a shallow `search_type` label would produce inconsistent dashboard data. Requires recursive detection with a priority order (most expensive type wins).
+- Per-operation write weights — current formulas treat `_create`, `_doc` PUT, and `_doc` DELETE identically. In reality their read depth differs: `_doc` PUT (index) is a pure write with no prior read; `_doc` DELETE reads document metadata (version/seq_no) before writing a tombstone; `_update` reads the full `_source` for a read-modify-write cycle. Separate weight sets should be validated against real production latency distributions before applying.
+- Upsert detection — `_update` requests with `"upsert"` or `"doc_as_upsert": true` in the body follow a conditional path: create-path (cheap, no source read) if the document is absent, update-path (full read-modify-write) if it exists. Probabilistic cost modeling once hit/miss rates are observable.
+- Bulk action breakdown — `_bulk` requests can mix `index`, `create`, `update`, and `delete` actions. Counting each action type within the bulk would allow a more precise stress signal than `docs_affected` alone.
 - `has_highlight` — extra CPU cost per result document
 - `is_deep_pagination` — `from > 1000`, significant heap pressure
 - `timed_out` — query hit ES timeout threshold
