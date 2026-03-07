@@ -171,14 +171,14 @@ Recursively walks the full query body and counts all structurally expensive patt
 |-------|----------------|--------|-----------|
 | `bool_clause_count` | Number of `bool` nodes anywhere in the query tree | 1 | Coordination overhead only; not classified as expensive by ES |
 | `terms_values_count` | Total number of values across all `terms: {field: [...]}` queries | 1 | Cardinality lookup; cost is bounded |
-| `knn_clause_count` | Number of `knn` vector similarity queries | 2 | HNSW is well-optimised (~850 QPS); exact kNN cost is already captured in `took_ms` |
-| `fuzzy_clause_count` | Number of `fuzzy` clauses | 2 | Levenshtein automata construction; bounded by fuzziness parameter |
+| `knn_clause_count` | Number of `knn` vector similarity queries | 4 | HNSW graph traversal + vector distance computation; significant CPU and memory pressure |
+| `fuzzy_clause_count` | Number of `fuzzy` clauses | 3 | Levenshtein automata construction; bounded by fuzziness parameter |
 | `geo_bbox_count` | Number of `geo_bounding_box` / `geo_grid` clauses | 1 | Simple range check on encoded values, cacheable |
 | `geo_distance_count` | Number of `geo_distance` clauses | 3 | Non-cacheable, per-document haversine calculation |
-| `geo_shape_count` | Number of `geo_shape` / `geo_polygon` clauses | 3 | Complex polygon intersection, BKD tree traversal |
+| `geo_shape_count` | Number of `geo_shape` / `geo_polygon` clauses | 4 | Complex polygon intersection, BKD tree traversal |
 | `agg_clause_count` | Total number of aggregation definitions at all nesting levels in `aggs` / `aggregations` (recursive) | 3 | Heap-resident bucket accumulation; global ordinals loading; cardinality multiplies at each sub-aggregation level |
 | `wildcard_clause_count` | Number of `wildcard`, `regexp`, and `prefix` clauses | 4 | Full term-dictionary scan + regex compilation per document; blocked by `allow_expensive_queries` |
-| `nested_clause_count` | Number of `nested` clauses | 4 | Sub-query executed per nested object (distributed join); real-world cases show 90% p99 improvement after removing nested |
+| `nested_clause_count` | Number of `nested` clauses | 5 | Sub-query executed per nested object (distributed join); real-world cases show 90% p99 improvement after removing nested |
 | `runtime_mapping_count` | Number of fields defined in `runtime_mappings` | 5 | ES docs: same per-document execution cost as scripts; each field computed on every document touched |
 | `script_clause_count` | Number of `script` occurrences anywhere in the query body | 6 | Worst category: user-defined Painless code executed per document, no caching possible; explicitly blocked by `allow_expensive_queries` |
 
@@ -187,13 +187,13 @@ query_complexity = (
     1 * bool_clause_count
   + 1 * terms_values_count
   + 1 * geo_bbox_count
-  + 2 * knn_clause_count
-  + 2 * fuzzy_clause_count
+  + 3 * fuzzy_clause_count
   + 3 * geo_distance_count
-  + 3 * geo_shape_count
   + 3 * agg_clause_count
   + 4 * wildcard_clause_count
-  + 4 * nested_clause_count
+  + 4 * knn_clause_count
+  + 4 * geo_shape_count
+  + 5 * nested_clause_count
   + 5 * runtime_mapping_count
   + 6 * script_clause_count
 )
@@ -222,10 +222,10 @@ Calculated by `stress.py`. All missing fields default to 0. No upper bound — e
 | Input | Baseline | Rationale |
 |-------|----------|-----------|
 | `es_took_ms` | 100 ms | ES's own execution time — slow-log default starts at 500ms; healthy queries are <100ms |
-| `hits` | 1 000 docs | Reasonable result set; scoring + sorting scales with hits |
+| `hits` | 10 000 docs | Reasonable result set; scoring + sorting scales with hits |
 | `shards_total` | 5 shards | Typical primary count; each shard is CPU + JVM overhead |
 | `size` | 100 docs | 10× ES default of 10; drives fetch-phase heap — `_search` formula only |
-| `docs_affected` | 100 docs | Bulk/update/delete volume |
+| `docs_affected` | 500 docs | Bulk/update/delete volume |
 | `query_complexity` | 10 | Weighted complexity units |
 
 **Normalisation:**
@@ -242,25 +242,24 @@ All cost signals — scripts, runtime mappings, knn, geo, etc. — are captured 
 
 *`_search`:*
 ```
-stress = 0.40·norm(es_took_ms, 100)
-       + 0.20·norm(hits, 1000)
-       + 0.15·norm(query_complexity, 10)
-       + 0.15·norm(size, 100)
-       + 0.10·norm(shards_total, 5)
+stress = 0.45·norm(es_took_ms, 100)
+       + 0.25·norm(query_complexity, 10)
+       + 0.15·norm(shards_total, 5)
+       + 0.10·norm(hits, 10000)
+       + 0.05·norm(size, 100)
 ```
 
 *`_bulk`:*
 ```
-stress = 0.40·norm(es_took_ms, 100)
-       + 0.40·norm(docs_affected, 100)
-       + 0.20·norm(shards_total, 5)
+stress = 0.45·norm(es_took_ms, 100)
+       + 0.55·norm(docs_affected, 500)
 ```
 
 *`_update_by_query` / `_delete_by_query`:*
 ```
-stress = 0.35·norm(es_took_ms, 100)
-       + 0.30·norm(docs_affected, 100)
-       + 0.20·norm(query_complexity, 10)
+stress = 0.30·norm(es_took_ms, 100)
+       + 0.30·norm(docs_affected, 500)
+       + 0.25·norm(query_complexity, 10)
        + 0.15·norm(shards_total, 5)
 ```
 
