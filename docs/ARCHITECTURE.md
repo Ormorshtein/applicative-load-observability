@@ -257,11 +257,10 @@ stress = 0.40·norm(took_ms, 100)
 
 *Update / delete by query (`operation_type == "by_query"`):*
 ```
-stress = 0.40·norm(took_ms, 100)
-       + 0.40·norm(docs_affected, 100)
-       + 0.20·norm(shards_total, 5)
-
-if has_script → × 1.5
+stress = 0.35·norm(took_ms, 100)
+       + 0.30·norm(docs_affected, 100)
+       + 0.20·norm(query_complexity, 10)
+       + 0.15·norm(shards_total, 5)
 ```
 
 *Single document insert / update / delete (`operation_type == "single"`):*
@@ -270,8 +269,8 @@ stress = 0.50·norm(took_ms, 100) + 0.50
 ```
 The constant `0.50` represents the irreducible cost of any write operation regardless of latency.
 
-> All multiplier values are best-effort initial placeholders. They encode the relative resource
-> profile of each operation type (CPU vs memory intensity) and must be tuned with real data.
+> All weights and complexity scores are best-effort initial values grounded in ES documentation
+> and benchmarks. They must be tuned with real production data over time.
 
 ---
 
