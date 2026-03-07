@@ -41,9 +41,9 @@ This system wraps any Elasticsearch deployment with a transparent observability 
 
 ### 2.1 Gateway
 
-**Technology:** Nginx / OpenResty (Lua — ~25 lines, no logic)
+**Technology:** Nginx / OpenResty (Lua — ~25 lines, no parsing logic)
 
-**Philosophy:** The gateway is a pure proxy. It does zero parsing and zero logic. Its only responsibilities are:
+**Philosophy:** The gateway is a pure proxy. It does zero parsing and zero analytical logic. Its only responsibilities are:
 1. Forward every request to Elasticsearch verbatim
 2. Return the ES response to the client immediately
 3. After the response is sent, fire a single async HTTP POST to NiFi with raw data
@@ -72,7 +72,7 @@ All extraction, parsing, and analysis happens downstream in Python.
   "request_body":        "{\"query\":{\"match_all\":{}}}",
   "response_body":       "{\"took\":42,\"hits\":{\"total\":{\"value\":1500},\"hits\":[]}}",
   "response_status":     200,
-  "response_took_ms":    42,
+  "gateway_took_ms":     42,
   "request_size_bytes":  284,
   "response_size_bytes": 1920,
   "client_host":         "10.0.0.5"
@@ -87,7 +87,7 @@ All extraction, parsing, and analysis happens downstream in Python.
 | `request_body` | `ngx.req.get_body_data()` |
 | `response_body` | accumulated in `body_filter_by_lua_block` |
 | `response_status` | `ngx.status` |
-| `response_took_ms` | `upstream_response_time * 1000` |
+| `gateway_took_ms` | `upstream_response_time * 1000` — full round-trip as measured by Nginx (network + ES queue + execution) |
 | `request_size_bytes` | `$content_length` |
 | `response_size_bytes` | `#ngx.ctx.resp_body` |
 | `client_host` | `ngx.var.remote_addr` |
@@ -123,14 +123,21 @@ NiFi forwards the raw Nginx payload to the analyzer as-is — no transformation.
 
 **Philosophy:** Single responsibility — receive a raw Nginx payload, extract all meaningful fields, return a structured observability record. Stateless, pure, no I/O beyond HTTP.
 
-#### Header Extraction
+#### Identity Extraction
 
-| Field | Logic |
-|-------|-------|
-| `username` | Decode `Authorization: Basic` → base64 → split `:` → first part |
-| `applicative_provider` | `x-opaque-id` (strip `/pod-suffix`) → `x-app-name` → `user-agent` (up to first `/`) → `""` |
-| `user_agent` | Raw `user-agent` header value |
-| `client_host` | `client_host` field from Nginx payload |
+*From HTTP headers:*
+
+| Field | Header | Logic |
+|-------|--------|-------|
+| `username` | `Authorization` | `Basic` → base64 decode → split `:` → first part |
+| `applicative_provider` | `x-opaque-id` / `x-app-name` / `user-agent` | `x-opaque-id` (strip `/pod-suffix`) → `x-app-name` → `user-agent` (up to first `/`) → `""` |
+| `user_agent` | `user-agent` | Raw value |
+
+*From the Nginx payload (network level, not a header):*
+
+| Field | Source | Logic |
+|-------|--------|-------|
+| `client_host` | `ngx.var.remote_addr` | TCP peer IP address — cannot be spoofed via headers |
 
 #### Path Parsing
 
@@ -138,7 +145,6 @@ NiFi forwards the raw Nginx payload to the analyzer as-is — no transformation.
 |-------|-------|
 | `target` | First path segment not starting with `_`. Wildcards and multi-index patterns kept verbatim (e.g. `logs-*`, `index1,index2`). Defaults to `_all`. |
 | `operation_kind` | `query` / `insert` / `update` / `delete` — derived from method + path segments |
-| `operation_type` | `agg` / `text` / `geo` / `knn` / `bulk` / `by_query` / `single` — derived from path + body |
 
 **Operation kind rules:**
 
@@ -146,38 +152,25 @@ NiFi forwards the raw Nginx payload to the analyzer as-is — no transformation.
 |-----------|--------|
 | path contains `_search` | `query` |
 | path contains `_bulk` | `insert` |
-| path contains `_create` or method `PUT` + `_doc` | `insert` |
+| path contains `_create` or `_doc` | `insert` |
 | path contains `_update_by_query` | `update` |
 | path contains `_update` | `update` |
 | path contains `_delete_by_query` | `delete` |
 | method `DELETE` | `delete` |
-
-**Operation type rules (checked in order):**
-
-Derived from **both path and body** — path for structural operations, body for query shape.
-
-| Condition | Source | Result |
-|-----------|--------|--------|
-| path ends `_bulk` | path | `bulk` |
-| path ends `_update_by_query` or `_delete_by_query` | path | `by_query` |
-| body has `aggs` or `aggregations` | body | `agg` |
-| body has top-level `knn` or `query.knn` | body | `knn` |
-| body has `query.geo_*` clause | body | `geo` |
-| body has `query.match` / `multi_match` / `query_string` / `simple_query_string` | body | `text` |
-| default | — | `single` |
+| default | `query` |
 
 #### Request Body Extraction
 
 | Field | Logic |
 |-------|-------|
-| `size` | `body.get("size", 10)` |
+| `size` | `body.get("size", 10)` — extracted and stored **only when `operation_kind == "query"`**; omitted for insert / update / delete (ES ignores `size` on non-search requests) |
 | `script_clause_count` | Count of `"script"` keys found anywhere recursively in the body |
 | `runtime_mapping_count` | Count of fields defined in `body["runtime_mappings"]` (0 if absent) |
 | `template` | Body with all scalar leaf values replaced by `"?"`, then `json.dumps(sort_keys=True)` |
 
-**Query Complexity — `calc_query_complexity(body) → dict`**
+#### Query Complexity
 
-A dedicated calculator that recursively walks the query body and counts all structurally expensive patterns. Returns both raw counts (stored as fields) and a single weighted `query_complexity` score (feeds stress formula).
+Recursively walks the full query body and counts all structurally expensive patterns. Returns both raw counts (stored as individual fields in the observability record) and a single weighted `query_complexity` score that feeds the stress formula.
 
 | Field | What is counted | Weight | Rationale |
 |-------|----------------|--------|-----------|
@@ -185,7 +178,7 @@ A dedicated calculator that recursively walks the query body and counts all stru
 | `terms_values_count` | Total number of values across all `terms: {field: [...]}` queries | 1 | Cardinality lookup; cost is bounded |
 | `knn_clause_count` | Number of `knn` vector similarity queries | 2 | HNSW is well-optimised (~850 QPS); exact kNN cost is already captured in `took_ms` |
 | `fuzzy_clause_count` | Number of `fuzzy` clauses | 2 | Levenshtein automata construction; bounded by fuzziness parameter |
-| `geo_clause_count` | Number of `geo_distance` / `geo_shape` / `geo_bounding_box` / `geo_polygon` clauses | 3 | Per-document, non-cacheable — ES groups geo_distance with scripts as the two non-cacheable filter types |
+| `geo_clause_count` | Number of `geo_distance` / `geo_shape` / `geo_bounding_box` / `geo_polygon` clauses | 3 | All geo types treated uniformly for now. Cost varies significantly by type (`geo_distance` is non-cacheable and per-document; `geo_bounding_box` is cacheable and cheap) — see Future Ideas for per-type breakdown |
 | `agg_clause_count` | Number of top-level aggregation definitions in `aggs` / `aggregations` | 3 | Heap-resident bucket accumulation; global ordinals loading; circuit breaker risk on high-cardinality fields |
 | `wildcard_clause_count` | Number of `wildcard`, `regexp`, and `prefix` clauses | 4 | Full term-dictionary scan + regex compilation per document; blocked by `allow_expensive_queries` |
 | `nested_clause_count` | Number of `nested` clauses | 4 | Sub-query executed per nested object (distributed join); real-world cases show 90% p99 improvement after removing nested |
@@ -214,8 +207,9 @@ Baseline for stress normalisation: `query_complexity = 10`.
 
 | Field | Logic |
 |-------|-------|
-| `hits` | `response.hits.total.value` (0 if absent) |
-| `shards_total` | `response._shards.total` (0 if absent) |
+| `es_took_ms` | `response_body.took` — ES's own cluster-side execution time in ms (0 if absent) |
+| `hits` | `response_body.hits.total.value` (0 if absent) |
+| `shards_total` | `response_body._shards.total` (0 if absent) |
 | `docs_affected` | bulk: `len(items)` / update_by_query: `updated` / delete_by_query: `deleted` / else: 0 |
 
 ---
@@ -228,18 +222,26 @@ Calculated by `stress.py`. All missing fields default to 0. No upper bound — e
 
 | Input | Baseline | Rationale |
 |-------|----------|-----------|
-| `took_ms` | 100 ms | Elastic slow-log default starts at 500ms; healthy queries are <100ms |
+| `es_took_ms` | 100 ms | ES's own execution time — slow-log default starts at 500ms; healthy queries are <100ms |
 | `hits` | 1 000 docs | Reasonable result set; scoring + sorting scales with hits |
 | `shards_total` | 5 shards | Typical primary count; each shard is CPU + JVM overhead |
-| `size` | 100 docs | 10× ES default of 10; drives fetch-phase heap |
+| `size` | 100 docs | 10× ES default of 10; drives fetch-phase heap — query formula only |
 | `docs_affected` | 100 docs | Bulk/update/delete volume |
 | `query_complexity` | 10 | Weighted complexity units |
+
+**Normalisation:**
+
+```
+norm(value, baseline) = value / baseline
+```
+
+No clamping — values above 1.0 are valid and expected. A query at 2× the baseline contributes 2.0, not 1.0. The stress score has no upper bound by design: extreme operations should produce extreme scores.
 
 **Formulas:**
 
 *Query:*
 ```
-stress = 0.40·norm(took_ms, 100)
+stress = 0.40·norm(es_took_ms, 100)
        + 0.20·norm(hits, 1000)
        + 0.15·norm(query_complexity, 10)
        + 0.15·norm(size, 100)
@@ -248,37 +250,29 @@ stress = 0.40·norm(took_ms, 100)
 
 All cost signals — operation type (agg, knn, geo), scripts, and runtime mappings — are captured inside `query_complexity`. No separate multiplier step.
 
-*Bulk insert (`operation_kind == "insert"` and `operation_type == "bulk"`):*
+*Bulk insert (`operation_kind == "insert"` and path contains `_bulk`):*
 ```
-stress = 0.40·norm(took_ms, 100)
+stress = 0.40·norm(es_took_ms, 100)
        + 0.40·norm(docs_affected, 100)
        + 0.20·norm(shards_total, 5)
 ```
 
-*Update / delete by query (`operation_type == "by_query"`):*
+*Update / delete by query (path contains `_update_by_query` or `_delete_by_query`):*
 ```
-stress = 0.35·norm(took_ms, 100)
+stress = 0.35·norm(es_took_ms, 100)
        + 0.30·norm(docs_affected, 100)
        + 0.20·norm(query_complexity, 10)
        + 0.15·norm(shards_total, 5)
 ```
 
-*Single document insert / update / delete (`operation_type == "single"`):*
+*Single document insert / update / delete (`operation_kind` is `insert` / `update` / `delete` and not by_query or bulk):*
 ```
-stress = 0.50·norm(took_ms, 100) + 0.50
+stress = 0.50·norm(es_took_ms, 100) + 0.50
 ```
 The constant `0.50` represents the irreducible cost of any write operation regardless of latency.
 
 > All weights and complexity scores are best-effort initial values grounded in ES documentation
 > and benchmarks. They must be tuned with real production data over time.
-
----
-
-### 2.5 Elasticsearch — Observability Index
-
-**Index:** `applicative-load-observability`
-
-Written by NiFi. One document per analyzed operation.
 
 ---
 
@@ -289,7 +283,6 @@ Written by NiFi. One document per analyzed operation.
   "timestamp":              "2026-03-07T10:00:00.000Z",
 
   "operation_kind":         "query",
-  "operation_type":         "agg",
   "target":                 "products",
   "template":               "{\"aggs\":{\"?\":{\"terms\":{\"field\":\"?\"}}}}",
 
@@ -298,7 +291,8 @@ Written by NiFi. One document per analyzed operation.
   "applicative_provider":   "search-api",
   "user_agent":             "elasticsearch-py/8.13.0 (Python/3.11.0; linux)",
 
-  "response_took_ms":       42,
+  "gateway_took_ms":        67,
+  "es_took_ms":             42,
   "hits":                   1500,
   "shards_total":           5,
   "size":                   10,
@@ -339,7 +333,25 @@ Written by NiFi. One document per analyzed operation.
 
 ---
 
-## 5. Repository Structure
+## 5. Key Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| Nginx/OpenResty as gateway | Battle-tested, C-speed proxying, no bottleneck risk |
+| Nginx does zero parsing | All logic in Python — easier to test, change, reason about |
+| Nginx sends raw headers | No Lua logic for auth/provider extraction — Python handles it |
+| Fire-and-forget after response | Zero client latency impact |
+| Drop > degrade | No queue in gateway, instant drop if NiFi is unavailable |
+| NiFi as orchestrator | Retry, routing, ES writes all in config — no custom code |
+| Analyzer is stateless + pure | Single endpoint, trivially testable, no dependencies |
+| Template by scalar-scrubbing | Language-agnostic, no query schema knowledge required |
+| `applicative_provider` fallback chain | Works with ES conventions (X-Opaque-Id) and custom headers |
+| Stress score has no upper bound | Extreme operations should show extreme scores |
+| Single docker-compose | Full stack runs with one command |
+
+---
+
+## 6. Repository Structure
 
 ```
 applicative-load-observability/
@@ -374,28 +386,12 @@ Clients connect to `localhost:9200` (gateway) instead of Elasticsearch directly.
 
 ---
 
-## 6. Key Design Decisions
-
-| Decision | Rationale |
-|----------|-----------|
-| Nginx/OpenResty as gateway | Battle-tested, C-speed proxying, no bottleneck risk |
-| Nginx does zero parsing | All logic in Python — easier to test, change, reason about |
-| Nginx sends raw headers | No Lua logic for auth/provider extraction — Python handles it |
-| Fire-and-forget after response | Zero client latency impact |
-| Drop > degrade | No queue in gateway, instant drop if NiFi is unavailable |
-| NiFi as orchestrator | Retry, routing, ES writes all in config — no custom code |
-| Analyzer is stateless + pure | Single endpoint, trivially testable, no dependencies |
-| Template by scalar-scrubbing | Language-agnostic, no query schema knowledge required |
-| `applicative_provider` fallback chain | Works with ES conventions (X-Opaque-Id) and custom headers |
-| Stress score has no upper bound | Extreme operations should show extreme scores |
-| Single docker-compose | Full stack runs with one command |
-
----
-
 ## 7. Future Implementation Ideas
 
+- `operation_type` classification (`agg` / `knn` / `geo` / `text` / `single`) — deferred because naive top-level detection (e.g. "body has `query.geo_*`") misclassifies queries where the expensive clause is nested inside a `bool`. Since `query_complexity` already captures these signals recursively and correctly, adding a shallow `operation_type` label would produce inconsistent dashboard data. Requires recursive detection with a priority order (most expensive type wins).
 - `has_highlight` — extra CPU cost per result document
 - `is_deep_pagination` — `from > 1000`, significant heap pressure
 - `timed_out` — query hit ES timeout threshold
 - Separate `cpu_stress_score` and `memory_stress_score` — once real data allows accurate resource-type attribution
-- Stress score weight and multiplier tuning based on real production data
+- Per-type geo complexity: split `geo_clause_count` into `geo_distance_count` (×3, non-cacheable per-document), `geo_shape_count` (×2, complex polygon), and `geo_bounding_box_count` (×1, cacheable fast check)
+- Stress score formula weight tuning based on real production data
