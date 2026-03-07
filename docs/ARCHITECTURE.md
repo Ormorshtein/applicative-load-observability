@@ -184,18 +184,22 @@ A dedicated calculator that recursively walks the query body and counts all stru
 | `bool_clause_count` | Number of `bool` nodes anywhere in the query tree — each adds coordination overhead and scales with nesting depth | 1 |
 | `terms_values_count` | Total number of values across all `terms: {field: [...]}` queries | 1 |
 | `geo_clause_count` | Number of `geo_distance` / `geo_shape` / `geo_bounding_box` / `geo_polygon` clauses | 2 |
+| `fuzzy_clause_count` | Number of `fuzzy` clauses (Levenshtein automata construction) | 2 |
+| `nested_clause_count` | Number of `nested` clauses (sub-query executed per nested object) | 2 |
+| `knn_clause_count` | Number of `knn` vector similarity queries — CPU-intensive per-vector comparison | 2 |
 | `wildcard_clause_count` | Number of `wildcard`, `regexp`, and `prefix` clauses — all require a full term-dictionary scan, bypassing the inverted index | 3 |
-| `fuzzy_clause_count` | Number of `fuzzy` clauses (Levenshtein automata) | 2 |
-| `nested_clause_count` | Number of `nested` clauses (sub-query per nested object) | 2 |
+| `agg_clause_count` | Number of top-level aggregation definitions in `aggs` / `aggregations` — each bucket accumulates heap-resident field data | 3 |
 
 ```
 query_complexity = (
     1 * bool_clause_count
   + 1 * terms_values_count
   + 2 * geo_clause_count
-  + 3 * wildcard_clause_count
   + 2 * fuzzy_clause_count
   + 2 * nested_clause_count
+  + 2 * knn_clause_count
+  + 3 * wildcard_clause_count
+  + 3 * agg_clause_count
 )
 ```
 
@@ -231,21 +235,18 @@ Calculated by `stress.py`. All missing fields default to 0. No upper bound — e
 
 *Query:*
 ```
-stress = 0.40·norm(took_ms, 100)  + 0.20·norm(hits, 1000)
-       + 0.15·norm(query_complexity, 10) + 0.15·norm(size, 100)
+stress = 0.40·norm(took_ms, 100)
+       + 0.20·norm(hits, 1000)
+       + 0.15·norm(query_complexity, 10)
+       + 0.15·norm(size, 100)
        + 0.10·norm(shards_total, 5)
 
-Operation type multipliers (resource profile):
-  agg    → × 1.3  (memory-heavy: field data cache, bucket accumulation)
-  knn    → × 1.2  (HNSW approximate search — well-optimised, took_ms captures exact-kNN cost)
-  geo    → × 1.2  (CPU-heavy: per-document distance computation)
-  text   → × 1.0  (baseline)
-  single → × 1.0  (baseline)
-
-Feature multipliers (applied after operation type):
+Feature multipliers (applied after):
   has_script           → × 1.5
   has_runtime_mappings → × 1.3
 ```
+
+Operation type cost (agg, knn, geo) is already captured inside `query_complexity` — no separate multiplier needed.
 
 *Bulk insert (`operation_kind == "insert"` and `operation_type == "bulk"`):*
 ```
@@ -311,10 +312,12 @@ Written by NiFi. One document per analyzed operation.
   "bool_clause_count":      12,
   "terms_values_count":     0,
   "geo_clause_count":       0,
-  "wildcard_clause_count":  0,
   "fuzzy_clause_count":     0,
   "nested_clause_count":    0,
-  "query_complexity":       12,
+  "knn_clause_count":       0,
+  "wildcard_clause_count":  0,
+  "agg_clause_count":       1,
+  "query_complexity":       15,
 
   "stress_score":           0.87
 }
