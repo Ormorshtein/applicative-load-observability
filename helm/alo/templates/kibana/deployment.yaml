@@ -1,0 +1,95 @@
+{{- if and .Values.kibana.enabled (not .Values.kibana.external.enabled) }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "alo.fullname" . }}-kibana
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "kibana") | nindent 4 }}
+spec:
+  replicas: {{ .Values.kibana.replicas }}
+  selector:
+    matchLabels:
+      {{- include "alo.selectorLabels" (dict "ctx" . "component" "kibana") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "alo.labels" . | nindent 8 }}
+        {{- include "alo.selectorLabels" (dict "ctx" . "component" "kibana") | nindent 8 }}
+      {{- with .Values.kibana.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "alo.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- include "alo.imagePullSecrets" $ | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: kibana
+          image: "{{ .Values.kibana.image.repository }}:{{ .Values.kibana.image.tag }}"
+          imagePullPolicy: {{ .Values.kibana.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          env:
+            - name: ELASTICSEARCH_HOSTS
+              value: '["{{ include "alo.elasticsearchUrl" . }}"]'
+            - name: SERVER_NAME
+              value: kibana
+            {{- if eq (include "alo.esAuthEnabled" .) "true" }}
+            - name: ELASTICSEARCH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.esAuthSecretName" . }}
+                  key: username
+            - name: ELASTICSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.esAuthSecretName" . }}
+                  key: password
+            {{- end }}
+            {{- if and .Values.elasticsearch.external.enabled .Values.elasticsearch.external.tls.caSecret }}
+            - name: ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES
+              value: /etc/ssl/es/ca.crt
+            {{- end }}
+            {{- if and .Values.elasticsearch.external.enabled .Values.elasticsearch.external.tls.insecureSkipVerify }}
+            - name: ELASTICSEARCH_SSL_VERIFICATIONMODE
+              value: none
+            {{- end }}
+            {{- with .Values.kibana.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: 5601
+          {{- if and .Values.elasticsearch.external.enabled .Values.elasticsearch.external.tls.caSecret }}
+          volumeMounts:
+            - name: es-ca
+              mountPath: /etc/ssl/es
+              readOnly: true
+          {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /api/status
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/status
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          resources:
+            {{- toYaml .Values.kibana.resources | nindent 12 }}
+      {{- if and .Values.elasticsearch.external.enabled .Values.elasticsearch.external.tls.caSecret }}
+      volumes:
+        - name: es-ca
+          secret:
+            secretName: {{ .Values.elasticsearch.external.tls.caSecret }}
+      {{- end }}
+      {{- include "alo.scheduling" .Values.kibana | nindent 6 }}
+{{- end }}

@@ -1,0 +1,62 @@
+ALO (Applicative Load Observability) has been deployed!
+
+=== Gateway (Elasticsearch Proxy) ===
+{{- if contains "NodePort" .Values.gateway.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "alo.fullname" . }}-gateway)
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo "Gateway: http://$NODE_IP:$NODE_PORT"
+{{- else if contains "LoadBalancer" .Values.gateway.service.type }}
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "alo.fullname" . }}-gateway --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo "Gateway: http://$SERVICE_IP:{{ .Values.gateway.service.port }}"
+{{- else }}
+  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "alo.fullname" . }}-gateway {{ .Values.gateway.service.port }}:{{ .Values.gateway.service.port }}
+  echo "Gateway: http://localhost:{{ .Values.gateway.service.port }}"
+{{- end }}
+
+Point your applications to the gateway instead of Elasticsearch directly.
+
+{{- if .Values.elasticsearch.external.enabled }}
+
+=== Elasticsearch (external) ===
+  URL: {{ .Values.elasticsearch.external.url }}
+  Auth: {{ if .Values.elasticsearch.external.auth.enabled }}{{ .Values.elasticsearch.external.auth.type }}{{ if .Values.elasticsearch.external.auth.existingSecret }} (secret: {{ .Values.elasticsearch.external.auth.existingSecret }}){{ end }}{{ else }}disabled{{ end }}
+  TLS CA: {{ if .Values.elasticsearch.external.tls.caSecret }}{{ .Values.elasticsearch.external.tls.caSecret }}{{ else }}system default{{ end }}
+{{- else }}
+
+=== Elasticsearch (internal) ===
+  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "alo.fullname" . }}-elasticsearch {{ .Values.elasticsearch.service.port }}:{{ .Values.elasticsearch.service.port }}
+  Security: {{ if .Values.elasticsearch.security.enabled }}enabled{{ else }}disabled{{ end }}
+{{- end }}
+
+{{- if and .Values.kibana.enabled (not .Values.kibana.external.enabled) }}
+
+=== Kibana ===
+  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "alo.fullname" . }}-kibana {{ .Values.kibana.service.port }}:{{ .Values.kibana.service.port }}
+  echo "Kibana: http://localhost:{{ .Values.kibana.service.port }}"
+{{- end }}
+
+{{- if .Values.nifi.external.enabled }}
+
+=== NiFi (external) ===
+  Listen URL: {{ .Values.nifi.external.listenUrl }}
+  Auth: {{ if .Values.nifi.external.auth.enabled }}{{ .Values.nifi.external.auth.headerName }}{{ if .Values.nifi.external.auth.existingSecret }} (secret: {{ .Values.nifi.external.auth.existingSecret }}){{ end }}{{ else }}disabled{{ end }}
+{{- else }}
+
+=== NiFi (internal) ===
+  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "alo.fullname" . }}-nifi {{ .Values.nifi.service.httpsPort }}:{{ .Values.nifi.service.httpsPort }}
+  echo "NiFi: https://localhost:{{ .Values.nifi.service.httpsPort }}/nifi"
+{{- end }}
+
+{{- if .Values.ingress.enabled }}
+
+=== Ingress ===
+{{- if .Values.ingress.gateway.host }}
+  Gateway: http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.gateway.host }}{{ .Values.ingress.gateway.path }}
+{{- end }}
+{{- if .Values.ingress.kibana.host }}
+  Kibana:  http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.kibana.host }}{{ .Values.ingress.kibana.path }}
+{{- end }}
+{{- if .Values.ingress.nifi.host }}
+  NiFi:    http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.nifi.host }}{{ .Values.ingress.nifi.path }}
+{{- end }}
+{{- end }}

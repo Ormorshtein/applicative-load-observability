@@ -1,0 +1,119 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "alo.fullname" . }}-gateway
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "gateway") | nindent 4 }}
+spec:
+  replicas: {{ .Values.gateway.replicas }}
+  selector:
+    matchLabels:
+      {{- include "alo.selectorLabels" (dict "ctx" . "component" "gateway") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "alo.labels" . | nindent 8 }}
+        {{- include "alo.selectorLabels" (dict "ctx" . "component" "gateway") | nindent 8 }}
+      annotations:
+        checksum/nginx-config: {{ include (print .Template.BasePath "/gateway/configmap.yaml") . | sha256sum }}
+        {{- with .Values.gateway.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "alo.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- include "alo.imagePullSecrets" $ | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: gateway
+          image: "{{ .Values.gateway.image.repository }}:{{ .Values.gateway.image.tag }}"
+          imagePullPolicy: {{ .Values.gateway.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          env:
+            {{- if eq (include "alo.esAuthEnabled" .) "true" }}
+            {{- $authType := "" }}
+            {{- if .Values.elasticsearch.external.enabled }}
+            {{- $authType = .Values.elasticsearch.external.auth.type }}
+            {{- else }}
+            {{- $authType = "basic" }}
+            {{- end }}
+            {{- if eq $authType "basic" }}
+            - name: ES_AUTH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.esAuthSecretName" . }}
+                  key: username
+            - name: ES_AUTH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.esAuthSecretName" . }}
+                  key: password
+            {{- else if eq $authType "apiKey" }}
+            - name: ES_AUTH_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.esAuthSecretName" . }}
+                  key: apiKey
+            {{- end }}
+            {{- end }}
+            {{- if and .Values.nifi.external.enabled .Values.nifi.external.auth.enabled }}
+            - name: NIFI_AUTH_HEADER_VALUE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.nifiAuthSecretName" . }}
+                  key: authHeaderValue
+            {{- end }}
+            {{- with .Values.gateway.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.gateway.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /usr/local/openresty/nginx/conf/nginx.conf
+              subPath: nginx.conf
+              readOnly: true
+            {{- if and (eq (include "alo.esAuthEnabled" .) "true") .Values.elasticsearch.external.enabled .Values.elasticsearch.external.tls.caSecret }}
+            - name: es-ca
+              mountPath: /etc/ssl/es
+              readOnly: true
+            {{- end }}
+            {{- if and .Values.nifi.external.enabled .Values.nifi.external.tls.caSecret }}
+            - name: nifi-ca
+              mountPath: /etc/ssl/nifi
+              readOnly: true
+            {{- end }}
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: {{ include "alo.fullname" . }}-gateway-nginx
+        {{- if and .Values.elasticsearch.external.enabled .Values.elasticsearch.external.tls.caSecret }}
+        - name: es-ca
+          secret:
+            secretName: {{ .Values.elasticsearch.external.tls.caSecret }}
+        {{- end }}
+        {{- if and .Values.nifi.external.enabled .Values.nifi.external.tls.caSecret }}
+        - name: nifi-ca
+          secret:
+            secretName: {{ .Values.nifi.external.tls.caSecret }}
+        {{- end }}
+      {{- include "alo.scheduling" .Values.gateway | nindent 6 }}

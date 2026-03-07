@@ -1,0 +1,22 @@
+{{- if not .Values.nifi.external.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "alo.fullname" . }}-nifi
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "nifi") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.nifi.service.httpsPort }}
+      targetPort: https
+      protocol: TCP
+      name: https
+    - port: {{ .Values.nifi.service.listenPort }}
+      targetPort: listen
+      protocol: TCP
+      name: listen
+  selector:
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "nifi") | nindent 4 }}
+{{- end }}

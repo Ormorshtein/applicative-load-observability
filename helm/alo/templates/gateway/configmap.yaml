@@ -1,0 +1,135 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "alo.fullname" . }}-gateway-nginx
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "gateway") | nindent 4 }}
+data:
+  nginx.conf: |
+    worker_processes {{ .Values.gateway.workerProcesses }};
+    error_log stderr warn;
+
+    events {
+        worker_connections {{ .Values.gateway.workerConnections }};
+    }
+
+    http {
+        lua_package_path "/usr/local/openresty/site/lualib/?.lua;/usr/local/openresty/lualib/?.lua;;";
+        lua_need_request_body on;
+        resolver kube-dns.kube-system.svc.cluster.local valid=10s ipv6=off;
+
+        {{- $esUrl := include "alo.elasticsearchUrl" . }}
+        {{- $esHost := $esUrl | trimPrefix "http://" | trimPrefix "https://" }}
+        {{- $esIsHttps := hasPrefix "https://" $esUrl }}
+
+        upstream elasticsearch {
+            server {{ $esHost }};
+            keepalive 32;
+        }
+
+        server {
+            listen {{ .Values.gateway.port }};
+
+            {{- if eq (include "alo.esAuthEnabled" .) "true" }}
+            set $es_auth_header "";
+            {{- end }}
+
+            location / {
+                body_filter_by_lua_block {
+                    local chunk = ngx.arg[1]
+                    if chunk then
+                        ngx.ctx.resp_body = (ngx.ctx.resp_body or "") .. chunk
+                    end
+                }
+
+                log_by_lua_block {
+                    local ctx = {
+                        method          = ngx.var.request_method,
+                        path            = ngx.var.uri,
+                        headers         = ngx.req.get_headers(),
+                        request_body    = ngx.req.get_body_data() or "",
+                        response_body   = ngx.ctx.resp_body or "",
+                        response_status = ngx.status,
+                        gateway_took_ms = tonumber(ngx.var.upstream_response_time) and
+                                            tonumber(ngx.var.upstream_response_time) * 1000 or 0,
+                        request_size_bytes  = tonumber(ngx.var.content_length) or 0,
+                        response_size_bytes = #(ngx.ctx.resp_body or ""),
+                        client_host     = ngx.var.remote_addr,
+                    }
+
+                    local function notify_nifi(premature, ctx)
+                        if premature then return end
+                        local ok, err = pcall(function()
+                            local http  = require("resty.http")
+                            local cjson = require("cjson")
+                            local httpc = http.new()
+                            httpc:set_timeout({{ .Values.gateway.nifiTimeout }})
+
+                            local nifi_headers = { ["Content-Type"] = "application/json" }
+
+                            {{- if and .Values.nifi.external.enabled .Values.nifi.external.auth.enabled }}
+                            -- Inject NiFi auth header from environment variable
+                            local nifi_auth = os.getenv("NIFI_AUTH_HEADER_VALUE")
+                            if nifi_auth and nifi_auth ~= "" then
+                                nifi_headers["{{ .Values.nifi.external.auth.headerName }}"] = nifi_auth
+                            end
+                            {{- end }}
+
+                            {{- $nifiUrl := include "alo.nifiListenUrl" . }}
+                            {{- $nifiIsHttps := hasPrefix "https://" $nifiUrl }}
+                            local res, err = httpc:request_uri("{{ $nifiUrl }}", {
+                                method  = "POST",
+                                body    = cjson.encode({
+                                    method              = ctx.method,
+                                    path                = ctx.path,
+                                    headers             = ctx.headers,
+                                    request_body        = ctx.request_body,
+                                    response_body       = ctx.response_body,
+                                    response_status     = ctx.response_status,
+                                    gateway_took_ms     = ctx.gateway_took_ms,
+                                    request_size_bytes  = ctx.request_size_bytes,
+                                    response_size_bytes = ctx.response_size_bytes,
+                                    client_host         = ctx.client_host,
+                                }),
+                                headers = nifi_headers,
+                                {{- if $nifiIsHttps }}
+                                ssl_verify = {{ not (and .Values.nifi.external.enabled .Values.nifi.external.tls.insecureSkipVerify) }},
+                                {{- end }}
+                            })
+                            if not res then
+                                ngx.log(ngx.WARN, "observability: nifi unreachable: ", err)
+                            elseif res.status >= 300 then
+                                ngx.log(ngx.WARN, "observability: nifi returned ", res.status)
+                            end
+                        end)
+                        if not ok then
+                            ngx.log(ngx.WARN, "observability: dropped (pcall): ", err)
+                        end
+                    end
+
+                    local ok, err = ngx.timer.at(0, notify_nifi, ctx)
+                    if not ok then
+                        ngx.log(ngx.WARN, "observability: timer failed: ", err)
+                    end
+                }
+
+                proxy_pass {{ $esUrl }};
+                proxy_http_version 1.1;
+                proxy_set_header Connection "";
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_read_timeout {{ .Values.gateway.proxyReadTimeout }};
+
+                {{- if eq (include "alo.esAuthEnabled" .) "true" }}
+                # Forward ES credentials from env-injected variable
+                proxy_set_header Authorization $es_auth_header;
+                {{- end }}
+
+                {{- if and $esIsHttps (or (and .Values.elasticsearch.external.enabled .Values.elasticsearch.external.tls.caSecret) (not .Values.elasticsearch.external.enabled)) }}
+                proxy_ssl_trusted_certificate /etc/ssl/es/ca.crt;
+                proxy_ssl_verify on;
+                {{- end }}
+            }
+        }
+    }

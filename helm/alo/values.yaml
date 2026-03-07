@@ -1,0 +1,243 @@
+# ── Global ──────────────────────────────────────────────────────────────────
+global:
+  # Observability index written by the NiFi pipeline
+  observabilityIndex: applicative-load-observability
+
+# ── Elasticsearch ───────────────────────────────────────────────────────────
+elasticsearch:
+  # Set external.enabled=true to use an existing Elasticsearch cluster.
+  # When external, no ES pods are deployed by this chart.
+  external:
+    enabled: false
+    # Full URL including scheme and port, e.g. https://es.prod.internal:9200
+    url: ""
+    # Basic auth or API key for the external cluster.
+    # These are used by the gateway (proxy headers) and Kibana.
+    auth:
+      enabled: false
+      # "basic" or "apiKey"
+      type: basic
+      username: ""
+      password: ""
+      # Elasticsearch API key (used when type=apiKey)
+      apiKey: ""
+      # Reference a pre-existing Secret instead of inlining credentials.
+      # The secret must contain keys matching the auth type:
+      #   basic  → keys: "username", "password"
+      #   apiKey → key:  "apiKey"
+      existingSecret: ""
+    # TLS settings for the external cluster.
+    tls:
+      # Mount a custom CA bundle so the gateway and Kibana trust the ES cert.
+      # The secret should contain key "ca.crt".
+      caSecret: ""
+      # Skip TLS verification (not recommended in production).
+      insecureSkipVerify: false
+
+  # ── Internal deployment (ignored when external.enabled=true) ──
+  image:
+    repository: docker.elastic.co/elasticsearch/elasticsearch
+    tag: "8.13.0"
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+  javaOpts: "-Xms512m -Xmx512m"
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+  security:
+    enabled: false
+    # Credentials for the internal ES cluster (xpack.security).
+    # Ignored when security.enabled=false.
+    username: elastic
+    password: changeme
+    existingSecret: ""
+  service:
+    port: 9200
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+
+# ── NiFi ────────────────────────────────────────────────────────────────────
+nifi:
+  # Set external.enabled=true to point at an existing NiFi instance.
+  # The gateway will send observations to external.listenUrl.
+  external:
+    enabled: false
+    # Full URL to the ListenHTTP endpoint, e.g. https://nifi.prod:8080/observe
+    listenUrl: ""
+    # Auth header sent with every observation POST.
+    auth:
+      enabled: false
+      # Header name and value, e.g. "Authorization" / "Bearer <token>"
+      headerName: Authorization
+      headerValue: ""
+      # Reference a pre-existing Secret instead of inlining the token.
+      # The secret must contain key "authHeaderValue".
+      existingSecret: ""
+    # TLS settings for the external NiFi endpoint.
+    tls:
+      caSecret: ""
+      insecureSkipVerify: false
+
+  # ── Internal deployment (ignored when external.enabled=true) ──
+  image:
+    repository: apache/nifi
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+  # Credentials for the NiFi UI (single-user mode).
+  auth:
+    username: admin
+    password: adminadminadmin
+    # Reference a pre-existing Secret with keys "username" and "password".
+    existingSecret: ""
+  sensitivePropsKey: observabilitykey
+  service:
+    httpsPort: 8443
+    listenPort: 8080
+  # Base path for the ListenHTTP processor
+  listenBasePath: observe
+  # Seed flow — mounted from ConfigMap
+  flow:
+    # Set to false to let NiFi start with an empty canvas
+    seedEnabled: true
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+
+# ── Analyzer ────────────────────────────────────────────────────────────────
+analyzer:
+  image:
+    repository: alo-analyzer
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 2
+  port: 8000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+  extraEnv: []
+
+# ── Gateway ─────────────────────────────────────────────────────────────────
+gateway:
+  image:
+    repository: alo-gateway
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 2
+  port: 9200
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  # Workers and connections per OpenResty instance
+  workerProcesses: auto
+  workerConnections: 4096
+  # Timeout for ES proxy
+  proxyReadTimeout: 60s
+  # Timeout for NiFi notification (ms)
+  nifiTimeout: 1000
+  service:
+    type: ClusterIP
+    port: 9200
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+  extraEnv: []
+
+# ── Kibana ──────────────────────────────────────────────────────────────────
+kibana:
+  enabled: true
+  # Set external.enabled=true to skip deploying Kibana
+  external:
+    enabled: false
+    url: ""
+
+  image:
+    repository: docker.elastic.co/kibana/kibana
+    tag: "8.13.0"
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  service:
+    type: ClusterIP
+    port: 5601
+  # Import the pre-built dashboard on startup
+  dashboardSetup:
+    enabled: true
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+  extraEnv: []
+
+# ── Ingress ─────────────────────────────────────────────────────────────────
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  gateway:
+    host: ""
+    path: /
+  kibana:
+    host: ""
+    path: /
+  nifi:
+    host: ""
+    path: /
+  tls: []
+
+# ── Service accounts ───────────────────────────────────────────────────────
+serviceAccount:
+  # Create a dedicated ServiceAccount for ALO pods
+  create: false
+  name: ""
+  annotations: {}
+
+# ── Pod security defaults (applied to all components) ──────────────────────
+podSecurityContext:
+  runAsNonRoot: true
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop: ["ALL"]
+
+# ── Image pull secrets (shared across all deployments) ──────────────────────
+imagePullSecrets: []

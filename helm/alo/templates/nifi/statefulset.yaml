@@ -1,0 +1,96 @@
+{{- if not .Values.nifi.external.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "alo.fullname" . }}-nifi
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "nifi") | nindent 4 }}
+spec:
+  serviceName: {{ include "alo.fullname" . }}-nifi
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "alo.selectorLabels" (dict "ctx" . "component" "nifi") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "alo.labels" . | nindent 8 }}
+        {{- include "alo.selectorLabels" (dict "ctx" . "component" "nifi") | nindent 8 }}
+      annotations:
+        {{- if .Values.nifi.flow.seedEnabled }}
+        checksum/flow: {{ include (print .Template.BasePath "/nifi/configmap-flow.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with .Values.nifi.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "alo.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- include "alo.imagePullSecrets" $ | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: nifi
+          image: "{{ .Values.nifi.image.repository }}:{{ .Values.nifi.image.tag }}"
+          imagePullPolicy: {{ .Values.nifi.image.pullPolicy }}
+          {{- if .Values.nifi.flow.seedEnabled }}
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              cp /opt/nifi/flow-seed/flow.json.gz /opt/nifi/nifi-current/conf/flow.json.gz
+              exec ../scripts/start.sh
+          {{- end }}
+          env:
+            - name: NIFI_WEB_HTTPS_HOST
+              value: "0.0.0.0"
+            - name: NIFI_WEB_HTTPS_PORT
+              value: "{{ .Values.nifi.service.httpsPort }}"
+            - name: SINGLE_USER_CREDENTIALS_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.nifiSecretName" . }}
+                  key: username
+            - name: SINGLE_USER_CREDENTIALS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.nifiSecretName" . }}
+                  key: password
+            - name: NIFI_SENSITIVE_PROPS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.nifiSecretName" . }}
+                  key: sensitivePropsKey
+            - name: NIFI_WEB_PROXY_HOST
+              value: "localhost:{{ .Values.nifi.service.httpsPort }}"
+          ports:
+            - name: https
+              containerPort: {{ .Values.nifi.service.httpsPort }}
+            - name: listen
+              containerPort: {{ .Values.nifi.service.listenPort }}
+          readinessProbe:
+            tcpSocket:
+              port: listen
+            initialDelaySeconds: 60
+            periodSeconds: 15
+          livenessProbe:
+            tcpSocket:
+              port: listen
+            initialDelaySeconds: 120
+            periodSeconds: 30
+          resources:
+            {{- toYaml .Values.nifi.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.nifi.flow.seedEnabled }}
+            - name: flow-seed
+              mountPath: /opt/nifi/flow-seed
+              readOnly: true
+            {{- end }}
+      volumes:
+        {{- if .Values.nifi.flow.seedEnabled }}
+        - name: flow-seed
+          configMap:
+            name: {{ include "alo.fullname" . }}-nifi-flow
+        {{- end }}
+      {{- include "alo.scheduling" .Values.nifi | nindent 6 }}
+{{- end }}
