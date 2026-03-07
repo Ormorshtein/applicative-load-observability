@@ -34,3 +34,11 @@ docker-compose.override.yml
 
 # Logs
 *.log
+
+# AI/Agentic
+.claude/
+CLAUDE.md
+.cursorrules
+.cursor/
+.aider*
+.copilot/

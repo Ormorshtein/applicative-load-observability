@@ -23,11 +23,14 @@ services:
       - NIFI_WEB_HTTPS_PORT=8443
       - SINGLE_USER_CREDENTIALS_USERNAME=admin
       - SINGLE_USER_CREDENTIALS_PASSWORD=adminadminadmin
+      - NIFI_WEB_PROXY_HOST=localhost:8443
+      - NIFI_SENSITIVE_PROPS_KEY=observabilitykey
     ports:
       - "8443:8443"
       - "8080:8080"
     volumes:
-      - ./nifi/flow.json:/opt/nifi/nifi-current/conf/flow.json:ro
+      - ./nifi/flow.json.gz:/opt/nifi/flow-seed.json.gz:ro
+    entrypoint: ["/bin/bash", "-c", "cp /opt/nifi/flow-seed.json.gz /opt/nifi/nifi-current/conf/flow.json.gz && exec ../scripts/start.sh"]
     networks:
       - obs-net
     depends_on:
@@ -42,10 +45,22 @@ services:
       elasticsearch:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.0
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    networks:
+      - obs-net
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
 
   gateway:
     build: ./gateway
