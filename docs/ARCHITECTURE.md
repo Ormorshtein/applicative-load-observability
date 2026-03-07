@@ -172,6 +172,10 @@ Recursively walks the full query body and counts all structurally expensive patt
 | Field | What is counted |
 |-------|----------------|
 | `bool_clause_count` | Number of `bool` nodes anywhere in the query tree |
+| `bool_must_count` | Total number of clauses across all `bool.must` arrays |
+| `bool_should_count` | Total number of clauses across all `bool.should` arrays |
+| `bool_filter_count` | Total number of clauses across all `bool.filter` arrays |
+| `bool_must_not_count` | Total number of clauses across all `bool.must_not` arrays |
 | `terms_values_count` | Total number of values across all `terms: {field: [...]}` queries |
 | `knn_clause_count` | Number of `knn` vector similarity queries |
 | `fuzzy_clause_count` | Number of `fuzzy` clauses |
@@ -200,7 +204,7 @@ Recursively walks the full query body and counts all structurally expensive patt
 
 | Flag | Condition | Multiplier | Rationale |
 |------|-----------|------------|-----------|
-| `flag_excessive_bool` | `bool_clause_count >= 50` | ×1.3 | Machine-generated OR-explosion or deep nesting; hand-written queries rarely exceed 10 |
+| `flag_excessive_bool` | `bool_must_count + bool_should_count + bool_filter_count + bool_must_not_count >= 50` | ×1.3 | Query bloat — many clauses (even individually cheap) compound into expensive queries; hand-written queries rarely exceed 10 total bool children |
 | `flag_large_terms_list` | `terms_values_count >= 500` | ×1.2 | Bulk ID lookups, bypasses terms query cache |
 | `flag_deep_aggs` | `agg_clause_count >= 10` | ×1.3 | Heap accumulation, cardinality explosion at each sub-agg level |
 
@@ -327,7 +331,11 @@ Single-document writes. No query body → no red flags → no multiplier. All th
   "request_size_bytes":     284,
   "response_size_bytes":    1920,
 
-  "bool_clause_count":      12,
+  "bool_clause_count":      2,
+  "bool_must_count":        3,
+  "bool_should_count":      1,
+  "bool_filter_count":      2,
+  "bool_must_not_count":    0,
   "terms_values_count":     0,
   "knn_clause_count":       0,
   "fuzzy_clause_count":     0,
@@ -420,7 +428,7 @@ Clients connect to `localhost:9200` (gateway) instead of Elasticsearch directly.
 
 ## 7. Future Implementation Ideas
 
-- Red flag threshold and multiplier tuning — current thresholds (`bool >= 50`, `terms >= 500`, `aggs >= 10`) and multiplier values (1.2–1.5) are initial estimates. Once production data is available, analyse flag firing rates and correlation with `es_took_ms` to validate and adjust these values.
+- Red flag threshold and multiplier tuning — current thresholds (`bool children >= 50`, `terms >= 500`, `aggs >= 10`) and multiplier values (1.2–1.5) are initial estimates. Once production data is available, analyse flag firing rates and correlation with `es_took_ms` to validate and adjust these values.
 - `search_type` classification (`agg` / `knn` / `geo` / `text` / `simple`) — applies to `_search`, `_update_by_query`, and `_delete_by_query` (all carry a query body). Deferred because naive top-level detection (e.g. "body has `query.geo_*`") misclassifies queries where the expensive clause is nested inside a `bool`. Since red flags already capture these signals recursively and correctly, adding a shallow `search_type` label would produce inconsistent dashboard data. Requires recursive detection with a priority order (most expensive type wins).
 - Per-operation write weights — current formulas treat `_create`, `_doc` PUT, and `_doc` DELETE identically. In reality their read depth differs: `_doc` PUT (index) is a pure write with no prior read; `_doc` DELETE reads document metadata (version/seq_no) before writing a tombstone; `_update` reads the full `_source` for a read-modify-write cycle. Separate weight sets should be validated against real production latency distributions before applying.
 - Upsert detection — `_update` requests with `"upsert"` or `"doc_as_upsert": true` in the body follow a conditional path: create-path (cheap, no source read) if the document is absent, update-path (full read-modify-write) if it exists. Probabilistic cost modeling once hit/miss rates are observable.
