@@ -7,15 +7,15 @@ import json
 import re
 from typing import Callable
 
+_BASIC_AUTH_PREFIX = "Basic "
+_ES_DEFAULT_SIZE   = 10
+_SCRUB_PLACEHOLDER = "?"
 
-# ---------------------------------------------------------------------------
-# Docs-affected extractors: (operation, response_body → count)
-# ---------------------------------------------------------------------------
-
+# (operation, response_body → docs affected count)
 _DOCS_AFFECTED_EXTRACTORS: list[tuple[str, Callable[[dict], int]]] = [
-    ("_bulk",            lambda rb: len(rb.get("items", []))),
-    ("_update_by_query", lambda rb: rb.get("updated", 0)),
-    ("_delete_by_query", lambda rb: rb.get("deleted", 0)),
+    ("_bulk",            lambda response_body: len(response_body.get("items", []))),
+    ("_update_by_query", lambda response_body: response_body.get("updated", 0)),
+    ("_delete_by_query", lambda response_body: response_body.get("deleted", 0)),
 ]
 
 
@@ -25,11 +25,11 @@ _DOCS_AFFECTED_EXTRACTORS: list[tuple[str, Callable[[dict], int]]] = [
 
 def parse_username(headers: dict) -> str:
     auth = headers.get("authorization", "")
-    if auth.startswith("Basic "):
+    if auth.startswith(_BASIC_AUTH_PREFIX):
         try:
-            decoded = base64.b64decode(auth[6:]).decode("utf-8", errors="replace")
+            decoded = base64.b64decode(auth[len(_BASIC_AUTH_PREFIX):]).decode("utf-8", errors="replace")
             return decoded.split(":")[0]
-        except Exception:
+        except ValueError:
             pass
     return ""
 
@@ -43,9 +43,9 @@ def parse_applicative_provider(headers: dict) -> str:
     if app_name:
         return app_name
 
-    ua = headers.get("user-agent", "")
-    if ua:
-        return re.split(r"[/ ]", ua)[0]
+    user_agent = headers.get("user-agent", "")
+    if user_agent:
+        return re.split(r"[/ ]", user_agent)[0]
 
     return ""
 
@@ -63,19 +63,19 @@ def parse_client_host(payload: dict) -> str:
 # ---------------------------------------------------------------------------
 
 def parse_target(path: str) -> str:
-    segments = [s for s in path.split("/") if s]
-    for seg in segments:
-        if not seg.startswith("_"):
-            return seg
+    segments = [segment for segment in path.split("/") if segment]
+    for segment in segments:
+        if not segment.startswith("_"):
+            return segment
     return "_all"
 
 
 def parse_operation(method: str, path: str) -> str:
-    for seg in reversed(path.split("/")):
-        if seg.startswith("_"):
-            if seg == "_doc":
+    for segment in reversed(path.split("/")):
+        if segment.startswith("_"):
+            if segment == "_doc":
                 return "index" if method == "PUT" else "delete"
-            return seg
+            return segment
     return "_search"
 
 
@@ -84,16 +84,16 @@ def parse_operation(method: str, path: str) -> str:
 # ---------------------------------------------------------------------------
 
 def parse_size(body: dict) -> int:
-    return body.get("size", 10)
+    return body.get("size", _ES_DEFAULT_SIZE)
 
 
-def _has_key_recursive(obj, key: str) -> bool:
-    if isinstance(obj, dict):
-        if key in obj:
+def _has_key_recursive(node, key: str) -> bool:
+    if isinstance(node, dict):
+        if key in node:
             return True
-        return any(_has_key_recursive(v, key) for v in obj.values())
-    if isinstance(obj, list):
-        return any(_has_key_recursive(item, key) for item in obj)
+        return any(_has_key_recursive(value, key) for value in node.values())
+    if isinstance(node, list):
+        return any(_has_key_recursive(item, key) for item in node)
     return False
 
 
@@ -105,12 +105,12 @@ def parse_has_runtime_mappings(body: dict) -> bool:
     return "runtime_mappings" in body
 
 
-def _scrub(obj):
-    if isinstance(obj, dict):
-        return {k: _scrub(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [_scrub(item) for item in obj]
-    return "?"
+def _scrub(node):
+    if isinstance(node, dict):
+        return {key: _scrub(value) for key, value in node.items()}
+    if isinstance(node, list):
+        return [_scrub(item) for item in node]
+    return _SCRUB_PLACEHOLDER
 
 
 def scrub_template(body: dict) -> str:
@@ -130,8 +130,8 @@ def parse_shards_total(response_body: dict) -> int:
 
 
 def parse_docs_affected(operation: str, response_body: dict) -> int:
-    for op, extractor in _DOCS_AFFECTED_EXTRACTORS:
-        if operation == op:
+    for registered_op, extractor in _DOCS_AFFECTED_EXTRACTORS:
+        if operation == registered_op:
             return extractor(response_body)
     return 0
 

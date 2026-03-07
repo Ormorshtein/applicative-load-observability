@@ -3,6 +3,9 @@ Stress score calculation — research-backed formula.
 All values default to 0; score is unbounded above.
 """
 
+from dataclasses import dataclass
+from typing import Callable
+
 BASELINES = {
     "took_ms":          100,
     "hits":            1000,
@@ -12,7 +15,7 @@ BASELINES = {
     "query_complexity":  10,
 }
 
-# Clause keys that map 1:1 to a count field (used in walk())
+# Clause keys that map 1:1 to a count field (used in _walk_query_clauses)
 _SINGLE_CLAUSE_KEYS = {
     "wildcard": "wildcard_clause_count",
     "fuzzy":    "fuzzy_clause_count",
@@ -38,18 +41,40 @@ CLAUSE_WEIGHTS = {
 }
 
 
+@dataclass
+class StressContext:
+    es_took_ms:       float
+    hits:             int
+    size:             int
+    shards_total:     int
+    docs_affected:    int
+    query_complexity: float
+
+
 def norm(value: float, baseline: float) -> float:
     return value / baseline
 
 
-def calc_query_complexity(body: dict) -> dict:
-    """
-    Count clause types and return raw counts + weighted score.
-    Handles top-level aggs, knn, and runtime_mappings; recurses into body["query"].
-    """
+def _walk_query_clauses(node, counts: dict) -> None:
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key in _SINGLE_CLAUSE_KEYS:
+                counts[_SINGLE_CLAUSE_KEYS[key]] += 1
+            elif key in _GEO_CLAUSE_KEYS:
+                counts["geo_clause_count"] += 1
+            elif key == "terms" and isinstance(value, dict):
+                for field_vals in value.values():
+                    if isinstance(field_vals, list):
+                        counts["terms_values_count"] += len(field_vals)
+            _walk_query_clauses(value, counts)
+    elif isinstance(node, list):
+        for item in node:
+            _walk_query_clauses(item, counts)
+
+
+def _count_clauses(body: dict) -> dict:
     counts = {k: 0 for k in CLAUSE_WEIGHTS}
 
-    # Top-level batch counts
     aggs = body.get("aggs") or body.get("aggregations")
     if isinstance(aggs, dict):
         counts["agg_clause_count"] = len(aggs)
@@ -60,24 +85,13 @@ def calc_query_complexity(body: dict) -> dict:
     if "knn" in body:
         counts["knn_clause_count"] += 1
 
-    def walk(obj):
-        if isinstance(obj, dict):
-            for k, v in obj.items():
-                if k in _SINGLE_CLAUSE_KEYS:
-                    counts[_SINGLE_CLAUSE_KEYS[k]] += 1
-                elif k in _GEO_CLAUSE_KEYS:
-                    counts["geo_clause_count"] += 1
-                elif k == "terms" and isinstance(v, dict):
-                    for field_vals in v.values():
-                        if isinstance(field_vals, list):
-                            counts["terms_values_count"] += len(field_vals)
-                walk(v)
-        elif isinstance(obj, list):
-            for item in obj:
-                walk(item)
+    _walk_query_clauses(body.get("query", {}), counts)
+    return counts
 
-    walk(body.get("query", {}))
 
+def calc_query_complexity(body: dict) -> dict:
+    """Count clause types and return raw counts + weighted score."""
+    counts = _count_clauses(body)
     score = sum(w * counts[k] for k, w in CLAUSE_WEIGHTS.items())
     return {**counts, "query_complexity": score}
 
@@ -86,68 +100,60 @@ def calc_query_complexity(body: dict) -> dict:
 # Stress formulas — one function per operation class
 # ---------------------------------------------------------------------------
 
-def _stress_query(es_took_ms, hits, size, shards_total, docs_affected, query_complexity):
+def _stress_query(ctx: StressContext) -> float:
     return (
-        0.40 * norm(es_took_ms, BASELINES["took_ms"])
-        + 0.20 * norm(hits, BASELINES["hits"])
-        + 0.15 * norm(query_complexity, BASELINES["query_complexity"])
-        + 0.15 * norm(size, BASELINES["size"])
-        + 0.10 * norm(shards_total, BASELINES["shards_total"])
+        0.40 * norm(ctx.es_took_ms, BASELINES["took_ms"])
+        + 0.20 * norm(ctx.hits, BASELINES["hits"])
+        + 0.15 * norm(ctx.query_complexity, BASELINES["query_complexity"])
+        + 0.15 * norm(ctx.size, BASELINES["size"])
+        + 0.10 * norm(ctx.shards_total, BASELINES["shards_total"])
     )
 
 
-def _stress_insert(es_took_ms, hits, size, shards_total, docs_affected, query_complexity):
+def _stress_bulk(ctx: StressContext) -> float:
     return (
-        0.40 * norm(es_took_ms, BASELINES["took_ms"])
-        + 0.40 * norm(docs_affected, BASELINES["docs_affected"])
-        + 0.20 * norm(shards_total, BASELINES["shards_total"])
+        0.40 * norm(ctx.es_took_ms, BASELINES["took_ms"])
+        + 0.40 * norm(ctx.docs_affected, BASELINES["docs_affected"])
+        + 0.20 * norm(ctx.shards_total, BASELINES["shards_total"])
     )
 
 
-def _stress_by_query(es_took_ms, hits, size, shards_total, docs_affected, query_complexity):
+def _stress_by_query(ctx: StressContext) -> float:
     return (
-        0.35 * norm(es_took_ms, BASELINES["took_ms"])
-        + 0.30 * norm(docs_affected, BASELINES["docs_affected"])
-        + 0.20 * norm(query_complexity, BASELINES["query_complexity"])
-        + 0.15 * norm(shards_total, BASELINES["shards_total"])
+        0.35 * norm(ctx.es_took_ms, BASELINES["took_ms"])
+        + 0.30 * norm(ctx.docs_affected, BASELINES["docs_affected"])
+        + 0.20 * norm(ctx.query_complexity, BASELINES["query_complexity"])
+        + 0.15 * norm(ctx.shards_total, BASELINES["shards_total"])
     )
 
 
-def _stress_update(es_took_ms, hits, size, shards_total, docs_affected, query_complexity):
+def _stress_update(ctx: StressContext) -> float:
     return (
-        0.50 * norm(es_took_ms, BASELINES["took_ms"])
-        + 0.30 * norm(query_complexity, BASELINES["query_complexity"])
-        + 0.20 * norm(shards_total, BASELINES["shards_total"])
+        0.50 * norm(ctx.es_took_ms, BASELINES["took_ms"])
+        + 0.30 * norm(ctx.query_complexity, BASELINES["query_complexity"])
+        + 0.20 * norm(ctx.shards_total, BASELINES["shards_total"])
     )
 
 
-def _stress_single(es_took_ms, hits, size, shards_total, docs_affected, query_complexity):
+def _stress_doc_write(ctx: StressContext) -> float:
     return (
-        0.70 * norm(es_took_ms, BASELINES["took_ms"])
-        + 0.30 * norm(shards_total, BASELINES["shards_total"])
+        0.70 * norm(ctx.es_took_ms, BASELINES["took_ms"])
+        + 0.30 * norm(ctx.shards_total, BASELINES["shards_total"])
     )
 
 
-_STRESS_DISPATCH = {
+_STRESS_DISPATCH: dict[str, Callable[[StressContext], float]] = {
     "_search":          _stress_query,
-    "_bulk":            _stress_insert,
+    "_bulk":            _stress_bulk,
     "_update_by_query": _stress_by_query,
     "_delete_by_query": _stress_by_query,
     "_update":          _stress_update,
-    "_create":          _stress_single,
-    "index":            _stress_single,
-    "delete":           _stress_single,
+    "_create":          _stress_doc_write,
+    "index":            _stress_doc_write,
+    "delete":           _stress_doc_write,
 }
 
 
-def calc_stress(
-    operation: str,
-    es_took_ms: float,
-    hits: int,
-    size: int,
-    shards_total: int,
-    docs_affected: int,
-    query_complexity: float,
-) -> float:
-    formula = _STRESS_DISPATCH.get(operation, _stress_single)
-    return formula(es_took_ms, hits, size, shards_total, docs_affected, query_complexity)
+def calc_stress(operation: str, ctx: StressContext) -> float:
+    formula = _STRESS_DISPATCH.get(operation, _stress_doc_write)
+    return formula(ctx)
