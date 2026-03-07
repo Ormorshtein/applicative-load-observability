@@ -97,6 +97,8 @@ def build_record(raw: RawFields) -> dict:
         "timestamp":            datetime.now(timezone.utc).strftime(_TIMESTAMP_FORMAT),
         "operation":            operation,
         "method":               raw.method,
+        "path":                 raw.path,
+        "request_body":         raw.request_body,
         "target":               target,
         "template":             template,
         "username":             username,

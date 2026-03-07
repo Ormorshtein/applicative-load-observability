@@ -288,8 +288,10 @@ Single-document writes. All three share this formula as a baseline; see Future I
 
   "operation":              "_search",
   "method":                 "POST",
+  "path":                   "/products/_search",
+  "request_body":           {"query": {"match": {"title": "shoes"}}, "size": 10},
   "target":                 "products",
-  "template":               "{\"aggs\":{\"?\":{\"terms\":{\"field\":\"?\"}}}}",
+  "template":               "{\"query\":{\"match\":{\"title\":\"?\"}},\"size\":\"?\"}",
 
   "username":               "alice",
   "client_host":            "10.0.0.5",
