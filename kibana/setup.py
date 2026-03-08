@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-Set up the Applicative Load Observability dashboard in Kibana.
+Set up the Applicative Load Observability stack:
+  - Elasticsearch index template (mapping + settings)
+  - Kibana data view and dashboards
 
 By default, imports the pre-built dashboard.ndjson.
 Use --rebuild to recreate everything from scratch via the API and re-export.
@@ -8,7 +10,7 @@ Use --rebuild to recreate everything from scratch via the API and re-export.
 Usage:
     python kibana/setup.py                         # import dashboard.ndjson
     python kibana/setup.py --rebuild               # recreate via API + re-export
-    python kibana/setup.py --kibana http://host:5601
+    python kibana/setup.py --kibana http://host:5601 --elasticsearch http://host:9200
 """
 
 import argparse
@@ -28,6 +30,102 @@ CI_DASHBOARD_ID = "alo-ci-dashboard"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 NDJSON_PATH = os.path.join(SCRIPT_DIR, "dashboard.ndjson")
 CI_NDJSON_PATH = os.path.join(SCRIPT_DIR, "dashboard-cost-indicators.ndjson")
+
+# ── ES index template mapping ───────────────────────────────────────────────
+
+INDEX_TEMPLATE = {
+    "index_patterns": ["applicative-load-observability-*"],
+    "priority": 100,
+    "template": {
+        "settings": {
+            "number_of_shards": 1,
+            "number_of_replicas": 0,
+            "refresh_interval": "5s",
+        },
+        "mappings": {
+            "dynamic": "strict",
+            "properties": {
+                "timestamp": {"type": "date"},
+                "identity": {
+                    "properties": {
+                        "username":             {"type": "keyword"},
+                        "applicative_provider": {"type": "keyword"},
+                        "user_agent":           {"type": "keyword"},
+                        "client_host":          {"type": "keyword"},
+                    }
+                },
+                "request": {
+                    "properties": {
+                        "method":     {"type": "keyword"},
+                        "path":       {"type": "keyword"},
+                        "operation":  {"type": "keyword"},
+                        "target":     {"type": "keyword"},
+                        "template":   {"type": "keyword"},
+                        "body":       {"type": "object", "enabled": False},
+                        "size_bytes": {"type": "integer"},
+                        "size":       {"type": "integer"},
+                    }
+                },
+                "response": {
+                    "properties": {
+                        "es_took_ms":      {"type": "float"},
+                        "gateway_took_ms": {"type": "float"},
+                        "hits":            {"type": "long"},
+                        "shards_total":    {"type": "integer"},
+                        "docs_affected":   {"type": "long"},
+                        "size_bytes":      {"type": "integer"},
+                    }
+                },
+                "clause_counts": {
+                    "properties": {
+                        "bool":            {"type": "integer"},
+                        "bool_must":       {"type": "integer"},
+                        "bool_should":     {"type": "integer"},
+                        "bool_filter":     {"type": "integer"},
+                        "bool_must_not":   {"type": "integer"},
+                        "terms_values":    {"type": "integer"},
+                        "knn":             {"type": "integer"},
+                        "fuzzy":           {"type": "integer"},
+                        "geo_bbox":        {"type": "integer"},
+                        "geo_distance":    {"type": "integer"},
+                        "geo_shape":       {"type": "integer"},
+                        "agg":             {"type": "integer"},
+                        "wildcard":        {"type": "integer"},
+                        "nested":          {"type": "integer"},
+                        "runtime_mapping": {"type": "integer"},
+                        "script":          {"type": "integer"},
+                    }
+                },
+                "cost_indicators": {
+                    "properties": {
+                        "has_script":          {"type": "integer"},
+                        "has_runtime_mapping": {"type": "integer"},
+                        "has_wildcard":        {"type": "integer"},
+                        "has_nested":          {"type": "integer"},
+                        "has_fuzzy":           {"type": "integer"},
+                        "has_geo":             {"type": "integer"},
+                        "has_knn":             {"type": "integer"},
+                        "excessive_bool":      {"type": "integer"},
+                        "large_terms_list":    {"type": "integer"},
+                        "deep_aggs":           {"type": "integer"},
+                    }
+                },
+                "stress": {
+                    "properties": {
+                        "score":                {"type": "float"},
+                        "multiplier":           {"type": "float"},
+                        "cost_indicator_count": {"type": "integer"},
+                        "cost_indicator_names": {"type": "keyword"},
+                    }
+                },
+                # Error records (partial)
+                "error":  {"type": "text"},
+                "path":   {"type": "keyword"},
+                "method": {"type": "keyword"},
+            }
+        }
+    }
+}
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -61,76 +159,25 @@ def es_request(method, path, body=None):
             return e.code, {}
 
 
-INDEX_TEMPLATE = {
-    "index_patterns": ["applicative-load-observability*"],
-    "priority": 100,
-    "template": {
-        "settings": {
-            "number_of_shards": 1,
-            "number_of_replicas": 0,
-        },
-        "mappings": {
-            "dynamic": "true",
-            "properties": {
-                "timestamp":             {"type": "date"},
-                "method":                {"type": "keyword"},
-                "path":                  {"type": "keyword"},
-                "operation":             {"type": "keyword"},
-                "target":                {"type": "keyword"},
-                "template":              {"type": "keyword"},
-                "applicative_provider":  {"type": "keyword"},
-                "username":              {"type": "keyword"},
-                "user_agent":            {"type": "keyword"},
-                "client_host":           {"type": "keyword"},
-
-                "stress_score":          {"type": "float"},
-                "stress_multiplier":     {"type": "float"},
-                "es_took_ms":            {"type": "float"},
-                "gateway_took_ms":       {"type": "float"},
-
-                "hits":                  {"type": "long"},
-                "size":                  {"type": "long"},
-                "shards_total":          {"type": "long"},
-                "docs_affected":         {"type": "long"},
-                "request_size_bytes":    {"type": "long"},
-                "response_size_bytes":   {"type": "long"},
-
-                "cost_indicators":       {"type": "keyword"},
-                "cost_indicator_count":  {"type": "integer"},
-
-                "bool_clause_count":     {"type": "integer"},
-                "bool_must_count":       {"type": "integer"},
-                "bool_should_count":     {"type": "integer"},
-                "bool_filter_count":     {"type": "integer"},
-                "bool_must_not_count":   {"type": "integer"},
-                "terms_values_count":    {"type": "integer"},
-                "knn_clause_count":      {"type": "integer"},
-                "fuzzy_clause_count":    {"type": "integer"},
-                "geo_bbox_count":        {"type": "integer"},
-                "geo_distance_count":    {"type": "integer"},
-                "geo_shape_count":       {"type": "integer"},
-                "agg_clause_count":      {"type": "integer"},
-                "wildcard_clause_count": {"type": "integer"},
-                "nested_clause_count":   {"type": "integer"},
-                "runtime_mapping_count": {"type": "integer"},
-                "script_clause_count":   {"type": "integer"},
-            },
-        },
-    },
-}
-
-
-def ensure_index_template():
-    s, _ = es_request("PUT", "/_index_template/applicative-load-observability", INDEX_TEMPLATE)
-    print(f"  {'OK' if s in (200, 201) else 'FAIL'}: Index template")
-    return s in (200, 201)
-
-
 def wait_kibana():
     print("  Waiting for Kibana ...", end=" ", flush=True)
     for _ in range(30):
         try:
             s, _ = kbn("GET", "/api/status")
+            if s == 200:
+                print("ready")
+                return
+        except Exception:
+            pass
+        time.sleep(2)
+    print("TIMEOUT"); sys.exit(1)
+
+
+def wait_es():
+    print("  Waiting for Elasticsearch ...", end=" ", flush=True)
+    for _ in range(30):
+        try:
+            s, _ = es_request("GET", "/_cluster/health")
             if s == 200:
                 print("ready")
                 return
@@ -146,6 +193,12 @@ def upsert(obj_type, obj_id, attrs, refs=None):
     if refs:
         body["references"] = refs
     s, _ = kbn("POST", f"/api/saved_objects/{obj_type}/{obj_id}", body)
+    return s in (200, 201)
+
+
+def ensure_index_template():
+    s, _ = es_request("PUT", "/_index_template/alo-template", INDEX_TEMPLATE)
+    print(f"  {'OK' if s in (200, 201) else 'FAIL'}: Index template (alo-template)")
     return s in (200, 201)
 
 
@@ -199,10 +252,10 @@ def do_import():
 DV_REF = [{"type": "index-pattern", "id": DATA_VIEW_ID, "name": "indexpattern-datasource-layer-layer1"}]
 
 SECTIONS = [
-    ("template",              "Template"),
-    ("operation",             "Operation"),
-    ("target",                "Target"),
-    ("applicative_provider",  "Application"),
+    ("request.template",              "Template"),
+    ("request.operation",             "Operation"),
+    ("request.target",                "Target"),
+    ("identity.applicative_provider", "Application"),
 ]
 
 
@@ -234,12 +287,12 @@ def mk_pie(vis_id, title, field):
             },
             "datasourceStates": {"formBased": {"layers": {"layer1": {
                 "columns": {
-                    "breakdown": {"label": field.split(".")[0], "dataType": "string",
+                    "breakdown": {"label": field.split(".")[-1], "dataType": "string",
                                   "operationType": "terms", "sourceField": field, "isBucketed": True,
                                   "params": {"size": 8, "orderBy": {"type": "column", "columnId": "metric"},
                                              "orderDirection": "desc", "otherBucket": True}},
                     "metric": {"label": "Total Stress", "dataType": "number",
-                               "operationType": "sum", "sourceField": "stress_score", "isBucketed": False},
+                               "operationType": "sum", "sourceField": "stress.score", "isBucketed": False},
                 },
                 "columnOrder": ["breakdown", "metric"], "incompleteColumns": {},
             }}}},
@@ -264,12 +317,12 @@ def mk_ts(vis_id, title, field):
                 "columns": {
                     "time": {"label": "timestamp", "dataType": "date", "operationType": "date_histogram",
                              "sourceField": "timestamp", "isBucketed": True, "params": {"interval": "auto"}},
-                    "breakdown": {"label": field.split(".")[0], "dataType": "string",
+                    "breakdown": {"label": field.split(".")[-1], "dataType": "string",
                                   "operationType": "terms", "sourceField": field, "isBucketed": True,
                                   "params": {"size": 5, "orderBy": {"type": "column", "columnId": "metric"},
                                              "orderDirection": "desc", "otherBucket": True}},
                     "metric": {"label": "Avg Stress Score", "dataType": "number",
-                               "operationType": "average", "sourceField": "stress_score", "isBucketed": False},
+                               "operationType": "average", "sourceField": "stress.score", "isBucketed": False},
                 },
                 "columnOrder": ["time", "breakdown", "metric"], "incompleteColumns": {},
             }}}},
@@ -278,7 +331,7 @@ def mk_ts(vis_id, title, field):
     }
 
 
-def mk_rf_metric(vis_id, title, source_field, operation, kql_filter=None):
+def mk_ci_metric(vis_id, title, source_field, operation, kql_filter=None):
     col = {"label": title, "dataType": "number", "operationType": operation, "isBucketed": False}
     col["sourceField"] = "___records___" if operation == "count" else source_field
     if kql_filter:
@@ -297,7 +350,7 @@ def mk_rf_metric(vis_id, title, source_field, operation, kql_filter=None):
 
 def mk_horizontal_bar(vis_id, title, field, metric_field, metric_op, metric_label, size=10):
     cols = {
-        "breakdown": {"label": field.split(".")[0], "dataType": "string",
+        "breakdown": {"label": field.split(".")[-1], "dataType": "string",
                       "operationType": "terms", "sourceField": field, "isBucketed": True,
                       "params": {"size": size, "orderBy": {"type": "column", "columnId": "metric"},
                                  "orderDirection": "desc", "otherBucket": False}},
@@ -477,10 +530,10 @@ def do_rebuild():
 
     # ── Main dashboard visualizations ──
     all_vis = [
-        mk_metric("alo-kpi-requests",   "Total Requests",       "stress_score",    "count"),
-        mk_metric("alo-kpi-stress",     "Avg Stress Score",     "stress_score",    "average"),
-        mk_metric("alo-kpi-latency",    "Avg Latency (ms)",     "gateway_took_ms", "average"),
-        mk_metric("alo-kpi-multiplier", "Avg Stress Multiplier", "stress_multiplier", "average"),
+        mk_metric("alo-kpi-requests",   "Total Requests",        "stress.score",             "count"),
+        mk_metric("alo-kpi-stress",     "Avg Stress Score",      "stress.score",             "average"),
+        mk_metric("alo-kpi-latency",    "Avg Latency (ms)",      "response.gateway_took_ms", "average"),
+        mk_metric("alo-kpi-multiplier", "Avg Stress Multiplier", "stress.multiplier",        "average"),
     ]
     for field, label in SECTIONS:
         all_vis.append(mk_pie(f"alo-pie-{label.lower()}", f"Stress Share — {label}", field))
@@ -499,40 +552,41 @@ def do_rebuild():
     # ── Cost indicators dashboard visualizations ──
     print()
     ci_vis = [
-        mk_rf_metric("alo-ci-kpi-flagged",    "Flagged Requests",           "cost_indicator_count", "count", "cost_indicator_count >= 1"),
-        mk_rf_metric("alo-ci-kpi-avg-flags",   "Avg Indicator Count",       "cost_indicator_count", "average"),
-        mk_rf_metric("alo-ci-kpi-avg-mult",    "Avg Stress Multiplier",     "stress_multiplier",    "average"),
-        mk_rf_metric("alo-ci-kpi-max-mult",    "Max Stress Multiplier",     "stress_multiplier",    "max"),
+        mk_ci_metric("alo-ci-kpi-flagged",   "Flagged Requests",      "stress.cost_indicator_count", "count",
+                      "stress.cost_indicator_count >= 1"),
+        mk_ci_metric("alo-ci-kpi-avg-flags",  "Avg Indicator Count",  "stress.cost_indicator_count", "average"),
+        mk_ci_metric("alo-ci-kpi-avg-mult",   "Avg Stress Multiplier", "stress.multiplier",          "average"),
+        mk_ci_metric("alo-ci-kpi-max-mult",   "Max Stress Multiplier", "stress.multiplier",          "max"),
         mk_horizontal_bar("alo-ci-bar-indicator-types", "Cost Indicator Types — Frequency",
-                          "cost_indicators", None, "count", "Count"),
+                          "stress.cost_indicator_names", None, "count", "Count"),
         mk_ts_multi("alo-ci-ts-flag-rate", "Flagged vs Total Requests Over Time", [
-            ("flagged", "Flagged Requests", "cost_indicator_count >= 1", "count"),
-            ("total",   "Total Requests",   "",                          "count"),
+            ("flagged", "Flagged Requests", "stress.cost_indicator_count >= 1", "count"),
+            ("total",   "Total Requests",   "",                                  "count"),
         ], "area"),
         mk_ts_multi("alo-ci-ts-clause-counts", "Clause Count Trends", [
-            ("terms_avg",    "Avg terms_values_count",    "terms_values_count",    "average"),
-            ("aggs_avg",     "Avg agg_clause_count",      "agg_clause_count",      "average"),
-            ("script_avg",   "Avg script_clause_count",   "script_clause_count",   "average"),
-            ("wildcard_avg", "Avg wildcard_clause_count", "wildcard_clause_count", "average"),
+            ("terms_avg",    "Avg terms_values", "clause_counts.terms_values", "average"),
+            ("aggs_avg",     "Avg agg",          "clause_counts.agg",          "average"),
+            ("script_avg",   "Avg script",       "clause_counts.script",       "average"),
+            ("wildcard_avg", "Avg wildcard",     "clause_counts.wildcard",     "average"),
         ], "line"),
         mk_ts_multi("alo-ci-ts-bool", "Bool Clause Breakdown Over Time", [
-            ("must",      "Avg must",     "bool_must_count",     "average"),
-            ("should",    "Avg should",   "bool_should_count",   "average"),
-            ("filter_c",  "Avg filter",   "bool_filter_count",   "average"),
-            ("must_not",  "Avg must_not", "bool_must_not_count", "average"),
+            ("must",      "Avg must",     "clause_counts.bool_must",     "average"),
+            ("should",    "Avg should",   "clause_counts.bool_should",   "average"),
+            ("filter_c",  "Avg filter",   "clause_counts.bool_filter",   "average"),
+            ("must_not",  "Avg must_not", "clause_counts.bool_must_not", "average"),
         ], "area_stacked"),
         mk_datatable("alo-ci-table-templates", "Top Templates by Cost Indicator Count",
-                     "template", "Template", [
-                         ("avg_indicators", "Avg Indicators", "cost_indicator_count", "average"),
-                         ("count",          "Requests",       None,                   "count"),
-                         ("avg_mult",       "Avg Multiplier", "stress_multiplier",    "average"),
-                         ("avg_stress",     "Avg Stress",     "stress_score",         "average"),
+                     "request.template", "Template", [
+                         ("avg_indicators", "Avg Indicators", "stress.cost_indicator_count", "average"),
+                         ("count",          "Requests",       None,                          "count"),
+                         ("avg_mult",       "Avg Multiplier", "stress.multiplier",           "average"),
+                         ("avg_stress",     "Avg Stress",     "stress.score",                "average"),
                      ]),
         mk_horizontal_bar("alo-ci-bar-apps", "Stress Multiplier by Application",
-                          "applicative_provider", "stress_multiplier", "average",
+                          "identity.applicative_provider", "stress.multiplier", "average",
                           "Avg Stress Multiplier", 8),
         mk_horizontal_bar("alo-ci-bar-targets", "Cost Indicator Count by Target Index",
-                          "target", "cost_indicator_count", "average",
+                          "request.target", "stress.cost_indicator_count", "average",
                           "Avg Indicator Count", 8),
     ]
 
@@ -558,7 +612,7 @@ def do_rebuild():
 
 def main():
     global KIBANA, ELASTICSEARCH
-    parser = argparse.ArgumentParser(description="Set up the ALO Kibana dashboard")
+    parser = argparse.ArgumentParser(description="Set up the ALO stack (ES template + Kibana dashboards)")
     parser.add_argument("--kibana", default=KIBANA, help="Kibana URL (default: %(default)s)")
     parser.add_argument("--elasticsearch", default=ELASTICSEARCH,
                         help="Elasticsearch URL (default: %(default)s)")
@@ -570,6 +624,8 @@ def main():
 
     print(f"\n  Kibana:        {KIBANA}")
     print(f"  Elasticsearch: {ELASTICSEARCH}\n")
+
+    wait_es()
     wait_kibana()
     ensure_index_template()
 
@@ -581,7 +637,7 @@ def main():
         ok = do_import()
 
     if ok:
-        print(f"\n  Main dashboard:      {KIBANA}/app/dashboards#/view/{DASHBOARD_ID}")
+        print(f"\n  Main dashboard:            {KIBANA}/app/dashboards#/view/{DASHBOARD_ID}")
         print(f"  Cost indicators dashboard: {KIBANA}/app/dashboards#/view/{CI_DASHBOARD_ID}\n")
     sys.exit(0 if ok else 1)
 
