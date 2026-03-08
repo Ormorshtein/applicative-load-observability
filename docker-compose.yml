@@ -22,6 +22,9 @@ services:
       - "8080:8080"
       # - "9600:9600"  # Uncomment to expose Logstash monitoring API
     environment:
+      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL:-http://elasticsearch:9200}
+      - ANALYZER_URL=${ANALYZER_URL:-http://analyzer:8000/analyze}
+      - LOGSTASH_HTTP_PORT=${LOGSTASH_HTTP_PORT:-8080}
       # Set LOGSTASH_MONITORING=true to ship pipeline metrics to ES
       # (viewable in Kibana → Stack Monitoring)
       - LOGSTASH_MONITORING=${LOGSTASH_MONITORING:-false}
@@ -60,7 +63,7 @@ services:
   kibana:
     image: docker.elastic.co/kibana/kibana:8.13.0
     environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_HOSTS=${ELASTICSEARCH_URL:-http://elasticsearch:9200}
     ports:
       - "5601:5601"
     networks:
@@ -72,7 +75,12 @@ services:
   gateway:
     build: ./gateway
     ports:
-      - "9200:9200"
+      - "${GATEWAY_PORT:-9200}:${GATEWAY_PORT:-9200}"
+    environment:
+      - DNS_RESOLVER=${DNS_RESOLVER:-127.0.0.11}
+      - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST:-elasticsearch:9200}
+      - LOGSTASH_URL=${LOGSTASH_URL:-http://logstash:8080/}
+      - GATEWAY_PORT=${GATEWAY_PORT:-9200}
     networks:
       - obs-net
     depends_on:

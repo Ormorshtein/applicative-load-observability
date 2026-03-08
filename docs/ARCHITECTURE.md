@@ -53,7 +53,7 @@ All extraction, parsing, and analysis happens downstream in Python.
 **How the async notification works:**
 - `body_filter_by_lua_block` accumulates response chunks into `ngx.ctx.resp_body`
 - `log_by_lua_block` fires `ngx.timer.at(0, notify_logstash, ctx)` — this runs after the response is already sent to the client
-- `notify_logstash` uses `lua-resty-http` to POST JSON to `http://logstash:8080/`
+- `notify_logstash` uses `lua-resty-http` to POST JSON to Logstash (URL configured via `LOGSTASH_URL` env var, default `http://logstash:8080/`)
 - The entire call is wrapped in `pcall` — any error is silently dropped
 
 **What Nginx sends to Logstash (raw variables, no processing):**
@@ -108,9 +108,9 @@ All extraction, parsing, and analysis happens downstream in Python.
 
 | Stage | Plugin | Configuration |
 |-------|--------|---------------|
-| Input | `http` | Port 8080, JSON codec |
+| Input | `http` | Port configurable via `LOGSTASH_HTTP_PORT` (default 8080), JSON codec |
 | Filter | `ruby` | Builds clean JSON payload from gateway fields, stores in `@metadata` |
-| Filter | `http` | POST `http://analyzer:8000/analyze`, sends clean payload |
+| Filter | `http` | POST to analyzer (URL configurable via `ANALYZER_URL`, default `http://analyzer:8000/analyze`) |
 | Filter | `ruby` | Replaces Logstash event fields with analyzer response |
 | Filter | `drop` | Drops events tagged `_httprequestfailure` (analyzer unreachable) |
 | Output | `elasticsearch` | Index `applicative-load-observability` |
@@ -458,6 +458,7 @@ The template is created automatically by `kibana/setup.py` (both import and rebu
 | Nested document structure | Related fields grouped (identity, request, response, clause_counts, stress) for clarity and prevention of field-name collisions |
 | Strict ES mapping with index template | Prevents mapping explosion from dynamic `request.body` sub-fields |
 | Single docker-compose | Full stack runs with one command |
+| Environment-variable configuration | All service URLs, ports, and hostnames are configurable via env vars with sensible defaults — works across Docker Compose, Helm, and manual deployments |
 
 ---
 
@@ -472,7 +473,8 @@ applicative-load-observability/
 │   └── dashboard-wireframes.html    # visual dashboard mockup
 │
 ├── gateway/
-│   ├── nginx.conf                   # Nginx reverse-proxy + Lua fire-and-forget
+│   ├── nginx.conf.template          # Nginx config template (envsubst at startup)
+│   ├── entrypoint.sh                # Resolves env vars and starts OpenResty
 │   └── Dockerfile                   # FROM openresty/openresty:alpine
 │
 ├── analyzer/
@@ -515,6 +517,21 @@ docker-compose up --build
 ```
 
 Clients connect to `localhost:9200` (gateway) instead of Elasticsearch directly.
+
+**Custom deployment (Helm, manual, etc.):**
+
+Override any of the environment variables below. Docker Compose defaults work out of the box.
+
+| Variable | Default | Used by | Purpose |
+|----------|---------|---------|---------|
+| `ELASTICSEARCH_URL` | `http://elasticsearch:9200` | Logstash, Kibana | Elasticsearch connection URL |
+| `ELASTICSEARCH_HOST` | `elasticsearch:9200` | Gateway | Upstream host:port for nginx proxy |
+| `ANALYZER_URL` | `http://analyzer:8000/analyze` | Logstash | Analyzer service endpoint |
+| `LOGSTASH_URL` | `http://logstash:8080/` | Gateway | Logstash HTTP input endpoint |
+| `LOGSTASH_HTTP_PORT` | `8080` | Logstash | Port for Logstash HTTP input |
+| `GATEWAY_PORT` | `9200` | Gateway | Port the gateway listens on |
+| `DNS_RESOLVER` | `127.0.0.11` | Gateway | DNS resolver (use `kube-dns.kube-system.svc.cluster.local` for K8s) |
+| `LOGSTASH_MONITORING` | `false` | Logstash | Ship pipeline metrics to ES (Kibana Stack Monitoring) |
 
 ---
 

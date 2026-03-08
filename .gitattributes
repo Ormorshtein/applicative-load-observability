@@ -1,0 +1,8 @@
+* text=auto
+
+# Shell scripts must always have LF endings (Linux containers)
+*.sh text eol=lf
+
+# Nginx/Logstash configs used in Linux containers
+*.conf text eol=lf
+*.template text eol=lf

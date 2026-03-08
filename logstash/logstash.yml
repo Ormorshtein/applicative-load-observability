@@ -12,4 +12,4 @@ log.level: info
 # Enable by setting LOGSTASH_MONITORING=true in docker-compose environment.
 # Viewable in Kibana → Stack Monitoring.
 xpack.monitoring.enabled: ${LOGSTASH_MONITORING}
-xpack.monitoring.elasticsearch.hosts: ["http://elasticsearch:9200"]
+xpack.monitoring.elasticsearch.hosts: ["${ELASTICSEARCH_URL:http://elasticsearch:9200}"]

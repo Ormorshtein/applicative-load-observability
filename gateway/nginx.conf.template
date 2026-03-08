@@ -8,15 +8,15 @@ events {
 http {
     lua_package_path "/usr/local/openresty/site/lualib/?.lua;/usr/local/openresty/lualib/?.lua;;";
     lua_need_request_body on;
-    resolver 127.0.0.11 valid=10s ipv6=off;
+    resolver ${DNS_RESOLVER} valid=10s ipv6=off;
 
     upstream elasticsearch {
-        server elasticsearch:9200;
+        server ${ELASTICSEARCH_HOST};
         keepalive 32;
     }
 
     server {
-        listen 9200;
+        listen ${GATEWAY_PORT};
 
         location / {
             # Accumulate response chunks so we can forward them to Logstash
@@ -65,7 +65,7 @@ http {
 
                         local httpc = http.new()
                         httpc:set_timeout(1000)  -- 1 s connect+send timeout
-                        local res, err = httpc:request_uri("http://logstash:8080/", {
+                        local res, err = httpc:request_uri("${LOGSTASH_URL}", {
                             method  = "POST",
                             body    = payload,
                             headers = {
