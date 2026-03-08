@@ -87,24 +87,6 @@ def parse_size(body: dict) -> int:
     return body.get("size", _ES_DEFAULT_SIZE)
 
 
-def _has_key_recursive(node, key: str) -> bool:
-    if isinstance(node, dict):
-        if key in node:
-            return True
-        return any(_has_key_recursive(value, key) for value in node.values())
-    if isinstance(node, list):
-        return any(_has_key_recursive(item, key) for item in node)
-    return False
-
-
-def parse_has_script(body: dict) -> bool:
-    return _has_key_recursive(body, "script")
-
-
-def parse_has_runtime_mappings(body: dict) -> bool:
-    return "runtime_mappings" in body
-
-
 def _scrub(node):
     if isinstance(node, dict):
         return {key: _scrub(value) for key, value in node.items()}

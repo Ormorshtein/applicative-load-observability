@@ -15,7 +15,6 @@ def _load_baselines() -> dict:
         "shards_total":       5,
         "size":             100,
         "docs_affected":    500,
-        "query_complexity":  10,
     }
     for key in defaults:
         env_val = os.environ.get(f"STRESS_BASELINE_{key.upper()}")
@@ -43,20 +42,14 @@ _SINGLE_CLAUSE_KEYS = {
     "geo_grid":         "geo_bbox_count",
 }
 
-CLAUSE_WEIGHTS = {
-    "wildcard_clause_count":  4,
-    "fuzzy_clause_count":     3,
-    "geo_distance_count":     3,
-    "geo_shape_count":        4,
-    "geo_bbox_count":         1,
-    "nested_clause_count":    5,
-    "bool_clause_count":      1,
-    "terms_values_count":     1,
-    "knn_clause_count":       4,
-    "agg_clause_count":       3,
-    "runtime_mapping_count":  5,
-    "script_clause_count":    6,
-}
+_ALL_COUNT_FIELDS = [
+    "bool_clause_count", "bool_must_count", "bool_should_count",
+    "bool_filter_count", "bool_must_not_count", "terms_values_count",
+    "knn_clause_count", "fuzzy_clause_count", "geo_bbox_count",
+    "geo_distance_count", "geo_shape_count", "agg_clause_count",
+    "wildcard_clause_count", "nested_clause_count",
+    "runtime_mapping_count", "script_clause_count",
+]
 
 
 @dataclass
@@ -66,7 +59,6 @@ class StressContext:
     size:             int
     shards_total:     int
     docs_affected:    int
-    query_complexity: float
 
 
 def norm(value: float, baseline: float) -> float:
@@ -78,6 +70,13 @@ def _walk_query_clauses(node, counts: dict) -> None:
         for key, value in node.items():
             if key in _SINGLE_CLAUSE_KEYS:
                 counts[_SINGLE_CLAUSE_KEYS[key]] += 1
+            if key == "bool" and isinstance(value, dict):
+                for sub_key in ("must", "should", "filter", "must_not"):
+                    sub = value.get(sub_key)
+                    if isinstance(sub, list):
+                        counts[f"bool_{sub_key}_count"] += len(sub)
+                    elif isinstance(sub, dict):
+                        counts[f"bool_{sub_key}_count"] += 1
             elif key == "terms" and isinstance(value, dict):
                 for field_vals in value.values():
                     if isinstance(field_vals, list):
@@ -100,7 +99,7 @@ def _count_aggs(node) -> int:
 
 
 def _count_clauses(body: dict) -> dict:
-    counts = {k: 0 for k in CLAUSE_WEIGHTS}
+    counts = {k: 0 for k in _ALL_COUNT_FIELDS}
 
     aggs = body.get("aggs") or body.get("aggregations")
     if isinstance(aggs, dict):
@@ -113,14 +112,54 @@ def _count_clauses(body: dict) -> dict:
         counts["knn_clause_count"] += 1
 
     _walk_query_clauses(body.get("query", {}), counts)
+    _walk_query_clauses(body.get("script_fields", {}), counts)
     return counts
 
 
-def calc_query_complexity(body: dict) -> dict:
-    """Count clause types and return raw counts + weighted score."""
-    counts = _count_clauses(body)
-    score = sum(w * counts[k] for k, w in CLAUSE_WEIGHTS.items())
-    return {**counts, "query_complexity": score}
+def count_clauses(body: dict) -> dict:
+    return _count_clauses(body)
+
+
+_COST_INDICATOR_BOOL_THRESHOLD = int(os.environ.get("COST_INDICATOR_BOOL_THRESHOLD", 50))
+_COST_INDICATOR_TERMS_THRESHOLD = int(os.environ.get("COST_INDICATOR_TERMS_THRESHOLD", 500))
+_COST_INDICATOR_AGGS_THRESHOLD = int(os.environ.get("COST_INDICATOR_AGGS_THRESHOLD", 10))
+
+# (name, condition, multiplier, detail_extractor)
+_COST_INDICATORS: list[tuple[str, Callable[[dict], bool], float, Callable[[dict], int]]] = [
+    ("has_script",          lambda c: c["script_clause_count"] >= 1,           1.5,
+                            lambda c: c["script_clause_count"]),
+    ("has_runtime_mapping", lambda c: c["runtime_mapping_count"] >= 1,         1.5,
+                            lambda c: c["runtime_mapping_count"]),
+    ("has_wildcard",        lambda c: c["wildcard_clause_count"] >= 1,         1.3,
+                            lambda c: c["wildcard_clause_count"]),
+    ("has_nested",          lambda c: c["nested_clause_count"] >= 1,           1.3,
+                            lambda c: c["nested_clause_count"]),
+    ("has_fuzzy",           lambda c: c["fuzzy_clause_count"] >= 1,            1.2,
+                            lambda c: c["fuzzy_clause_count"]),
+    ("has_geo",             lambda c: c["geo_distance_count"] + c["geo_shape_count"] >= 1, 1.2,
+                            lambda c: c["geo_distance_count"] + c["geo_shape_count"]),
+    ("has_knn",             lambda c: c["knn_clause_count"] >= 1,              1.2,
+                            lambda c: c["knn_clause_count"]),
+    ("excessive_bool",      lambda c: (c["bool_must_count"] + c["bool_should_count"] +
+                                       c["bool_filter_count"] + c["bool_must_not_count"])
+                                      >= _COST_INDICATOR_BOOL_THRESHOLD,       1.3,
+                            lambda c: (c["bool_must_count"] + c["bool_should_count"] +
+                                       c["bool_filter_count"] + c["bool_must_not_count"])),
+    ("large_terms_list",    lambda c: c["terms_values_count"] >= _COST_INDICATOR_TERMS_THRESHOLD, 1.2,
+                            lambda c: c["terms_values_count"]),
+    ("deep_aggs",           lambda c: c["agg_clause_count"] >= _COST_INDICATOR_AGGS_THRESHOLD,    1.3,
+                            lambda c: c["agg_clause_count"]),
+]
+
+
+def evaluate_cost_indicators(counts: dict) -> tuple[dict[str, int], float]:
+    indicators = {}
+    multiplier = 1.0
+    for name, condition, mult, extract in _COST_INDICATORS:
+        if condition(counts):
+            indicators[name] = extract(counts)
+            multiplier *= mult
+    return indicators, multiplier
 
 
 # ---------------------------------------------------------------------------
@@ -129,11 +168,10 @@ def calc_query_complexity(body: dict) -> dict:
 
 def _stress_query(ctx: StressContext) -> float:
     return (
-        0.45 * norm(ctx.es_took_ms, BASELINES["took_ms"])
-        + 0.25 * norm(ctx.query_complexity, BASELINES["query_complexity"])
-        + 0.15 * norm(ctx.shards_total, BASELINES["shards_total"])
-        + 0.10 * norm(ctx.hits, BASELINES["hits"])
-        + 0.05 * norm(ctx.size, BASELINES["size"])
+        0.55 * norm(ctx.es_took_ms, BASELINES["took_ms"])
+        + 0.20 * norm(ctx.shards_total, BASELINES["shards_total"])
+        + 0.15 * norm(ctx.hits, BASELINES["hits"])
+        + 0.10 * norm(ctx.size, BASELINES["size"])
     )
 
 
@@ -146,18 +184,16 @@ def _stress_bulk(ctx: StressContext) -> float:
 
 def _stress_by_query(ctx: StressContext) -> float:
     return (
-        0.30 * norm(ctx.es_took_ms, BASELINES["took_ms"])
-        + 0.30 * norm(ctx.docs_affected, BASELINES["docs_affected"])
-        + 0.25 * norm(ctx.query_complexity, BASELINES["query_complexity"])
-        + 0.15 * norm(ctx.shards_total, BASELINES["shards_total"])
+        0.40 * norm(ctx.es_took_ms, BASELINES["took_ms"])
+        + 0.35 * norm(ctx.docs_affected, BASELINES["docs_affected"])
+        + 0.25 * norm(ctx.shards_total, BASELINES["shards_total"])
     )
 
 
 def _stress_update(ctx: StressContext) -> float:
     return (
-        0.50 * norm(ctx.es_took_ms, BASELINES["took_ms"])
-        + 0.30 * norm(ctx.query_complexity, BASELINES["query_complexity"])
-        + 0.20 * norm(ctx.shards_total, BASELINES["shards_total"])
+        0.60 * norm(ctx.es_took_ms, BASELINES["took_ms"])
+        + 0.40 * norm(ctx.shards_total, BASELINES["shards_total"])
     )
 
 
@@ -180,6 +216,12 @@ _STRESS_DISPATCH: dict[str, Callable[[StressContext], float]] = {
 }
 
 
-def calc_stress(operation: str, ctx: StressContext) -> float:
+_NO_MULTIPLIER_OPS = {"_bulk", "_create", "index", "delete"}
+
+
+def calc_stress(operation: str, ctx: StressContext, stress_multiplier: float = 1.0) -> float:
     formula = _STRESS_DISPATCH.get(operation, _stress_doc_write)
-    return formula(ctx)
+    base = formula(ctx)
+    if operation in _NO_MULTIPLIER_OPS:
+        return base
+    return base * stress_multiplier
