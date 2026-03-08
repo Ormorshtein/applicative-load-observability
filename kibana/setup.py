@@ -21,8 +21,8 @@ import time
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
-KIBANA = "http://localhost:5601"
-ELASTICSEARCH = "http://localhost:9200"
+KIBANA = os.getenv("KIBANA_URL", "http://localhost:5601")
+ELASTICSEARCH = os.getenv("ELASTICSEARCH_URL", "http://localhost:9200")
 INDEX_PATTERN = "applicative-load-observability-v2"
 DATA_VIEW_ID = "alo-data-view"
 DASHBOARD_ID = "alo-dashboard"

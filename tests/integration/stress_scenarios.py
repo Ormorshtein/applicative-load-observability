@@ -16,6 +16,7 @@ Usage:
 
 import argparse
 import json
+import os
 import random
 import string
 import sys
@@ -600,8 +601,8 @@ def main():
                         help="Number of stress workers (default: 4)")
     parser.add_argument("--noise-workers", type=int, default=2,
                         help="Number of noise workers (default: 2)")
-    parser.add_argument("--gateway", default="http://localhost:9200",
-                        help="Gateway base URL (default: http://localhost:9200)")
+    parser.add_argument("--gateway", default=os.getenv("GATEWAY_URL", "http://localhost:9200"),
+                        help="Gateway base URL (default: %(default)s)")
     parser.add_argument("--cleanup", action="store_true",
                         help="Delete stress indices after run")
     parser.add_argument("--pause", type=int, default=10,

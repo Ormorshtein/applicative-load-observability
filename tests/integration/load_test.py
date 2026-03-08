@@ -14,6 +14,7 @@ Usage:
 
 import argparse
 import json
+import os
 import random
 import string
 import sys
@@ -23,7 +24,7 @@ from collections import defaultdict
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 
-GATEWAY = "http://localhost:9200"
+GATEWAY = os.getenv("GATEWAY_URL", "http://localhost:9200")
 INDEX = "loadtest"
 DURATION = 60
 WORKERS = 10
