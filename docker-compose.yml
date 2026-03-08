@@ -20,6 +20,11 @@ services:
     build: ./logstash
     ports:
       - "8080:8080"
+      # - "9600:9600"  # Uncomment to expose Logstash monitoring API
+    environment:
+      # Set LOGSTASH_MONITORING=true to ship pipeline metrics to ES
+      # (viewable in Kibana → Stack Monitoring)
+      - LOGSTASH_MONITORING=${LOGSTASH_MONITORING:-false}
     volumes:
       - ./logstash/pipeline/:/usr/share/logstash/pipeline/
       - ./logstash/logstash.yml:/usr/share/logstash/logstash.yml:ro

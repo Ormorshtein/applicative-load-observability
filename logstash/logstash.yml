@@ -6,5 +6,10 @@ pipeline.batch.delay: 50
 queue.type: memory
 queue.max_bytes: 256mb
 
-# Monitoring (visible in logs)
 log.level: info
+
+# Pipeline monitoring — ships metrics (events in/out/filtered, errors) to ES.
+# Enable by setting LOGSTASH_MONITORING=true in docker-compose environment.
+# Viewable in Kibana → Stack Monitoring.
+xpack.monitoring.enabled: ${LOGSTASH_MONITORING}
+xpack.monitoring.elasticsearch.hosts: ["http://elasticsearch:9200"]
