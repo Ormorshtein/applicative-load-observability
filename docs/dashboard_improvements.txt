@@ -1,0 +1,1 @@
+1. Remove the "top 10" in the title of the piechart

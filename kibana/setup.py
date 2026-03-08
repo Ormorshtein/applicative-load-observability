@@ -251,11 +251,13 @@ def do_import():
 
 DV_REF = [{"type": "index-pattern", "id": DATA_VIEW_ID, "name": "indexpattern-datasource-layer-layer1"}]
 
+# Ordered per dashboard layout: Application → Target → Operation → Cost Indicator → Template
 SECTIONS = [
-    ("request.template",              "Template"),
-    ("request.operation",             "Operation"),
-    ("request.target",                "Target"),
     ("identity.applicative_provider", "Application"),
+    ("request.target",                "Target"),
+    ("request.operation",             "Operation"),
+    ("stress.cost_indicator_names",   "Cost Indicator"),
+    ("request.template",              "Template"),
 ]
 
 
@@ -274,7 +276,7 @@ def mk_metric(vis_id, title, source_field, operation):
     }
 
 
-def mk_pie(vis_id, title, field):
+def mk_pie(vis_id, title, field, size=8):
     return vis_id, {
         "title": title, "visualizationType": "lnsPie",
         "state": {
@@ -289,7 +291,7 @@ def mk_pie(vis_id, title, field):
                 "columns": {
                     "breakdown": {"label": field.split(".")[-1], "dataType": "string",
                                   "operationType": "terms", "sourceField": field, "isBucketed": True,
-                                  "params": {"size": 8, "orderBy": {"type": "column", "columnId": "metric"},
+                                  "params": {"size": size, "orderBy": {"type": "column", "columnId": "metric"},
                                              "orderDirection": "desc", "otherBucket": True}},
                     "metric": {"label": "Total Stress", "dataType": "number",
                                "operationType": "sum", "sourceField": "stress.score", "isBucketed": False},
@@ -301,7 +303,8 @@ def mk_pie(vis_id, title, field):
     }
 
 
-def mk_ts(vis_id, title, field):
+def mk_ts(vis_id, title, field, metric_field="stress.score", metric_label="Avg Stress Score",
+          metric_op="average", size=5):
     return vis_id, {
         "title": title, "visualizationType": "lnsXY",
         "state": {
@@ -319,12 +322,46 @@ def mk_ts(vis_id, title, field):
                              "sourceField": "timestamp", "isBucketed": True, "params": {"interval": "auto"}},
                     "breakdown": {"label": field.split(".")[-1], "dataType": "string",
                                   "operationType": "terms", "sourceField": field, "isBucketed": True,
-                                  "params": {"size": 5, "orderBy": {"type": "column", "columnId": "metric"},
+                                  "params": {"size": size, "orderBy": {"type": "column", "columnId": "metric"},
                                              "orderDirection": "desc", "otherBucket": True}},
-                    "metric": {"label": "Avg Stress Score", "dataType": "number",
-                               "operationType": "average", "sourceField": "stress.score", "isBucketed": False},
+                    "metric": {"label": metric_label, "dataType": "number",
+                               "operationType": metric_op, "sourceField": metric_field, "isBucketed": False},
                 },
                 "columnOrder": ["time", "breakdown", "metric"], "incompleteColumns": {},
+            }}}},
+            "query": {"query": "", "language": "kuery"}, "filters": [],
+        },
+    }
+
+
+def mk_ts_response(vis_id, title, breakdown_field, latency_field, latency_label, size=5):
+    """Time series: avg latency over time, split by breakdown_field, with request count as secondary axis."""
+    return vis_id, {
+        "title": title, "visualizationType": "lnsXY",
+        "state": {
+            "visualization": {
+                "preferredSeriesType": "line",
+                "layers": [{"layerId": "layer1", "layerType": "data", "seriesType": "line",
+                            "xAccessor": "time", "accessors": ["latency", "count"], "splitAccessor": "breakdown"}],
+                "legend": {"isVisible": True, "position": "right"},
+                "axisTitlesVisibilitySettings": {"x": False, "yLeft": True, "yRight": True},
+                "yLeftExtent": {"mode": "dataBounds"},
+                "yRightExtent": {"mode": "dataBounds"},
+            },
+            "datasourceStates": {"formBased": {"layers": {"layer1": {
+                "columns": {
+                    "time": {"label": "timestamp", "dataType": "date", "operationType": "date_histogram",
+                             "sourceField": "timestamp", "isBucketed": True, "params": {"interval": "auto"}},
+                    "breakdown": {"label": breakdown_field.split(".")[-1], "dataType": "string",
+                                  "operationType": "terms", "sourceField": breakdown_field, "isBucketed": True,
+                                  "params": {"size": size, "orderBy": {"type": "column", "columnId": "latency"},
+                                             "orderDirection": "desc", "otherBucket": True}},
+                    "latency": {"label": latency_label, "dataType": "number",
+                                "operationType": "average", "sourceField": latency_field, "isBucketed": False},
+                    "count": {"label": "Requests", "dataType": "number",
+                              "operationType": "count", "sourceField": "___records___", "isBucketed": False},
+                },
+                "columnOrder": ["time", "breakdown", "latency", "count"], "incompleteColumns": {},
             }}}},
             "query": {"query": "", "language": "kuery"}, "filters": [],
         },
@@ -476,21 +513,64 @@ def build_dashboard(dashboard_id, title, description, vis_ids, layout_fn):
 
 
 def layout_main(vis_ids, panels, refs):
+    """
+    Layout structure (mapped to improvement notes):
+
+    Row 0 (y=0, h=10):   5 pie charts in one row — Application, Target, Operation, Cost Indicator, Template
+                          (Note 1: KPI panels removed; Note 5: pies in one line, this order)
+    Row 1-5 (h=12 each): 5 stress-over-time charts, same order as pies
+                          (Note 5.1: same order; Note 5.2: grouped after pies to avoid confusion)
+    Row 6 (h=14):         Top 10 Templates by Stress Score table
+                          (Note 6: sum stress, avg ES/gateway latency, cost indicators, requests)
+    Row 7-8 (h=12 each): Avg ES Response Time — by Cost Indicator, by Operation, by Template
+                          Avg Gateway Response Time — by Cost Indicator, by Operation, by Template
+                          (Note 8: two latency types × 3 breakdowns, request count on hover)
+    Row 9 (h=12):         Sanity check tables — most recurring templates, most cost indicators
+                          (Note 7: sanity tables at the bottom)
+    """
     y = 0
-    for i, vid in enumerate(vis_ids[:4]):
-        panels.append({"panelIndex": vid, "gridData": {"x": i*12, "y": y, "w": 12, "h": 6, "i": vid},
+
+    # --- Row 0: 5 pie charts (indices 0-4) ---
+    pie_w = 48 // 5  # ~9 each, last one gets remainder
+    for i in range(5):
+        vid = vis_ids[i]
+        w = pie_w if i < 4 else 48 - pie_w * 4
+        panels.append({"panelIndex": vid, "gridData": {"x": i * pie_w, "y": y, "w": w, "h": 10, "i": vid},
                        "type": "lens", "panelRefName": f"panel_{vid}"})
         refs.append({"type": "lens", "id": vid, "name": f"panel_{vid}"})
-    y += 6
-    for j in range(0, len(vis_ids[4:]), 2):
-        pid, tid = vis_ids[4+j], vis_ids[4+j+1]
-        panels.append({"panelIndex": pid, "gridData": {"x": 0, "y": y, "w": 16, "h": 12, "i": pid},
-                       "type": "lens", "panelRefName": f"panel_{pid}"})
-        panels.append({"panelIndex": tid, "gridData": {"x": 16, "y": y, "w": 32, "h": 12, "i": tid},
-                       "type": "lens", "panelRefName": f"panel_{tid}"})
-        refs.append({"type": "lens", "id": pid, "name": f"panel_{pid}"})
-        refs.append({"type": "lens", "id": tid, "name": f"panel_{tid}"})
+    y += 10
+
+    # --- Rows 1-5: 5 stress-over-time charts (indices 5-9) ---
+    for i in range(5):
+        vid = vis_ids[5 + i]
+        panels.append({"panelIndex": vid, "gridData": {"x": 0, "y": y, "w": 48, "h": 12, "i": vid},
+                       "type": "lens", "panelRefName": f"panel_{vid}"})
+        refs.append({"type": "lens", "id": vid, "name": f"panel_{vid}"})
         y += 12
+
+    # --- Row 6: Top Templates by Stress Score table (index 10) ---
+    vid = vis_ids[10]
+    panels.append({"panelIndex": vid, "gridData": {"x": 0, "y": y, "w": 48, "h": 14, "i": vid},
+                   "type": "lens", "panelRefName": f"panel_{vid}"})
+    refs.append({"type": "lens", "id": vid, "name": f"panel_{vid}"})
+    y += 14
+
+    # --- Rows 7-8: Response time panels (indices 11-16), 3 per row ---
+    for row_start in (11, 14):
+        for j in range(3):
+            vid = vis_ids[row_start + j]
+            panels.append({"panelIndex": vid, "gridData": {"x": j * 16, "y": y, "w": 16, "h": 12, "i": vid},
+                           "type": "lens", "panelRefName": f"panel_{vid}"})
+            refs.append({"type": "lens", "id": vid, "name": f"panel_{vid}"})
+        y += 12
+
+    # --- Row 9: 2 sanity check tables (indices 17-18) ---
+    for j in range(2):
+        vid = vis_ids[17 + j]
+        panels.append({"panelIndex": vid, "gridData": {"x": j * 24, "y": y, "w": 24, "h": 12, "i": vid},
+                       "type": "lens", "panelRefName": f"panel_{vid}"})
+        refs.append({"type": "lens", "id": vid, "name": f"panel_{vid}"})
+    y += 12
 
 
 def layout_cost_indicators(vis_ids, panels, refs):
@@ -529,15 +609,82 @@ def do_rebuild():
     print(f"  {'OK' if s in (200,201) else 'FAIL'}: Data view")
 
     # ── Main dashboard visualizations ──
-    all_vis = [
-        mk_metric("alo-kpi-requests",   "Total Requests",        "stress.score",             "count"),
-        mk_metric("alo-kpi-stress",     "Avg Stress Score",      "stress.score",             "average"),
-        mk_metric("alo-kpi-latency",    "Avg Latency (ms)",      "response.gateway_took_ms", "average"),
-        mk_metric("alo-kpi-multiplier", "Avg Stress Multiplier", "stress.multiplier",        "average"),
-    ]
+    # Note 1: KPI panels removed (no more top-row metrics)
+    # Note 5: Pie charts ordered — Application, Target, Operation, Cost Indicator, Template
+
+    all_vis = []
+
+    # --- Pie charts (indices 0-4): stress share by each dimension ---
+    # Note 2: renamed to include "Selected Period" to clarify time scope
+    # Note 4: Template pie explicitly shows top 10 in title
     for field, label in SECTIONS:
-        all_vis.append(mk_pie(f"alo-pie-{label.lower()}", f"Stress Share — {label}", field))
-        all_vis.append(mk_ts(f"alo-ts-{label.lower()}", f"Stress Over Time — {label}", field))
+        size = 10 if field == "request.template" else 8
+        suffix = " — Top 10" if field == "request.template" else ""
+        slug = label.lower().replace(" ", "-")
+        all_vis.append(mk_pie(
+            f"alo-pie-{slug}",
+            f"Stress by {label}{suffix} (Selected Period)",
+            field, size=size))
+
+    # --- Time series (indices 5-9): stress over time, same dimension order ---
+    # Note 5.1: same order as pies; Note 5.2: grouped after pies to avoid confusion
+    for field, label in SECTIONS:
+        size = 10 if field == "request.template" else 5
+        suffix = " — Top 10" if field == "request.template" else ""
+        slug = label.lower().replace(" ", "-")
+        all_vis.append(mk_ts(
+            f"alo-ts-{slug}",
+            f"Stress Over Time by {label}{suffix}",
+            field, size=size))
+
+    # --- Table (index 10): top 10 templates by stress score ---
+    # Note 6: sum stress, avg ES latency, avg gateway latency, cost indicators, requests
+    all_vis.append(mk_datatable(
+        "alo-table-top-templates", "Top 10 Templates by Stress Score",
+        "request.template", "Template", [
+            ("sum_stress",       "Sum Stress",              "stress.score",                "sum"),
+            ("avg_es_latency",   "Avg ES Latency (ms)",     "response.es_took_ms",         "average"),
+            ("avg_gw_latency",   "Avg Gateway Latency (ms)","response.gateway_took_ms",    "average"),
+            ("cost_indicators",  "Avg Cost Indicators",     "stress.cost_indicator_count",  "average"),
+            ("requests",         "Requests",                None,                           "count"),
+        ], size=10))
+
+    # --- Response time panels (indices 11-16) ---
+    # Note 8: avg ES and gateway latency over time, with request count on hover
+    # 3 breakdowns each: cost indicator, operation, template
+    response_breakdowns = [
+        ("stress.cost_indicator_names", "Cost Indicator"),
+        ("request.operation",           "Operation"),
+        ("request.template",            "Template"),
+    ]
+    for bd_field, bd_label in response_breakdowns:
+        slug = bd_label.lower().replace(" ", "-")
+        all_vis.append(mk_ts_response(
+            f"alo-resp-es-{slug}",
+            f"Avg ES Response Time by {bd_label}",
+            bd_field, "response.es_took_ms", "Avg ES Latency (ms)"))
+
+    for bd_field, bd_label in response_breakdowns:
+        slug = bd_label.lower().replace(" ", "-")
+        all_vis.append(mk_ts_response(
+            f"alo-resp-gw-{slug}",
+            f"Avg Gateway Response Time by {bd_label}",
+            bd_field, "response.gateway_took_ms", "Avg Gateway Latency (ms)"))
+
+    # --- Sanity check tables (indices 17-18) ---
+    # Note 7: sanity tables at the bottom
+    all_vis.append(mk_datatable(
+        "alo-sanity-recurring", "Top 10 Most Recurring Templates",
+        "request.template", "Template", [
+            ("requests", "Requests", None, "count"),
+        ], size=10))
+
+    all_vis.append(mk_datatable(
+        "alo-sanity-cost-indicators", "Top 10 Templates with Most Cost Indicators",
+        "request.template", "Template", [
+            ("avg_ci",   "Avg Cost Indicators", "stress.cost_indicator_count", "average"),
+            ("requests", "Requests",            None,                          "count"),
+        ], size=10))
 
     vis_ids = []
     for vid, attrs in all_vis:
@@ -546,7 +693,7 @@ def do_rebuild():
         vis_ids.append(vid)
 
     ok1 = build_dashboard(DASHBOARD_ID, "Applicative Load Observability",
-                          "Stress scores by template, operation, target, and application.",
+                          "Stress analysis by application, target, operation, cost indicator, and template.",
                           vis_ids, layout_main)
 
     # ── Cost indicators dashboard visualizations ──
