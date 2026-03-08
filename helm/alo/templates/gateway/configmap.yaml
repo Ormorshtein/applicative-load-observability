@@ -17,7 +17,9 @@ data:
     http {
         lua_package_path "/usr/local/openresty/site/lualib/?.lua;/usr/local/openresty/lualib/?.lua;;";
         lua_need_request_body on;
-        resolver kube-dns.kube-system.svc.cluster.local valid=10s ipv6=off;
+        lua_max_pending_timers 65536;
+        lua_max_running_timers 4096;
+        resolver __DNS_RESOLVER__ valid=10s ipv6=off;
 
         {{- $esUrl := include "alo.elasticsearchUrl" . }}
         {{- $esHost := $esUrl | trimPrefix "http://" | trimPrefix "https://" }}
@@ -76,9 +78,8 @@ data:
                             end
                             {{- end }}
 
-                            {{- $pipelineUrl := include "alo.pipelineUrl" . }}
-                            {{- $pipelineIsHttps := hasPrefix "https://" $pipelineUrl }}
-                            local res, err = httpc:request_uri("{{ $pipelineUrl }}", {
+                            local pipeline_url = os.getenv("PIPELINE_URL")
+                            local res, err = httpc:request_uri(pipeline_url, {
                                 method  = "POST",
                                 body    = cjson.encode({
                                     method              = ctx.method,
@@ -93,9 +94,7 @@ data:
                                     client_host         = ctx.client_host,
                                 }),
                                 headers = pipeline_headers,
-                                {{- if $pipelineIsHttps }}
-                                ssl_verify = {{ not (and (eq .Values.pipelineMode "nifi") .Values.nifi.external.enabled .Values.nifi.external.tls.insecureSkipVerify) }},
-                                {{- end }}
+                                ssl_verify = pipeline_url:sub(1, 5) == "https" and {{ not (and (eq .Values.pipelineMode "nifi") .Values.nifi.external.enabled .Values.nifi.external.tls.insecureSkipVerify) }} or false,
                             })
                             if not res then
                                 ngx.log(ngx.WARN, "observability: pipeline unreachable: ", err)

@@ -31,7 +31,7 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: logstash
-          image: "{{ .Values.logstash.image.repository }}:{{ .Values.logstash.image.tag }}"
+          image: "{{ .Values.logstash.image.repository }}:{{ .Values.logstash.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.logstash.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}

@@ -1,0 +1,23 @@
+{{- if eq .Values.pipelineMode "logstash" }}
+{{- if not .Values.logstash.external.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "alo.fullname" . }}-test-logstash
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  containers:
+    - name: test-logstash
+      image: busybox:1.36
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "Testing Logstash HTTP input connectivity..."
+          wget -qO- --timeout=10 http://{{ include "alo.fullname" . }}-logstash:{{ .Values.logstash.service.httpPort }}/ || exit 1
+          echo "Logstash is reachable."
+{{- end }}
+{{- end }}

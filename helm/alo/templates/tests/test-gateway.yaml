@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "alo.fullname" . }}-test-gateway
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  containers:
+    - name: test-gateway
+      image: busybox:1.36
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "Testing gateway connectivity..."
+          wget -qO- --timeout=10 http://{{ include "alo.fullname" . }}-gateway:{{ .Values.gateway.service.port }}/ || exit 1
+          echo "Gateway is reachable."

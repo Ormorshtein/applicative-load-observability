@@ -138,7 +138,7 @@ logstash:
   # ── Internal deployment (ignored when external.enabled=true) ──
   image:
     repository: alo-logstash
-    tag: latest
+    tag: ""           # Defaults to Chart.AppVersion
     pullPolicy: IfNotPresent
   replicas: 1
   resources:
@@ -188,7 +188,7 @@ metricbeat:
 analyzer:
   image:
     repository: alo-analyzer
-    tag: latest
+    tag: ""           # Defaults to Chart.AppVersion
     pullPolicy: IfNotPresent
   replicas: 2
   port: 8000
@@ -207,9 +207,11 @@ analyzer:
 
 # ── Gateway ─────────────────────────────────────────────────────────────────
 gateway:
+  # DNS resolver for OpenResty. Leave empty to auto-detect from /etc/resolv.conf (works on K8s and OpenShift).
+  dnsResolver: ""
   image:
     repository: alo-gateway
-    tag: latest
+    tag: ""           # Defaults to Chart.AppVersion
     pullPolicy: IfNotPresent
   replicas: 2
   port: 9200
@@ -268,7 +270,7 @@ kibana:
     enabled: true
     image:
       repository: alo-kibana-setup
-      tag: latest
+      tag: ""           # Defaults to Chart.AppVersion
       pullPolicy: IfNotPresent
   nodeSelector: {}
   tolerations: []

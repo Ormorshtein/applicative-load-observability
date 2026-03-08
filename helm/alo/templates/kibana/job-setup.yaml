@@ -28,7 +28,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: setup
-          image: "{{ .Values.kibana.setup.image.repository }}:{{ .Values.kibana.setup.image.tag }}"
+          image: "{{ .Values.kibana.setup.image.repository }}:{{ .Values.kibana.setup.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.kibana.setup.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}

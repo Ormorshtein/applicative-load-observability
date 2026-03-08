@@ -29,7 +29,7 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: analyzer
-          image: "{{ .Values.analyzer.image.repository }}:{{ .Values.analyzer.image.tag }}"
+          image: "{{ .Values.analyzer.image.repository }}:{{ .Values.analyzer.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.analyzer.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}

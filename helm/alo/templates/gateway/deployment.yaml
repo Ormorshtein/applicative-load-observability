@@ -28,14 +28,34 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: resolve-dns
+          image: busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              {{- if .Values.gateway.dnsResolver }}
+              RESOLVER="{{ .Values.gateway.dnsResolver }}"
+              {{- else }}
+              RESOLVER=$(awk '/^nameserver/{print $2; exit}' /etc/resolv.conf)
+              {{- end }}
+              sed "s/__DNS_RESOLVER__/$RESOLVER/g" /config-template/nginx.conf > /config/nginx.conf
+          volumeMounts:
+            - name: nginx-config-template
+              mountPath: /config-template
+              readOnly: true
+            - name: nginx-config-resolved
+              mountPath: /config
       containers:
         - name: gateway
-          image: "{{ .Values.gateway.image.repository }}:{{ .Values.gateway.image.tag }}"
+          image: "{{ .Values.gateway.image.repository }}:{{ .Values.gateway.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.gateway.image.pullPolicy }}
           command: ["/usr/local/openresty/bin/openresty", "-g", "daemon off;"]
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           env:
+            - name: PIPELINE_URL
+              value: {{ include "alo.pipelineUrl" . | quote }}
             {{- if eq (include "alo.esAuthEnabled" .) "true" }}
             {{- $authType := "" }}
             {{- if .Values.elasticsearch.external.enabled }}
@@ -77,7 +97,7 @@ spec:
               containerPort: {{ .Values.gateway.port }}
               protocol: TCP
           volumeMounts:
-            - name: nginx-config
+            - name: nginx-config-resolved
               mountPath: /usr/local/openresty/nginx/conf/nginx.conf
               subPath: nginx.conf
               readOnly: true
@@ -104,9 +124,11 @@ spec:
           resources:
             {{- toYaml .Values.gateway.resources | nindent 12 }}
       volumes:
-        - name: nginx-config
+        - name: nginx-config-template
           configMap:
             name: {{ include "alo.fullname" . }}-gateway-nginx
+        - name: nginx-config-resolved
+          emptyDir: {}
         {{- if and .Values.elasticsearch.external.enabled .Values.elasticsearch.external.tls.caSecret }}
         - name: es-ca
           secret:

@@ -46,7 +46,7 @@ Elasticsearch URL — either external or internal service.
 */}}
 {{- define "alo.elasticsearchUrl" -}}
 {{- if .Values.elasticsearch.external.enabled }}
-{{- .Values.elasticsearch.external.url }}
+{{- required "elasticsearch.external.url is required when elasticsearch.external.enabled=true" .Values.elasticsearch.external.url }}
 {{- else }}
 {{- printf "http://%s-elasticsearch:%d" (include "alo.fullname" .) (.Values.elasticsearch.service.port | int) }}
 {{- end }}
@@ -57,7 +57,7 @@ NiFi listen URL — either external or internal service.
 */}}
 {{- define "alo.nifiListenUrl" -}}
 {{- if .Values.nifi.external.enabled }}
-{{- .Values.nifi.external.listenUrl }}
+{{- required "nifi.external.listenUrl is required when nifi.external.enabled=true" .Values.nifi.external.listenUrl }}
 {{- else }}
 {{- printf "http://%s-nifi:%d/%s" (include "alo.fullname" .) (.Values.nifi.service.listenPort | int) .Values.nifi.listenBasePath }}
 {{- end }}
@@ -68,7 +68,7 @@ Kibana URL for dashboard setup job.
 */}}
 {{- define "alo.kibanaUrl" -}}
 {{- if .Values.kibana.external.enabled }}
-{{- .Values.kibana.external.url }}
+{{- required "kibana.external.url is required when kibana.external.enabled=true" .Values.kibana.external.url }}
 {{- else }}
 {{- printf "http://%s-kibana:%d" (include "alo.fullname" .) (.Values.kibana.service.port | int) }}
 {{- end }}
@@ -79,7 +79,7 @@ Logstash URL — either external or internal service.
 */}}
 {{- define "alo.logstashUrl" -}}
 {{- if .Values.logstash.external.enabled }}
-{{- .Values.logstash.external.url }}
+{{- required "logstash.external.url is required when logstash.external.enabled=true" .Values.logstash.external.url }}
 {{- else }}
 {{- printf "http://%s-logstash:%d/" (include "alo.fullname" .) (.Values.logstash.service.httpPort | int) }}
 {{- end }}
