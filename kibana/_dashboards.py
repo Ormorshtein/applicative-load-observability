@@ -7,12 +7,16 @@ from urllib.request import Request, urlopen
 
 from _client import StackConfig, kibana_request, upsert
 from _visualizations import (
+    CHEAT_SHEET_MARKDOWN,
+    PANEL_DESCRIPTIONS,
     SECTIONS,
     layout_cost_indicators,
     layout_main,
     mk_ci_metric,
     mk_datatable,
     mk_horizontal_bar,
+    mk_markdown,
+    mk_metric,
     mk_pie,
     mk_ts,
     mk_ts_multi,
@@ -131,27 +135,41 @@ def do_rebuild(cfg: StackConfig) -> bool:
     # ── Main dashboard visualizations ──
     all_vis = []
 
-    # --- Pie charts (indices 0-4): stress share by each dimension ---
+    # --- Index 0: Cheat sheet markdown panel (item 4) ---
+    all_vis.append(mk_markdown(
+        "alo-cheat-sheet", "Dashboard Guide",
+        CHEAT_SHEET_MARKDOWN,
+        description="Quick reference guide for examining this dashboard."))
+
+    # --- Index 1: Total current stress score (item 5) ---
+    all_vis.append(mk_metric(
+        "alo-total-stress", "Total Stress Score",
+        "stress.score", "sum",
+        description="Sum of all stress scores in the selected time period."))
+
+    # --- Pie charts (indices 2-6): stress share by each dimension ---
+    # Item 2: pie charts include request count in tooltip via extra metric
+    # Item 3: each panel has a hover description
     for field, label in SECTIONS:
         size = 10 if field == "request.template" else 8
-        suffix = " — Top 10" if field == "request.template" else ""
         slug = label.lower().replace(" ", "-")
         all_vis.append(mk_pie(
             f"alo-pie-{slug}",
-            f"Stress by {label}{suffix} (Selected Period)",
-            field, size=size))
+            f"Stress by {label} (Selected Period)",
+            field, size=size,
+            description=PANEL_DESCRIPTIONS["pie"][label]))
 
-    # --- Time series (indices 5-9): stress over time, same dimension order ---
+    # --- Time series (indices 7-11): stress over time, same dimension order ---
     for field, label in SECTIONS:
         size = 10 if field == "request.template" else 5
-        suffix = " — Top 10" if field == "request.template" else ""
         slug = label.lower().replace(" ", "-")
         all_vis.append(mk_ts(
             f"alo-ts-{slug}",
-            f"Stress Over Time by {label}{suffix}",
-            field, size=size))
+            f"Stress Over Time by {label}",
+            field, size=size,
+            description=PANEL_DESCRIPTIONS["ts"][label]))
 
-    # --- Table (index 10): top 10 templates by stress score ---
+    # --- Table (index 12): top 10 templates by stress score ---
     all_vis.append(mk_datatable(
         "alo-table-top-templates", "Top 10 Templates by Stress Score",
         "request.template", "Template", [
@@ -162,7 +180,7 @@ def do_rebuild(cfg: StackConfig) -> bool:
             ("requests",         "Requests",                None,                           "count"),
         ], size=10))
 
-    # --- Response time panels (indices 11-16) ---
+    # --- Response time panels (indices 13-18) ---
     response_breakdowns = [
         ("stress.cost_indicator_names", "Cost Indicator"),
         ("request.operation",           "Operation"),
@@ -173,16 +191,18 @@ def do_rebuild(cfg: StackConfig) -> bool:
         all_vis.append(mk_ts_response(
             f"alo-resp-es-{slug}",
             f"Avg ES Response Time by {bd_label}",
-            bd_field, "response.es_took_ms", "Avg ES Latency (ms)"))
+            bd_field, "response.es_took_ms", "Avg ES Latency (ms)",
+            description=PANEL_DESCRIPTIONS["resp_es"][bd_label]))
 
     for bd_field, bd_label in response_breakdowns:
         slug = bd_label.lower().replace(" ", "-")
         all_vis.append(mk_ts_response(
             f"alo-resp-gw-{slug}",
             f"Avg Gateway Response Time by {bd_label}",
-            bd_field, "response.gateway_took_ms", "Avg Gateway Latency (ms)"))
+            bd_field, "response.gateway_took_ms", "Avg Gateway Latency (ms)",
+            description=PANEL_DESCRIPTIONS["resp_gw"][bd_label]))
 
-    # --- Sanity check tables (indices 17-18) ---
+    # --- Sanity check tables (indices 19-20) ---
     all_vis.append(mk_datatable(
         "alo-sanity-recurring", "Top 10 Most Recurring Templates",
         "request.template", "Template", [
@@ -198,7 +218,10 @@ def do_rebuild(cfg: StackConfig) -> bool:
 
     vis_ids = []
     for vid, attrs in all_vis:
-        ok = upsert(cfg, "lens", vid, attrs, DV_REF)
+        is_markdown = "visState" in attrs
+        obj_type = "visualization" if is_markdown else "lens"
+        ref = [] if is_markdown else DV_REF
+        ok = upsert(cfg, obj_type, vid, attrs, ref)
         print(f"  {'OK' if ok else 'FAIL'}: {attrs['title']}")
         vis_ids.append(vid)
 
