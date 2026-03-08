@@ -8,18 +8,18 @@ events {
 http {
     lua_package_path "/usr/local/openresty/site/lualib/?.lua;/usr/local/openresty/lualib/?.lua;;";
     lua_need_request_body on;
-    resolver 127.0.0.11 valid=10s ipv6=off;
+    resolver ${DNS_RESOLVER} valid=10s ipv6=off;
 
     upstream elasticsearch {
-        server elasticsearch:9200;
+        server ${ELASTICSEARCH_HOST};
         keepalive 32;
     }
 
     server {
-        listen 9200;
+        listen ${GATEWAY_PORT};
 
         location / {
-            # Accumulate response chunks so we can forward them to NiFi
+            # Accumulate response chunks so we can forward them to Logstash
             body_filter_by_lua_block {
                 local chunk = ngx.arg[1]
                 if chunk then
@@ -43,7 +43,7 @@ http {
                     client_host     = ngx.var.remote_addr,
                 }
 
-                local function notify_nifi(premature, ctx)
+                local function notify_logstash(premature, ctx)
                     if premature then return end
 
                     local ok, err = pcall(function()
@@ -65,7 +65,7 @@ http {
 
                         local httpc = http.new()
                         httpc:set_timeout(1000)  -- 1 s connect+send timeout
-                        local res, err = httpc:request_uri("http://nifi:8080/observe", {
+                        local res, err = httpc:request_uri("${LOGSTASH_URL}", {
                             method  = "POST",
                             body    = payload,
                             headers = {
@@ -73,9 +73,9 @@ http {
                             },
                         })
                         if not res then
-                            ngx.log(ngx.WARN, "observability: nifi unreachable: ", err)
+                            ngx.log(ngx.WARN, "observability: logstash unreachable: ", err)
                         elseif res.status >= 300 then
-                            ngx.log(ngx.WARN, "observability: nifi returned ", res.status)
+                            ngx.log(ngx.WARN, "observability: logstash returned ", res.status)
                         end
                     end)
 
@@ -84,7 +84,7 @@ http {
                     end
                 end
 
-                local ok, err = ngx.timer.at(0, notify_nifi, ctx)
+                local ok, err = ngx.timer.at(0, notify_logstash, ctx)
                 if not ok then
                     ngx.log(ngx.WARN, "observability: timer failed: ", err)
                 end

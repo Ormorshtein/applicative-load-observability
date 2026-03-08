@@ -5,7 +5,7 @@ Pure extraction functions — no I/O, no side effects.
 import base64
 import json
 import re
-from typing import Callable
+from typing import Any, Callable
 
 _BASIC_AUTH_PREFIX = "Basic "
 _ES_DEFAULT_SIZE   = 10
@@ -87,25 +87,7 @@ def parse_size(body: dict) -> int:
     return body.get("size", _ES_DEFAULT_SIZE)
 
 
-def _has_key_recursive(node, key: str) -> bool:
-    if isinstance(node, dict):
-        if key in node:
-            return True
-        return any(_has_key_recursive(value, key) for value in node.values())
-    if isinstance(node, list):
-        return any(_has_key_recursive(item, key) for item in node)
-    return False
-
-
-def parse_has_script(body: dict) -> bool:
-    return _has_key_recursive(body, "script")
-
-
-def parse_has_runtime_mappings(body: dict) -> bool:
-    return "runtime_mappings" in body
-
-
-def _scrub(node):
+def _scrub(node: Any) -> Any:
     if isinstance(node, dict):
         return {key: _scrub(value) for key, value in node.items()}
     if isinstance(node, list):
@@ -127,6 +109,20 @@ def parse_hits(response_body: dict) -> int:
 
 def parse_shards_total(response_body: dict) -> int:
     return response_body.get("_shards", {}).get("total", 0)
+
+
+def parse_shards_total_bulk(response_body: dict) -> int:
+    """Aggregate unique-index shard counts from bulk response items."""
+    seen = set()
+    total = 0
+    for item in response_body.get("items", []):
+        for action_result in item.values():
+            idx = action_result.get("_index", "")
+            shards = action_result.get("_shards", {}).get("total", 0)
+            if idx and idx not in seen and shards:
+                seen.add(idx)
+                total += shards
+    return total
 
 
 def parse_docs_affected(operation: str, response_body: dict) -> int:

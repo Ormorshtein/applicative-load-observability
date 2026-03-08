@@ -5,7 +5,9 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
+      - xpack.monitoring.collection.enabled=false
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    cpus: 2
     volumes:
       - es-data:/usr/share/elasticsearch/data
     networks:
@@ -16,29 +18,39 @@ services:
       timeout: 5s
       retries: 10
 
-  nifi:
-    image: apache/nifi:latest
-    environment:
-      - NIFI_WEB_HTTPS_HOST=0.0.0.0
-      - NIFI_WEB_HTTPS_PORT=8443
-      - SINGLE_USER_CREDENTIALS_USERNAME=admin
-      - SINGLE_USER_CREDENTIALS_PASSWORD=adminadminadmin
-      - NIFI_WEB_PROXY_HOST=localhost:8443
-      - NIFI_SENSITIVE_PROPS_KEY=observabilitykey
+  logstash:
+    build: ./logstash
     ports:
-      - "8443:8443"
       - "8080:8080"
+      # - "9600:9600"  # Uncomment to expose Logstash monitoring API
+    environment:
+      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL:-http://elasticsearch:9200}
+      - ANALYZER_URL=${ANALYZER_URL:-http://analyzer:8000/analyze}
+      - LOGSTASH_HTTP_PORT=${LOGSTASH_HTTP_PORT:-8080}
+      # Set LOGSTASH_MONITORING=true to ship pipeline metrics to ES
+      # (viewable in Kibana → Stack Monitoring)
+      - LOGSTASH_MONITORING=${LOGSTASH_MONITORING:-false}
     volumes:
-      - ./nifi/flow.json.gz:/opt/nifi/flow-seed.json.gz:ro
-    entrypoint: ["/bin/bash", "-c", "cp /opt/nifi/flow-seed.json.gz /opt/nifi/nifi-current/conf/flow.json.gz && exec ../scripts/start.sh"]
+      - ./logstash/pipeline/:/usr/share/logstash/pipeline/
+      - ./logstash/logstash.yml:/usr/share/logstash/logstash.yml:ro
+      - ./logstash/pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
     networks:
       - obs-net
     depends_on:
       elasticsearch:
         condition: service_healthy
+      analyzer:
+        condition: service_healthy
 
   analyzer:
     build: ./analyzer
+    # Uncomment to override stress baselines per cluster:
+    # environment:
+    #   - STRESS_BASELINE_TOOK_MS=100
+    #   - STRESS_BASELINE_HITS=10000
+    #   - STRESS_BASELINE_SHARDS_TOTAL=5
+    #   - STRESS_BASELINE_SIZE=100
+    #   - STRESS_BASELINE_DOCS_AFFECTED=500
     networks:
       - obs-net
     depends_on:
@@ -53,7 +65,7 @@ services:
   kibana:
     image: docker.elastic.co/kibana/kibana:8.13.0
     environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_HOSTS=${ELASTICSEARCH_URL:-http://elasticsearch:9200}
     ports:
       - "5601:5601"
     networks:
@@ -65,7 +77,29 @@ services:
   gateway:
     build: ./gateway
     ports:
-      - "9200:9200"
+      - "${GATEWAY_PORT:-9200}:${GATEWAY_PORT:-9200}"
+    environment:
+      - DNS_RESOLVER=${DNS_RESOLVER:-127.0.0.11}
+      - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST:-elasticsearch:9200}
+      - LOGSTASH_URL=${LOGSTASH_URL:-http://logstash:8080/}
+      - GATEWAY_PORT=${GATEWAY_PORT:-9200}
+    networks:
+      - obs-net
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  metricbeat:
+    image: docker.elastic.co/beats/metricbeat:8.13.0
+    # Set METRICBEAT_ENABLED=0 to disable stack monitoring
+    scale: ${METRICBEAT_ENABLED:-1}
+    user: root
+    command: ["--strict.perms=false"]
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - KIBANA_HOST=http://kibana:5601
+    volumes:
+      - ./metricbeat/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml:ro
     networks:
       - obs-net
     depends_on:

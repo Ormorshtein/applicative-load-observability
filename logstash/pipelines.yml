@@ -1,0 +1,2 @@
+- pipeline.id: observability
+  path.config: "/usr/share/logstash/pipeline/observability.conf"

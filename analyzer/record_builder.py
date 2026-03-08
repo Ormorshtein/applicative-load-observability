@@ -11,18 +11,17 @@ from parser import (
     parse_applicative_provider,
     parse_docs_affected,
     parse_es_took_ms,
-    parse_has_runtime_mappings,
-    parse_has_script,
     parse_hits,
     parse_operation,
     parse_shards_total,
+    parse_shards_total_bulk,
     parse_size,
     parse_target,
     parse_user_agent,
     parse_username,
     scrub_template,
 )
-from stress import StressContext, calc_query_complexity, calc_stress
+from stress import StressContext, count_clauses, evaluate_cost_indicators, calc_stress
 
 _TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%S.000Z"
 _STRESS_PRECISION = 4
@@ -65,6 +64,30 @@ def extract_raw_fields(payload: dict) -> RawFields:
     )
 
 
+_CLAUSE_COUNT_OUTPUT_KEYS = {
+    "bool_clause_count":    "bool",
+    "bool_must_count":      "bool_must",
+    "bool_should_count":    "bool_should",
+    "bool_filter_count":    "bool_filter",
+    "bool_must_not_count":  "bool_must_not",
+    "terms_values_count":   "terms_values",
+    "knn_clause_count":     "knn",
+    "fuzzy_clause_count":   "fuzzy",
+    "geo_bbox_count":       "geo_bbox",
+    "geo_distance_count":   "geo_distance",
+    "geo_shape_count":      "geo_shape",
+    "agg_clause_count":     "agg",
+    "wildcard_clause_count": "wildcard",
+    "nested_clause_count":  "nested",
+    "runtime_mapping_count": "runtime_mapping",
+    "script_clause_count":  "script",
+}
+
+
+def _output_clause_counts(counts: dict) -> dict:
+    return {out: counts[internal] for internal, out in _CLAUSE_COUNT_OUTPUT_KEYS.items()}
+
+
 def build_record(raw: RawFields) -> dict:
     operation = parse_operation(raw.method, raw.path)
     target    = parse_target(raw.path)
@@ -75,14 +98,16 @@ def build_record(raw: RawFields) -> dict:
     user_agent           = parse_user_agent(raw.headers)
 
     hits                 = parse_hits(raw.response_body)
-    shards_total         = parse_shards_total(raw.response_body)
+    if operation == "_bulk":
+        shards_total     = parse_shards_total_bulk(raw.response_body)
+    else:
+        shards_total     = parse_shards_total(raw.response_body)
     docs_affected        = parse_docs_affected(operation, raw.response_body)
     size                 = parse_size(raw.request_body)
-    has_script           = parse_has_script(raw.request_body)
-    has_runtime_mappings = parse_has_runtime_mappings(raw.request_body)
     es_took_ms           = parse_es_took_ms(raw.response_body)
 
-    clause_counts = calc_query_complexity(raw.request_body)
+    clause_counts = count_clauses(raw.request_body)
+    cost_indicators, stress_multiplier = evaluate_cost_indicators(clause_counts)
 
     ctx = StressContext(
         es_took_ms=       es_took_ms or raw.gateway_took_ms,
@@ -90,33 +115,45 @@ def build_record(raw: RawFields) -> dict:
         size=             size,
         shards_total=     shards_total,
         docs_affected=    docs_affected,
-        query_complexity= clause_counts["query_complexity"],
     )
 
+    request = {
+        "method":     raw.method,
+        "path":       raw.path,
+        "operation":  operation,
+        "target":     target,
+        "template":   template,
+        "body":       raw.request_body,
+        "size_bytes": raw.request_size_bytes,
+    }
+    if operation == "_search":
+        request["size"] = size
+
     return {
-        "timestamp":            datetime.now(timezone.utc).strftime(_TIMESTAMP_FORMAT),
-        "operation":            operation,
-        "method":               raw.method,
-        "path":                 raw.path,
-        "request_body":         raw.request_body,
-        "target":               target,
-        "template":             template,
-        "username":             username,
-        "client_host":          raw.client_host,
-        "applicative_provider": applicative_provider,
-        "user_agent":           user_agent,
-        "gateway_took_ms":      raw.gateway_took_ms,
-        "es_took_ms":           es_took_ms,
-        "hits":                 hits,
-        "shards_total":         shards_total,
-        **clause_counts,
-        **({"size": size} if operation == "_search" else {}),
-        "docs_affected":        docs_affected,
-        "has_script":           has_script,
-        "has_runtime_mappings": has_runtime_mappings,
-        "request_size_bytes":   raw.request_size_bytes,
-        "response_size_bytes":  raw.response_size_bytes,
-        "stress_score":         round(calc_stress(operation, ctx), _STRESS_PRECISION),
+        "timestamp": datetime.now(timezone.utc).strftime(_TIMESTAMP_FORMAT),
+        "identity": {
+            "username":             username,
+            "applicative_provider": applicative_provider,
+            "user_agent":           user_agent,
+            "client_host":          raw.client_host,
+        },
+        "request":  request,
+        "response": {
+            "es_took_ms":    es_took_ms,
+            "gateway_took_ms": raw.gateway_took_ms,
+            "hits":          hits,
+            "shards_total":  shards_total,
+            "docs_affected": docs_affected,
+            "size_bytes":    raw.response_size_bytes,
+        },
+        "clause_counts":    _output_clause_counts(clause_counts),
+        "cost_indicators":  cost_indicators,
+        "stress": {
+            "score":                round(calc_stress(operation, ctx, stress_multiplier), _STRESS_PRECISION),
+            "multiplier":           stress_multiplier,
+            "cost_indicator_count": len(cost_indicators),
+            "cost_indicator_names": list(cost_indicators.keys()),
+        },
     }
 
 
