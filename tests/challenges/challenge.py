@@ -7,9 +7,9 @@ hiding expensive query patterns in its traffic. Monitor Kibana dashboards
 to identify and kill the culprit.
 
 Usage:
-    python tests/integration/challenge.py
-    python tests/integration/challenge.py --gateway http://host:9200
-    python tests/integration/challenge.py --seed 20000 --max-docs 100000
+    python tests/challenges/challenge.py
+    python tests/challenges/challenge.py --gateway http://host:9200
+    python tests/challenges/challenge.py --seed 20000 --max-docs 100000
 """
 
 import argparse
