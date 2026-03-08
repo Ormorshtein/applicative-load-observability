@@ -16,25 +16,20 @@ services:
       timeout: 5s
       retries: 10
 
-  nifi:
-    image: apache/nifi:latest
-    environment:
-      - NIFI_WEB_HTTPS_HOST=0.0.0.0
-      - NIFI_WEB_HTTPS_PORT=8443
-      - SINGLE_USER_CREDENTIALS_USERNAME=admin
-      - SINGLE_USER_CREDENTIALS_PASSWORD=adminadminadmin
-      - NIFI_WEB_PROXY_HOST=localhost:8443
-      - NIFI_SENSITIVE_PROPS_KEY=observabilitykey
+  logstash:
+    build: ./logstash
     ports:
-      - "8443:8443"
       - "8080:8080"
     volumes:
-      - ./nifi/flow.json.gz:/opt/nifi/flow-seed.json.gz:ro
-    entrypoint: ["/bin/bash", "-c", "cp /opt/nifi/flow-seed.json.gz /opt/nifi/nifi-current/conf/flow.json.gz && exec ../scripts/start.sh"]
+      - ./logstash/pipeline/:/usr/share/logstash/pipeline/
+      - ./logstash/logstash.yml:/usr/share/logstash/logstash.yml:ro
+      - ./logstash/pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
     networks:
       - obs-net
     depends_on:
       elasticsearch:
+        condition: service_healthy
+      analyzer:
         condition: service_healthy
 
   analyzer:
@@ -46,7 +41,6 @@ services:
     #   - STRESS_BASELINE_SHARDS_TOTAL=5
     #   - STRESS_BASELINE_SIZE=100
     #   - STRESS_BASELINE_DOCS_AFFECTED=500
-    #   - STRESS_BASELINE_QUERY_COMPLEXITY=10
     networks:
       - obs-net
     depends_on:

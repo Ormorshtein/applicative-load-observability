@@ -1,0 +1,10 @@
+http.host: "0.0.0.0"
+pipeline.batch.size: 125
+pipeline.batch.delay: 50
+
+# Memory buffer — events queue in memory so HTTP input doesn't drop under backpressure
+queue.type: memory
+queue.max_bytes: 256mb
+
+# Monitoring (visible in logs)
+log.level: info
