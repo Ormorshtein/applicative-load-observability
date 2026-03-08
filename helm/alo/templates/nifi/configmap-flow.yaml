@@ -7,5 +7,5 @@ metadata:
     {{- include "alo.labels" . | nindent 4 }}
     {{- include "alo.selectorLabels" (dict "ctx" . "component" "nifi") | nindent 4 }}
 binaryData:
-  flow.json.gz: {{ .Files.Get "files/flow.json.gz" | b64enc }}
+  flow.json.gz: {{ .Files.Get "files/nifi-seed-flow.json.gz" | b64enc }}
 {{- end }}
