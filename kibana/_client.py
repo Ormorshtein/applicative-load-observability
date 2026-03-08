@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from index_template import INDEX_TEMPLATE
+from _index_template import INDEX_TEMPLATE
 
 
 @dataclass

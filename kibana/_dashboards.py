@@ -5,8 +5,8 @@ import os
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from client import StackConfig, kibana_request, upsert
-from visualizations import (
+from _client import StackConfig, kibana_request, upsert
+from _visualizations import (
     SECTIONS,
     layout_cost_indicators,
     layout_main,

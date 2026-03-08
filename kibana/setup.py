@@ -16,8 +16,8 @@ Usage:
 import argparse
 import sys
 
-from client import StackConfig, ensure_index_template, wait_es, wait_kibana
-from dashboards import DASHBOARD_ID, CI_DASHBOARD_ID, do_import, do_rebuild
+from _client import StackConfig, ensure_index_template, wait_es, wait_kibana
+from _dashboards import DASHBOARD_ID, CI_DASHBOARD_ID, do_import, do_rebuild
 
 
 def main() -> None:
