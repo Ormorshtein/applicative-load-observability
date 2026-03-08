@@ -5,6 +5,8 @@ Each mk_* function returns (vis_id, attrs_dict) for a Kibana saved object.
 Layout functions arrange visualization panels on a dashboard grid.
 """
 
+import json
+
 # Ordered per dashboard layout: Application -> Target -> Operation -> Cost Indicator -> Template
 SECTIONS = [
     ("identity.applicative_provider", "Application"),
@@ -14,16 +16,73 @@ SECTIONS = [
     ("request.template",              "Template"),
 ]
 
+# Panel descriptions for hover notes (item 3)
+PANEL_DESCRIPTIONS = {
+    "pie": {
+        "Application": "Shows stress distribution across applicative providers. "
+                       "Hover slices to see request count and avg requests/sec.",
+        "Target": "Shows stress distribution across target indices/databases. "
+                  "Hover slices to see request count and avg requests/sec.",
+        "Operation": "Shows stress distribution across operation types (search, index, bulk, etc.). "
+                     "Hover slices to see request count and avg requests/sec.",
+        "Cost Indicator": "Shows stress distribution across cost indicator types. "
+                          "Hover slices to see request count and avg requests/sec.",
+        "Template": "Shows stress distribution across request templates. "
+                    "Hover slices to see request count and avg requests/sec.",
+    },
+    "ts": {
+        "Application": "Average stress score over time, broken down by applicative provider.",
+        "Target": "Average stress score over time, broken down by target index/database.",
+        "Operation": "Average stress score over time, broken down by operation type.",
+        "Cost Indicator": "Average stress score over time, broken down by cost indicator.",
+        "Template": "Average stress score over time, broken down by request template.",
+    },
+    "resp_es": {
+        "Cost Indicator": "Average Elasticsearch response time over time by cost indicator, with request count.",
+        "Operation": "Average Elasticsearch response time over time by operation type, with request count.",
+        "Template": "Average Elasticsearch response time over time by request template, with request count.",
+    },
+    "resp_gw": {
+        "Cost Indicator": "Average gateway response time over time by cost indicator, with request count.",
+        "Operation": "Average gateway response time over time by operation type, with request count.",
+        "Template": "Average gateway response time over time by request template, with request count.",
+    },
+}
+
+CHEAT_SHEET_MARKDOWN = """\
+## Dashboard Cheat Sheet
+
+**How to examine this dashboard:**
+
+1. **Start with the pie charts** (top row) — identify which application, target, \
+operation, or template contributes the most stress.
+2. **Check the time series** — look for spikes or trends in stress over time. \
+Correlate with deployments or traffic changes.
+3. **Review the Top 10 Templates table** — focus on templates with the highest \
+sum stress and cost indicator counts.
+4. **Examine response times** — high ES or gateway latency alongside high stress \
+may indicate query optimization opportunities.
+5. **Sanity check tables** — verify if the most recurring templates are also the \
+most stressful; templates with many cost indicators need attention.
+
+**What to focus on:**
+- **High stress slices** in pie charts — these are your optimization targets
+- **Upward trends** in time series — indicates growing load or degrading patterns
+- **Templates with many cost indicators** — likely candidates for query optimization
+- **Latency spikes** correlating with specific operations or templates
+"""
+
 
 # ---------------------------------------------------------------------------
 # Visualization builders
 # ---------------------------------------------------------------------------
 
 def mk_metric(vis_id: str, title: str, source_field: str,
-              operation: str) -> tuple[str, dict]:
+              operation: str,
+              description: str = "") -> tuple[str, dict]:
     col = {"label": title, "dataType": "number", "operationType": operation, "isBucketed": False}
     col["sourceField"] = "___records___" if operation == "count" else source_field
-    return vis_id, {
+    attrs = {
         "title": title, "visualizationType": "lnsMetric",
         "state": {
             "visualization": {"layerId": "layer1", "layerType": "data", "metricAccessor": "metric"},
@@ -33,17 +92,47 @@ def mk_metric(vis_id: str, title: str, source_field: str,
             "query": {"query": "", "language": "kuery"}, "filters": [],
         },
     }
+    if description:
+        attrs["description"] = description
+    return vis_id, attrs
+
+
+def mk_markdown(vis_id: str, title: str, content: str,
+                description: str = "") -> tuple[str, dict]:
+    attrs = {
+        "title": title,
+        "visState": json.dumps({
+            "title": title,
+            "type": "markdown",
+            "aggs": [],
+            "params": {
+                "fontSize": 12,
+                "openLinksInNewTab": False,
+                "markdown": content,
+            },
+        }),
+        "uiStateJSON": "{}",
+        "kibanaSavedObjectMeta": {
+            "searchSourceJSON": json.dumps(
+                {"query": {"query": "", "language": "kuery"}, "filter": []}),
+        },
+    }
+    if description:
+        attrs["description"] = description
+    return vis_id, attrs
 
 
 def mk_pie(vis_id: str, title: str, field: str,
-           size: int = 8) -> tuple[str, dict]:
-    return vis_id, {
+           size: int = 8,
+           description: str = "") -> tuple[str, dict]:
+    attrs = {
         "title": title, "visualizationType": "lnsPie",
         "state": {
             "visualization": {
                 "shape": "donut",
                 "layers": [{"layerId": "layer1", "layerType": "data",
-                            "primaryGroups": ["breakdown"], "metrics": ["metric"],
+                            "primaryGroups": ["breakdown"],
+                            "metrics": ["metric", "request_count"],
                             "numberDisplay": "percent", "categoryDisplay": "default",
                             "legendDisplay": "default", "legendPosition": "right"}],
             },
@@ -55,18 +144,25 @@ def mk_pie(vis_id: str, title: str, field: str,
                                              "orderDirection": "desc", "otherBucket": True}},
                     "metric": {"label": "Total Stress", "dataType": "number",
                                "operationType": "sum", "sourceField": "stress.score", "isBucketed": False},
+                    "request_count": {"label": "Requests", "dataType": "number",
+                                      "operationType": "count", "sourceField": "___records___",
+                                      "isBucketed": False},
                 },
-                "columnOrder": ["breakdown", "metric"], "incompleteColumns": {},
+                "columnOrder": ["breakdown", "metric", "request_count"], "incompleteColumns": {},
             }}}},
             "query": {"query": "", "language": "kuery"}, "filters": [],
         },
     }
+    if description:
+        attrs["description"] = description
+    return vis_id, attrs
 
 
 def mk_ts(vis_id: str, title: str, field: str,
            metric_field: str = "stress.score", metric_label: str = "Avg Stress Score",
-           metric_op: str = "average", size: int = 5) -> tuple[str, dict]:
-    return vis_id, {
+           metric_op: str = "average", size: int = 5,
+           description: str = "") -> tuple[str, dict]:
+    attrs = {
         "title": title, "visualizationType": "lnsXY",
         "state": {
             "visualization": {
@@ -93,12 +189,16 @@ def mk_ts(vis_id: str, title: str, field: str,
             "query": {"query": "", "language": "kuery"}, "filters": [],
         },
     }
+    if description:
+        attrs["description"] = description
+    return vis_id, attrs
 
 
 def mk_ts_response(vis_id: str, title: str, breakdown_field: str,
                    latency_field: str, latency_label: str,
-                   size: int = 5) -> tuple[str, dict]:
-    return vis_id, {
+                   size: int = 5,
+                   description: str = "") -> tuple[str, dict]:
+    attrs = {
         "title": title, "visualizationType": "lnsXY",
         "state": {
             "visualization": {
@@ -128,6 +228,9 @@ def mk_ts_response(vis_id: str, title: str, breakdown_field: str,
             "query": {"query": "", "language": "kuery"}, "filters": [],
         },
     }
+    if description:
+        attrs["description"] = description
+    return vis_id, attrs
 
 
 def mk_ci_metric(vis_id: str, title: str, source_field: str,
@@ -249,59 +352,60 @@ def mk_datatable(vis_id: str, title: str, bucket_field: str,
 # Dashboard layout functions
 # ---------------------------------------------------------------------------
 
+def _add_panel(panels: list[dict], refs: list[dict], vid: str,
+               x: int, y: int, w: int, h: int,
+               panel_type: str = "lens") -> None:
+    panels.append({"panelIndex": vid,
+                   "gridData": {"x": x, "y": y, "w": w, "h": h, "i": vid},
+                   "type": panel_type, "panelRefName": f"panel_{vid}"})
+    refs.append({"type": panel_type, "id": vid, "name": f"panel_{vid}"})
+
+
 def layout_main(vis_ids: list[str], panels: list[dict],
                 refs: list[dict]) -> None:
     """
     Layout structure (mapped to improvement notes):
 
-    Row 0 (y=0, h=10):   5 pie charts — Application, Target, Operation, Cost Indicator, Template
-    Row 1-5 (h=12 each): 5 stress-over-time charts, same order as pies
-    Row 6 (h=14):         Top 10 Templates by Stress Score table
-    Row 7-8 (h=12 each): Avg ES/Gateway Response Time — by Cost Indicator, Operation, Template
-    Row 9 (h=12):         Sanity check tables — most recurring templates, most cost indicators
+    Row 0 (y=0, h=10):   Cheat sheet (w=36) + Total Stress Score metric (w=12)
+    Row 1 (y=10, h=10):  5 pie charts — Application, Target, Operation, Cost Indicator, Template
+    Row 2-6 (h=12 each): 5 stress-over-time charts, same order as pies
+    Row 7 (h=14):         Top 10 Templates by Stress Score table
+    Row 8-9 (h=12 each): Avg ES/Gateway Response Time — by Cost Indicator, Operation, Template
+    Row 10 (h=12):        Sanity check tables — most recurring templates, most cost indicators
     """
     y = 0
 
-    # --- Row 0: 5 pie charts (indices 0-4) ---
-    pie_w = 48 // 5
-    for i in range(5):
-        vid = vis_ids[i]
-        w = pie_w if i < 4 else 48 - pie_w * 4
-        panels.append({"panelIndex": vid, "gridData": {"x": i * pie_w, "y": y, "w": w, "h": 10, "i": vid},
-                       "type": "lens", "panelRefName": f"panel_{vid}"})
-        refs.append({"type": "lens", "id": vid, "name": f"panel_{vid}"})
+    # --- Row 0: Cheat sheet + Total Stress Score (indices 0-1) ---
+    _add_panel(panels, refs, vis_ids[0], 0, y, 36, 10, panel_type="visualization")
+    _add_panel(panels, refs, vis_ids[1], 36, y, 12, 10)
     y += 10
 
-    # --- Rows 1-5: 5 stress-over-time charts (indices 5-9) ---
+    # --- Row 1: 5 pie charts (indices 2-6) ---
+    pie_w = 48 // 5
     for i in range(5):
-        vid = vis_ids[5 + i]
-        panels.append({"panelIndex": vid, "gridData": {"x": 0, "y": y, "w": 48, "h": 12, "i": vid},
-                       "type": "lens", "panelRefName": f"panel_{vid}"})
-        refs.append({"type": "lens", "id": vid, "name": f"panel_{vid}"})
+        vid = vis_ids[2 + i]
+        w = pie_w if i < 4 else 48 - pie_w * 4
+        _add_panel(panels, refs, vid, i * pie_w, y, w, 10)
+    y += 10
+
+    # --- Rows 2-6: 5 stress-over-time charts (indices 7-11) ---
+    for i in range(5):
+        _add_panel(panels, refs, vis_ids[7 + i], 0, y, 48, 12)
         y += 12
 
-    # --- Row 6: Top Templates by Stress Score table (index 10) ---
-    vid = vis_ids[10]
-    panels.append({"panelIndex": vid, "gridData": {"x": 0, "y": y, "w": 48, "h": 14, "i": vid},
-                   "type": "lens", "panelRefName": f"panel_{vid}"})
-    refs.append({"type": "lens", "id": vid, "name": f"panel_{vid}"})
+    # --- Row 7: Top Templates by Stress Score table (index 12) ---
+    _add_panel(panels, refs, vis_ids[12], 0, y, 48, 14)
     y += 14
 
-    # --- Rows 7-8: Response time panels (indices 11-16), 3 per row ---
-    for row_start in (11, 14):
+    # --- Rows 8-9: Response time panels (indices 13-18), 3 per row ---
+    for row_start in (13, 16):
         for j in range(3):
-            vid = vis_ids[row_start + j]
-            panels.append({"panelIndex": vid, "gridData": {"x": j * 16, "y": y, "w": 16, "h": 12, "i": vid},
-                           "type": "lens", "panelRefName": f"panel_{vid}"})
-            refs.append({"type": "lens", "id": vid, "name": f"panel_{vid}"})
+            _add_panel(panels, refs, vis_ids[row_start + j], j * 16, y, 16, 12)
         y += 12
 
-    # --- Row 9: 2 sanity check tables (indices 17-18) ---
+    # --- Row 10: 2 sanity check tables (indices 19-20) ---
     for j in range(2):
-        vid = vis_ids[17 + j]
-        panels.append({"panelIndex": vid, "gridData": {"x": j * 24, "y": y, "w": 24, "h": 12, "i": vid},
-                       "type": "lens", "panelRefName": f"panel_{vid}"})
-        refs.append({"type": "lens", "id": vid, "name": f"panel_{vid}"})
+        _add_panel(panels, refs, vis_ids[19 + j], j * 24, y, 24, 12)
 
 
 def layout_cost_indicators(vis_ids: list[str], panels: list[dict],
