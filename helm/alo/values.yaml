@@ -1,6 +1,12 @@
+# ── Pipeline mode ───────────────────────────────────────────────────────────
+# Controls which pipeline processor is deployed: "logstash" or "nifi".
+# When "logstash": deploys Logstash, skips NiFi.
+# When "nifi":     deploys NiFi, skips Logstash.
+pipelineMode: logstash
+
 # ── Global ──────────────────────────────────────────────────────────────────
 global:
-  # Observability index written by the NiFi pipeline
+  # Observability index written by the pipeline
   observabilityIndex: applicative-load-observability
 
 # ── Elasticsearch ───────────────────────────────────────────────────────────
@@ -121,6 +127,63 @@ nifi:
   affinity: {}
   podAnnotations: {}
 
+# ── Logstash ────────────────────────────────────────────────────────────────
+logstash:
+  # Set external.enabled=true to use an existing Logstash instance.
+  # The gateway will send observations to external.url.
+  external:
+    enabled: false
+    url: ""
+
+  # ── Internal deployment (ignored when external.enabled=true) ──
+  image:
+    repository: alo-logstash
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+  service:
+    httpPort: 8080
+    monitoringPort: 9600
+  monitoring:
+    enabled: false
+  pipeline:
+    batchSize: 125
+    batchDelay: 50
+  queue:
+    type: memory
+    maxBytes: 256mb
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+
+# ── Metricbeat ──────────────────────────────────────────────────────────────
+metricbeat:
+  enabled: false
+  image:
+    repository: docker.elastic.co/beats/metricbeat
+    tag: "8.13.0"
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+
 # ── Analyzer ────────────────────────────────────────────────────────────────
 analyzer:
   image:
@@ -162,8 +225,8 @@ gateway:
   workerConnections: 4096
   # Timeout for ES proxy
   proxyReadTimeout: 60s
-  # Timeout for NiFi notification (ms)
-  nifiTimeout: 1000
+  # Timeout for pipeline notification (ms)
+  pipelineTimeout: 1000
   service:
     type: ClusterIP
     port: 9200
@@ -196,9 +259,17 @@ kibana:
   service:
     type: ClusterIP
     port: 5601
-  # Import the pre-built dashboard on startup
+  # Import the pre-built dashboard on startup (deprecated, use setup below)
   dashboardSetup:
     enabled: true
+  # Kibana setup job — runs setup.py to create index templates and import dashboards.
+  # Uses a custom image containing setup.py + ndjson files (too large for ConfigMap).
+  setup:
+    enabled: true
+    image:
+      repository: alo-kibana-setup
+      tag: latest
+      pullPolicy: IfNotPresent
   nodeSelector: {}
   tolerations: []
   affinity: {}
@@ -216,6 +287,15 @@ ingress:
   kibana:
     host: ""
     path: /
+  elasticsearch:
+    host: ""
+    path: /
+  analyzer:
+    host: ""
+    path: /
+  logstash:
+    host: ""
+    path: /
   nifi:
     host: ""
     path: /
@@ -229,15 +309,9 @@ serviceAccount:
   annotations: {}
 
 # ── Pod security defaults (applied to all components) ──────────────────────
-podSecurityContext:
-  runAsNonRoot: true
-  fsGroup: 1000
+podSecurityContext: {}
 
-securityContext:
-  allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: false
-  capabilities:
-    drop: ["ALL"]
+securityContext: {}
 
 # ── Image pull secrets (shared across all deployments) ──────────────────────
 imagePullSecrets: []

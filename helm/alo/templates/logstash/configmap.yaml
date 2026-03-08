@@ -1,0 +1,84 @@
+{{- if and (eq .Values.pipelineMode "logstash") (not .Values.logstash.external.enabled) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "alo.fullname" . }}-logstash
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "logstash") | nindent 4 }}
+data:
+  logstash.yml: |
+    http.host: "0.0.0.0"
+    pipeline.batch.size: {{ .Values.logstash.pipeline.batchSize }}
+    pipeline.batch.delay: {{ .Values.logstash.pipeline.batchDelay }}
+
+    queue.type: {{ .Values.logstash.queue.type }}
+    queue.max_bytes: {{ .Values.logstash.queue.maxBytes }}
+
+    log.level: info
+
+    xpack.monitoring.enabled: {{ .Values.logstash.monitoring.enabled }}
+    xpack.monitoring.elasticsearch.hosts: ["{{ include "alo.elasticsearchUrl" . }}"]
+
+  pipelines.yml: |
+    - pipeline.id: observability
+      path.config: "/usr/share/logstash/pipeline/observability.conf"
+
+  observability.conf: |
+    input {
+      http {
+        port => {{ .Values.logstash.service.httpPort }}
+        codec => "json"
+      }
+    }
+
+    filter {
+      ruby {
+        code => '
+          require "json"
+          payload = {}
+          ["method", "path", "headers", "request_body", "response_body",
+           "client_host", "gateway_took_ms", "request_size_bytes",
+           "response_size_bytes", "response_status"].each do |f|
+            v = event.get(f)
+            payload[f] = v unless v.nil?
+          end
+          event.set("[@metadata][analyzer_body]", payload.to_json)
+        '
+      }
+
+      http {
+        url => "http://{{ include "alo.fullname" . }}-analyzer:{{ .Values.analyzer.port }}/analyze"
+        verb => "POST"
+        body => "%{[@metadata][analyzer_body]}"
+        target_body => "[analyzer_response]"
+        target_headers => "[analyzer_headers]"
+      }
+
+      if [analyzer_response] {
+        ruby {
+          code => '
+            resp = event.get("[analyzer_response]")
+            if resp.is_a?(Hash)
+              event.to_hash.keys.each { |k| event.remove(k) }
+              resp.each { |k, v| event.set(k, v) }
+            end
+          '
+        }
+      }
+    }
+
+    output {
+      if "_httprequestfailure" in [tags] {
+        elasticsearch {
+          hosts => ["{{ include "alo.elasticsearchUrl" . }}"]
+          index => "alo-dead-letter"
+        }
+      } else {
+        elasticsearch {
+          hosts => ["{{ include "alo.elasticsearchUrl" . }}"]
+          index => "applicative-load-observability-v2"
+        }
+      }
+    }
+{{- end }}

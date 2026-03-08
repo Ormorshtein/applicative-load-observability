@@ -1,4 +1,4 @@
-{{- if and (not .Values.nifi.external.enabled) .Values.nifi.flow.seedEnabled }}
+{{- if and (eq .Values.pipelineMode "nifi") (not .Values.nifi.external.enabled) .Values.nifi.flow.seedEnabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:

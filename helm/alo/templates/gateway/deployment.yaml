@@ -32,6 +32,7 @@ spec:
         - name: gateway
           image: "{{ .Values.gateway.image.repository }}:{{ .Values.gateway.image.tag }}"
           imagePullPolicy: {{ .Values.gateway.image.pullPolicy }}
+          command: ["/usr/local/openresty/bin/openresty", "-g", "daemon off;"]
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           env:
@@ -61,7 +62,7 @@ spec:
                   key: apiKey
             {{- end }}
             {{- end }}
-            {{- if and .Values.nifi.external.enabled .Values.nifi.external.auth.enabled }}
+            {{- if and (eq .Values.pipelineMode "nifi") .Values.nifi.external.enabled .Values.nifi.external.auth.enabled }}
             - name: NIFI_AUTH_HEADER_VALUE
               valueFrom:
                 secretKeyRef:
@@ -85,7 +86,7 @@ spec:
               mountPath: /etc/ssl/es
               readOnly: true
             {{- end }}
-            {{- if and .Values.nifi.external.enabled .Values.nifi.external.tls.caSecret }}
+            {{- if and (eq .Values.pipelineMode "nifi") .Values.nifi.external.enabled .Values.nifi.external.tls.caSecret }}
             - name: nifi-ca
               mountPath: /etc/ssl/nifi
               readOnly: true
@@ -111,7 +112,7 @@ spec:
           secret:
             secretName: {{ .Values.elasticsearch.external.tls.caSecret }}
         {{- end }}
-        {{- if and .Values.nifi.external.enabled .Values.nifi.external.tls.caSecret }}
+        {{- if and (eq .Values.pipelineMode "nifi") .Values.nifi.external.enabled .Values.nifi.external.tls.caSecret }}
         - name: nifi-ca
           secret:
             secretName: {{ .Values.nifi.external.tls.caSecret }}

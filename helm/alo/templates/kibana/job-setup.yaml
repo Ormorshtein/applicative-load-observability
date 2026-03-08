@@ -1,0 +1,42 @@
+{{- if .Values.kibana.setup.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "alo.fullname" . }}-kibana-setup
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "kibana-setup") | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "alo.labels" . | nindent 8 }}
+        {{- include "alo.selectorLabels" (dict "ctx" . "component" "kibana-setup") | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "alo.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- include "alo.imagePullSecrets" $ | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      restartPolicy: OnFailure
+      containers:
+        - name: setup
+          image: "{{ .Values.kibana.setup.image.repository }}:{{ .Values.kibana.setup.image.tag }}"
+          imagePullPolicy: {{ .Values.kibana.setup.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          command: ["python", "/app/setup.py"]
+          env:
+            - name: KIBANA_URL
+              value: {{ include "alo.kibanaUrl" . | quote }}
+            - name: ELASTICSEARCH_URL
+              value: {{ include "alo.elasticsearchUrl" . | quote }}
+      {{- include "alo.scheduling" .Values.kibana | nindent 6 }}
+{{- end }}

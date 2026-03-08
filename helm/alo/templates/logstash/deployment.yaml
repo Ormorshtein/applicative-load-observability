@@ -1,0 +1,86 @@
+{{- if and (eq .Values.pipelineMode "logstash") (not .Values.logstash.external.enabled) }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "alo.fullname" . }}-logstash
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "logstash") | nindent 4 }}
+spec:
+  replicas: {{ .Values.logstash.replicas }}
+  selector:
+    matchLabels:
+      {{- include "alo.selectorLabels" (dict "ctx" . "component" "logstash") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "alo.labels" . | nindent 8 }}
+        {{- include "alo.selectorLabels" (dict "ctx" . "component" "logstash") | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print .Template.BasePath "/logstash/configmap.yaml") . | sha256sum }}
+        {{- with .Values.logstash.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "alo.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- include "alo.imagePullSecrets" $ | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: logstash
+          image: "{{ .Values.logstash.image.repository }}:{{ .Values.logstash.image.tag }}"
+          imagePullPolicy: {{ .Values.logstash.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          env:
+            - name: ELASTICSEARCH_URL
+              value: {{ include "alo.elasticsearchUrl" . | quote }}
+            - name: ANALYZER_URL
+              value: "http://{{ include "alo.fullname" . }}-analyzer:{{ .Values.analyzer.port }}/analyze"
+            - name: LOGSTASH_HTTP_PORT
+              value: {{ .Values.logstash.service.httpPort | quote }}
+            - name: LOGSTASH_MONITORING
+              value: {{ .Values.logstash.monitoring.enabled | quote }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.logstash.service.httpPort }}
+              protocol: TCP
+            - name: monitoring
+              containerPort: {{ .Values.logstash.service.monitoringPort }}
+              protocol: TCP
+          volumeMounts:
+            - name: config
+              mountPath: /usr/share/logstash/logstash.yml
+              subPath: logstash.yml
+              readOnly: true
+            - name: config
+              mountPath: /usr/share/logstash/config/pipelines.yml
+              subPath: pipelines.yml
+              readOnly: true
+            - name: config
+              mountPath: /usr/share/logstash/pipeline/observability.conf
+              subPath: observability.conf
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /
+              port: monitoring
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: monitoring
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          resources:
+            {{- toYaml .Values.logstash.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "alo.fullname" . }}-logstash
+      {{- include "alo.scheduling" .Values.logstash | nindent 6 }}
+{{- end }}

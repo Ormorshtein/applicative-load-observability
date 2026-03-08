@@ -75,6 +75,35 @@ Kibana URL for dashboard setup job.
 {{- end }}
 
 {{/*
+Logstash URL — either external or internal service.
+*/}}
+{{- define "alo.logstashUrl" -}}
+{{- if .Values.logstash.external.enabled }}
+{{- .Values.logstash.external.url }}
+{{- else }}
+{{- printf "http://%s-logstash:%d/" (include "alo.fullname" .) (.Values.logstash.service.httpPort | int) }}
+{{- end }}
+{{- end }}
+
+{{/*
+Logstash monitoring URL — internal service monitoring port.
+*/}}
+{{- define "alo.logstashMonitoringUrl" -}}
+{{- printf "http://%s-logstash:%d" (include "alo.fullname" .) (.Values.logstash.service.monitoringPort | int) }}
+{{- end }}
+
+{{/*
+Pipeline URL — resolves to Logstash or NiFi URL based on pipelineMode.
+*/}}
+{{- define "alo.pipelineUrl" -}}
+{{- if eq .Values.pipelineMode "logstash" }}
+{{- include "alo.logstashUrl" . }}
+{{- else }}
+{{- include "alo.nifiListenUrl" . }}
+{{- end }}
+{{- end }}
+
+{{/*
 Image pull secrets.
 */}}
 {{- define "alo.imagePullSecrets" -}}

@@ -15,6 +15,25 @@ ALO (Applicative Load Observability) has been deployed!
 
 Point your applications to the gateway instead of Elasticsearch directly.
 
+=== Pipeline Mode: {{ .Values.pipelineMode }} ===
+{{- if eq .Values.pipelineMode "logstash" }}
+{{- if .Values.logstash.external.enabled }}
+  Logstash (external): {{ .Values.logstash.external.url }}
+{{- else }}
+  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "alo.fullname" . }}-logstash {{ .Values.logstash.service.httpPort }}:{{ .Values.logstash.service.httpPort }}
+  echo "Logstash HTTP: http://localhost:{{ .Values.logstash.service.httpPort }}"
+  echo "Logstash Monitoring: http://localhost:{{ .Values.logstash.service.monitoringPort }}"
+{{- end }}
+{{- else }}
+{{- if .Values.nifi.external.enabled }}
+  NiFi (external): {{ .Values.nifi.external.listenUrl }}
+  Auth: {{ if .Values.nifi.external.auth.enabled }}{{ .Values.nifi.external.auth.headerName }}{{ if .Values.nifi.external.auth.existingSecret }} (secret: {{ .Values.nifi.external.auth.existingSecret }}){{ end }}{{ else }}disabled{{ end }}
+{{- else }}
+  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "alo.fullname" . }}-nifi {{ .Values.nifi.service.httpsPort }}:{{ .Values.nifi.service.httpsPort }}
+  echo "NiFi: https://localhost:{{ .Values.nifi.service.httpsPort }}/nifi"
+{{- end }}
+{{- end }}
+
 {{- if .Values.elasticsearch.external.enabled }}
 
 === Elasticsearch (external) ===
@@ -33,18 +52,23 @@ Point your applications to the gateway instead of Elasticsearch directly.
 === Kibana ===
   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "alo.fullname" . }}-kibana {{ .Values.kibana.service.port }}:{{ .Values.kibana.service.port }}
   echo "Kibana: http://localhost:{{ .Values.kibana.service.port }}"
+{{- if .Values.kibana.setup.enabled }}
+  Dashboard setup job will run automatically (post-install/post-upgrade hook).
+{{- end }}
 {{- end }}
 
-{{- if .Values.nifi.external.enabled }}
+{{- if .Values.metricbeat.enabled }}
 
-=== NiFi (external) ===
-  Listen URL: {{ .Values.nifi.external.listenUrl }}
-  Auth: {{ if .Values.nifi.external.auth.enabled }}{{ .Values.nifi.external.auth.headerName }}{{ if .Values.nifi.external.auth.existingSecret }} (secret: {{ .Values.nifi.external.auth.existingSecret }}){{ end }}{{ else }}disabled{{ end }}
-{{- else }}
-
-=== NiFi (internal) ===
-  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "alo.fullname" . }}-nifi {{ .Values.nifi.service.httpsPort }}:{{ .Values.nifi.service.httpsPort }}
-  echo "NiFi: https://localhost:{{ .Values.nifi.service.httpsPort }}/nifi"
+=== Metricbeat (Stack Monitoring) ===
+  Metricbeat is enabled and monitoring:
+    - Elasticsearch
+  {{- if eq .Values.pipelineMode "logstash" }}
+    - Logstash
+  {{- end }}
+  {{- if and .Values.kibana.enabled (not .Values.kibana.external.enabled) }}
+    - Kibana
+  {{- end }}
+  View metrics in Kibana → Stack Monitoring.
 {{- end }}
 
 {{- if .Values.ingress.enabled }}
@@ -56,7 +80,7 @@ Point your applications to the gateway instead of Elasticsearch directly.
 {{- if .Values.ingress.kibana.host }}
   Kibana:  http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.kibana.host }}{{ .Values.ingress.kibana.path }}
 {{- end }}
-{{- if .Values.ingress.nifi.host }}
+{{- if and .Values.ingress.nifi.host (eq .Values.pipelineMode "nifi") }}
   NiFi:    http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.nifi.host }}{{ .Values.ingress.nifi.path }}
 {{- end }}
 {{- end }}

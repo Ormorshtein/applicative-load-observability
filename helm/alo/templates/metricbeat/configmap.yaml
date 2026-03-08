@@ -1,0 +1,39 @@
+{{- if .Values.metricbeat.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "alo.fullname" . }}-metricbeat
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "metricbeat") | nindent 4 }}
+data:
+  metricbeat.yml: |
+    metricbeat.modules:
+
+      - module: elasticsearch
+        xpack.enabled: true
+        period: 10s
+        hosts: ["{{ include "alo.elasticsearchUrl" . }}"]
+
+      {{- if eq .Values.pipelineMode "logstash" }}
+      - module: logstash
+        xpack.enabled: true
+        period: 10s
+        hosts: ["{{ include "alo.logstashMonitoringUrl" . }}"]
+      {{- end }}
+
+      {{- if and .Values.kibana.enabled (not .Values.kibana.external.enabled) }}
+      - module: kibana
+        xpack.enabled: true
+        period: 10s
+        hosts: ["{{ include "alo.kibanaUrl" . }}"]
+      {{- end }}
+
+    output.elasticsearch:
+      hosts: ["{{ include "alo.elasticsearchUrl" . }}"]
+
+    {{- if and .Values.kibana.enabled (not .Values.kibana.external.enabled) }}
+    setup.kibana:
+      host: "{{ include "alo.kibanaUrl" . }}"
+    {{- end }}
+{{- end }}

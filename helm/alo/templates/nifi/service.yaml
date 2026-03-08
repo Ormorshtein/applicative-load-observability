@@ -1,4 +1,4 @@
-{{- if not .Values.nifi.external.enabled }}
+{{- if and (eq .Values.pipelineMode "nifi") (not .Values.nifi.external.enabled) }}
 apiVersion: v1
 kind: Service
 metadata:
