@@ -18,123 +18,27 @@ import argparse
 import json
 import os
 import random
-import string
 import sys
 import threading
 import time
-from collections import defaultdict
-from urllib.request import Request, urlopen
-from urllib.error import URLError, HTTPError
 
-# ---------------------------------------------------------------------------
-# Helpers (mirrored from load_test.py)
-# ---------------------------------------------------------------------------
-
-def rand_str(n=8):
-    return "".join(random.choices(string.ascii_lowercase, k=n))
-
-def rand_text(words=10):
-    return " ".join(rand_str(random.randint(3, 10)) for _ in range(words))
-
-def rand_int(lo=1, hi=10000):
-    return random.randint(lo, hi)
-
-def rand_price():
-    return round(random.uniform(1.0, 999.99), 2)
-
-def rand_category():
-    return random.choice(["electronics", "clothing", "food", "books",
-                          "sports", "home", "toys", "automotive"])
-
-def rand_color():
-    return random.choice(["red", "blue", "green", "black", "white",
-                          "yellow", "orange", "purple"])
-
-def rand_doc():
-    return {
-        "title": rand_text(random.randint(2, 6)),
-        "description": rand_text(random.randint(10, 30)),
-        "category": rand_category(),
-        "price": rand_price(),
-        "quantity": rand_int(0, 500),
-        "color": rand_color(),
-        "tags": random.sample(["sale", "new", "popular", "limited",
-                                "exclusive", "clearance", "premium"], k=random.randint(1, 4)),
-        "rating": round(random.uniform(1.0, 5.0), 1),
-        "location": {"lat": round(random.uniform(29.0, 47.0), 4),
-                      "lon": round(random.uniform(-124.0, -71.0), 4)},
-        "created_at": f"2025-{random.randint(1,12):02d}-{random.randint(1,28):02d}",
-    }
-
-# ---------------------------------------------------------------------------
-# HTTP helper
-# ---------------------------------------------------------------------------
-
-def http(gateway, method, path, body=None, headers=None, content_type="application/json", timeout=15):
-    url = f"{gateway}{path}"
-    hdrs = {"Content-Type": content_type}
-    if headers:
-        hdrs.update(headers)
-    if isinstance(body, str):
-        data = body.encode()
-    elif body is not None:
-        data = json.dumps(body).encode()
-    else:
-        data = None
-    req = Request(url, data=data, headers=hdrs, method=method)
-    try:
-        resp = urlopen(req, timeout=timeout)
-        return resp.status, resp.read()
-    except HTTPError as e:
-        return e.code, e.read()
-    except (URLError, OSError):
-        return 0, b""
-
-# ---------------------------------------------------------------------------
-# Stats
-# ---------------------------------------------------------------------------
-
-class Stats:
-    def __init__(self):
-        self.lock = threading.Lock()
-        self.counts = defaultdict(int)
-        self.errors = defaultdict(int)
-        self.total = 0
-        self.start = time.time()
-
-    def record(self, op, status):
-        with self.lock:
-            self.total += 1
-            self.counts[op] += 1
-            if status == 0 or status >= 400:
-                self.errors[op] += 1
-
-    def report(self, label=""):
-        elapsed = time.time() - self.start
-        title = f"  {label}  ({elapsed:.1f}s)" if label else f"  Results  ({elapsed:.1f}s)"
-        print(f"\n{'='*60}")
-        print(title)
-        print(f"{'='*60}")
-        print(f"  Total requests:  {self.total}")
-        print(f"  Throughput:      {self.total / max(elapsed, 0.1):.1f} req/s")
-        print(f"{'='*60}")
-        print(f"  {'Operation':<25} {'Count':>8} {'Errors':>8}")
-        print(f"  {'-'*41}")
-        for op in sorted(self.counts):
-            print(f"  {op:<25} {self.counts[op]:>8} {self.errors.get(op, 0):>8}")
-        total_errors = sum(self.errors.values())
-        print(f"  {'-'*41}")
-        print(f"  {'TOTAL':<25} {self.total:>8} {total_errors:>8}")
-        print(f"{'='*60}\n")
+from helpers import (
+    Stats,
+    LOADTEST_MAPPING,
+    http_request,
+    rand_category,
+    rand_doc,
+    rand_str,
+)
 
 # ---------------------------------------------------------------------------
 # Scenario registry
 # ---------------------------------------------------------------------------
 
-_SCENARIOS = {}
+_SCENARIOS: dict[str, type] = {}
 
-def scenario(name, description):
-    """Decorator to register a scenario class."""
+
+def scenario(name: str, description: str):
     def decorator(cls):
         cls.name = name
         cls.description = description
@@ -142,85 +46,73 @@ def scenario(name, description):
         return cls
     return decorator
 
+
 # ---------------------------------------------------------------------------
 # Base scenario
 # ---------------------------------------------------------------------------
 
 class BaseScenario:
-    name = "base"
-    description = "base scenario"
+    name: str = "base"
+    description: str = "base scenario"
 
-    def __init__(self, gateway):
+    def __init__(self, gateway: str) -> None:
         self.gateway = gateway
         self.index = f"stress-{self.name}"
 
-    def stress_op(self):
-        """Override: execute one stressful operation. Return (op_label, status)."""
+    def stress_op(self) -> tuple[str, int]:
         raise NotImplementedError
 
-    def noise_op(self):
-        """Execute one low-stress operation. Return (op_label, status)."""
+    def noise_op(self) -> tuple[str, int]:
         ops = [self._noise_match_all, self._noise_single_put, self._noise_term]
         return random.choice(ops)()
 
-    def _noise_match_all(self):
-        status, _ = http(self.gateway, "POST", f"/{self.index}/_search",
-                         {"query": {"match_all": {}}, "size": 5},
-                         headers={"X-App-Name": f"noise-{self.name}"})
+    def _noise_match_all(self) -> tuple[str, int]:
+        status, _ = http_request(
+            self.gateway, "POST", f"/{self.index}/_search",
+            {"query": {"match_all": {}}, "size": 5},
+            headers={"X-App-Name": f"noise-{self.name}"})
         return "noise:match_all", status
 
-    def _noise_single_put(self):
+    def _noise_single_put(self) -> tuple[str, int]:
         doc_id = rand_str(12)
-        status, _ = http(self.gateway, "PUT", f"/{self.index}/_doc/{doc_id}",
-                         rand_doc(),
-                         headers={"X-App-Name": f"noise-{self.name}"})
+        status, _ = http_request(
+            self.gateway, "PUT", f"/{self.index}/_doc/{doc_id}",
+            rand_doc(),
+            headers={"X-App-Name": f"noise-{self.name}"})
         return "noise:put", status
 
-    def _noise_term(self):
-        status, _ = http(self.gateway, "POST", f"/{self.index}/_search",
-                         {"query": {"term": {"category": rand_category()}}, "size": 3},
-                         headers={"X-App-Name": f"noise-{self.name}"})
+    def _noise_term(self) -> tuple[str, int]:
+        status, _ = http_request(
+            self.gateway, "POST", f"/{self.index}/_search",
+            {"query": {"term": {"category": rand_category()}}, "size": 3},
+            headers={"X-App-Name": f"noise-{self.name}"})
         return "noise:term", status
 
-    def stress_headers(self):
+    def stress_headers(self) -> dict[str, str]:
         return {"X-App-Name": f"stress-{self.name}"}
 
-    def ensure_index(self):
-        mapping = {
-            "mappings": {
-                "properties": {
-                    "title":       {"type": "text"},
-                    "description": {"type": "text"},
-                    "category":    {"type": "keyword"},
-                    "price":       {"type": "float"},
-                    "quantity":    {"type": "integer"},
-                    "color":       {"type": "keyword"},
-                    "tags":        {"type": "keyword"},
-                    "rating":      {"type": "float"},
-                    "location":    {"type": "geo_point"},
-                    "created_at":  {"type": "date", "format": "yyyy-MM-dd"},
-                }
-            }
-        }
-        http(self.gateway, "PUT", f"/{self.index}", mapping)
+    def ensure_index(self) -> None:
+        http_request(self.gateway, "PUT", f"/{self.index}", LOADTEST_MAPPING)
 
-    def seed_data(self, n=500):
-        print(f"  Seeding {n} documents into {self.index} ...", end=" ", flush=True)
+    def seed_data(self, count: int = 500) -> None:
+        print(f"  Seeding {count} documents into {self.index} ...", end=" ", flush=True)
         actions = []
-        for _ in range(n):
+        for _ in range(count):
             doc_id = rand_str(12)
             actions.append(json.dumps({"index": {"_index": self.index, "_id": doc_id}}))
             actions.append(json.dumps(rand_doc()))
         body = "\n".join(actions) + "\n"
-        status, _ = http(self.gateway, "POST", "/_bulk", body,
-                         headers={"X-App-Name": f"seed-{self.name}"},
-                         content_type="application/x-ndjson", timeout=30)
+        status, _ = http_request(
+            self.gateway, "POST", "/_bulk", body,
+            headers={"X-App-Name": f"seed-{self.name}"},
+            content_type="application/x-ndjson", timeout=30)
         print(f"done ({status})")
-        http(self.gateway, "POST", f"/{self.index}/_refresh")
+        http_request(self.gateway, "POST", f"/{self.index}/_refresh")
 
-    def delete_index(self):
-        status, _ = http(self.gateway, "DELETE", f"/{self.index}")
+    def delete_index(self) -> None:
+        status, _ = http_request(self.gateway, "DELETE", f"/{self.index}")
         print(f"  Deleted index {self.index} ({status})")
+
 
 # ---------------------------------------------------------------------------
 # The 8 scenarios
@@ -228,7 +120,7 @@ class BaseScenario:
 
 @scenario("script-heavy", "Scripts (clause weight=6): 3-4 script_fields + script_score")
 class ScriptHeavyScenario(BaseScenario):
-    def stress_op(self):
+    def stress_op(self) -> tuple[str, int]:
         body = {
             "query": {"script_score": {"query": {"match_all": {}},
                        "script": {"source": "doc['price'].value * doc['rating'].value"}}},
@@ -239,14 +131,14 @@ class ScriptHeavyScenario(BaseScenario):
             },
             "size": 5,
         }
-        status, _ = http(self.gateway, "POST", f"/{self.index}/_search",
-                         body, headers=self.stress_headers())
+        status, _ = http_request(self.gateway, "POST", f"/{self.index}/_search",
+                                 body, headers=self.stress_headers())
         return "stress:script_search", status
 
 
 @scenario("nested-deep", "Nested clauses (clause weight=5): 4-5 nested queries stacked")
 class NestedDeepScenario(BaseScenario):
-    def stress_op(self):
+    def stress_op(self) -> tuple[str, int]:
         body = {
             "query": {"bool": {"must": [
                 {"nested": {"path": "comments", "query": {"bool": {"must": [
@@ -259,14 +151,14 @@ class NestedDeepScenario(BaseScenario):
             ]}},
             "size": 5,
         }
-        status, _ = http(self.gateway, "POST", f"/{self.index}/_search",
-                         body, headers=self.stress_headers())
+        status, _ = http_request(self.gateway, "POST", f"/{self.index}/_search",
+                                 body, headers=self.stress_headers())
         return "stress:nested_search", status
 
 
 @scenario("wildcard-swarm", "Wildcards/Regexp/Prefix (clause weight=4): 6-7 clauses")
 class WildcardSwarmScenario(BaseScenario):
-    def stress_op(self):
+    def stress_op(self) -> tuple[str, int]:
         body = {
             "query": {"bool": {"should": [
                 {"wildcard": {"title": {"value": "*a*b*"}}},
@@ -279,14 +171,14 @@ class WildcardSwarmScenario(BaseScenario):
             ], "minimum_should_match": 1}},
             "size": 5,
         }
-        status, _ = http(self.gateway, "POST", f"/{self.index}/_search",
-                         body, headers=self.stress_headers())
+        status, _ = http_request(self.gateway, "POST", f"/{self.index}/_search",
+                                 body, headers=self.stress_headers())
         return "stress:wildcard_search", status
 
 
 @scenario("agg-explosion", "Deep aggregations (clause weight=3): 3-level nested aggs")
 class AggExplosionScenario(BaseScenario):
-    def stress_op(self):
+    def stress_op(self) -> tuple[str, int]:
         body = {
             "size": 0,
             "aggs": {
@@ -304,14 +196,14 @@ class AggExplosionScenario(BaseScenario):
                     "total_count": {"value_count": {"field": "price"}}}},
             },
         }
-        status, _ = http(self.gateway, "POST", f"/{self.index}/_search",
-                         body, headers=self.stress_headers())
+        status, _ = http_request(self.gateway, "POST", f"/{self.index}/_search",
+                                 body, headers=self.stress_headers())
         return "stress:agg_search", status
 
 
 @scenario("runtime-abuse", "Runtime mappings (weight=5) + Scripts (weight=6)")
 class RuntimeAbuseScenario(BaseScenario):
-    def stress_op(self):
+    def stress_op(self) -> tuple[str, int]:
         body = {
             "runtime_mappings": {
                 "price_bucket": {"type": "keyword",
@@ -325,14 +217,14 @@ class RuntimeAbuseScenario(BaseScenario):
             "fields": ["price_bucket", "discounted", "rating_label"],
             "size": 10,
         }
-        status, _ = http(self.gateway, "POST", f"/{self.index}/_search",
-                         body, headers=self.stress_headers())
+        status, _ = http_request(self.gateway, "POST", f"/{self.index}/_search",
+                                 body, headers=self.stress_headers())
         return "stress:runtime_search", status
 
 
 @scenario("geo-complex", "Geo queries: geo_distance + geo_bounding_box")
 class GeoComplexScenario(BaseScenario):
-    def stress_op(self):
+    def stress_op(self) -> tuple[str, int]:
         body = {
             "query": {"bool": {"must": [
                 {"geo_distance": {"distance": "50km",
@@ -349,14 +241,14 @@ class GeoComplexScenario(BaseScenario):
             ]}},
             "size": 10,
         }
-        status, _ = http(self.gateway, "POST", f"/{self.index}/_search",
-                         body, headers=self.stress_headers())
+        status, _ = http_request(self.gateway, "POST", f"/{self.index}/_search",
+                                 body, headers=self.stress_headers())
         return "stress:geo_search", status
 
 
 @scenario("bulk-massive", "Bulk write volume: 300-500 docs per _bulk batch")
 class BulkMassiveScenario(BaseScenario):
-    def stress_op(self):
+    def stress_op(self) -> tuple[str, int]:
         batch = random.randint(300, 500)
         actions = []
         for _ in range(batch):
@@ -364,17 +256,15 @@ class BulkMassiveScenario(BaseScenario):
             actions.append(json.dumps({"index": {"_index": self.index, "_id": doc_id}}))
             actions.append(json.dumps(rand_doc()))
         body = "\n".join(actions) + "\n"
-        status, _ = http(self.gateway, "POST", "/_bulk", body,
-                         headers={**self.stress_headers(),
-                                  "Content-Type": "application/x-ndjson"},
-                         content_type="application/x-ndjson", timeout=30)
+        status, _ = http_request(
+            self.gateway, "POST", "/_bulk", body,
+            headers={**self.stress_headers(), "Content-Type": "application/x-ndjson"},
+            content_type="application/x-ndjson", timeout=30)
         return "stress:bulk", status
 
-    def noise_op(self):
-        """Override: mix single-doc PUTs and tiny bulk (2-3 docs)."""
+    def noise_op(self) -> tuple[str, int]:
         if random.random() < 0.5:
             return self._noise_single_put()
-        # tiny bulk
         batch = random.randint(2, 3)
         actions = []
         for _ in range(batch):
@@ -382,16 +272,17 @@ class BulkMassiveScenario(BaseScenario):
             actions.append(json.dumps({"index": {"_index": self.index, "_id": doc_id}}))
             actions.append(json.dumps(rand_doc()))
         body = "\n".join(actions) + "\n"
-        status, _ = http(self.gateway, "POST", "/_bulk", body,
-                         headers={"X-App-Name": f"noise-{self.name}",
-                                  "Content-Type": "application/x-ndjson"},
-                         content_type="application/x-ndjson", timeout=15)
+        status, _ = http_request(
+            self.gateway, "POST", "/_bulk", body,
+            headers={"X-App-Name": f"noise-{self.name}",
+                     "Content-Type": "application/x-ndjson"},
+            content_type="application/x-ndjson", timeout=15)
         return "noise:bulk_small", status
 
 
 @scenario("ubq-carpet-bomb", "Update-by-query with script + wide match on all docs")
 class UbqCarpetBombScenario(BaseScenario):
-    def stress_op(self):
+    def stress_op(self) -> tuple[str, int]:
         body = {
             "query": {"bool": {"must": [
                 {"wildcard": {"title": {"value": "*"}}},
@@ -404,45 +295,48 @@ class UbqCarpetBombScenario(BaseScenario):
                 "params": {"v": 1},
             },
         }
-        status, _ = http(self.gateway, "POST",
-                         f"/{self.index}/_update_by_query?conflicts=proceed",
-                         body, headers=self.stress_headers())
+        status, _ = http_request(
+            self.gateway, "POST",
+            f"/{self.index}/_update_by_query?conflicts=proceed",
+            body, headers=self.stress_headers())
         return "stress:ubq", status
 
-    def noise_op(self):
-        """Override: single-doc update or simple search."""
+    def noise_op(self) -> tuple[str, int]:
         if random.random() < 0.5:
             doc_id = rand_str(12)
-            # Put a doc first so we can update it
-            http(self.gateway, "PUT", f"/{self.index}/_doc/{doc_id}",
-                 rand_doc(), headers={"X-App-Name": f"noise-{self.name}"})
-            status, _ = http(self.gateway, "POST", f"/{self.index}/_update/{doc_id}",
-                             {"doc": {"price": 9.99}},
-                             headers={"X-App-Name": f"noise-{self.name}"})
+            http_request(self.gateway, "PUT", f"/{self.index}/_doc/{doc_id}",
+                         rand_doc(), headers={"X-App-Name": f"noise-{self.name}"})
+            status, _ = http_request(
+                self.gateway, "POST", f"/{self.index}/_update/{doc_id}",
+                {"doc": {"price": 9.99}},
+                headers={"X-App-Name": f"noise-{self.name}"})
             return "noise:update", status
         return self._noise_match_all()
+
 
 # ---------------------------------------------------------------------------
 # Scenario runner
 # ---------------------------------------------------------------------------
 
 class ScenarioRunner:
-    def __init__(self, gateway, duration, stress_workers, noise_workers, cleanup):
+    def __init__(self, gateway: str, duration: int,
+                 stress_workers: int, noise_workers: int,
+                 cleanup: bool) -> None:
         self.gateway = gateway
         self.duration = duration
         self.stress_workers = stress_workers
         self.noise_workers = noise_workers
         self.cleanup = cleanup
 
-    def run(self, scenario_cls):
+    def run(self, scenario_cls: type) -> None:
         sc = scenario_cls(self.gateway)
-        print(f"\n{'#'*60}")
+        print(f"\n{'#' * 60}")
         print(f"  Scenario: {sc.name}")
         print(f"  {sc.description}")
         print(f"  Index: {sc.index}")
         print(f"  Stress workers: {self.stress_workers}  |  Noise workers: {self.noise_workers}")
         print(f"  Duration: {self.duration}s")
-        print(f"{'#'*60}\n")
+        print(f"{'#' * 60}\n")
 
         sc.ensure_index()
         sc.seed_data(500)
@@ -501,21 +395,19 @@ class ScenarioRunner:
         if self.cleanup:
             sc.delete_index()
 
-    def run_mix(self, scenario_classes):
-        """Run multiple scenarios simultaneously — all stress+noise workers in parallel."""
+    def run_mix(self, scenario_classes: list[type]) -> None:
         scenarios = [cls(self.gateway) for cls in scenario_classes]
         names = ", ".join(sc.name for sc in scenarios)
 
-        print(f"\n{'#'*60}")
+        print(f"\n{'#' * 60}")
         print(f"  MIX MODE — {len(scenarios)} scenarios in parallel")
         print(f"  Scenarios: {names}")
         print(f"  Stress workers per scenario: {self.stress_workers}")
         print(f"  Noise workers per scenario: {self.noise_workers}")
         print(f"  Duration: {self.duration}s")
         print(f"  Total threads: {len(scenarios) * (self.stress_workers + self.noise_workers)}")
-        print(f"{'#'*60}\n")
+        print(f"{'#' * 60}\n")
 
-        # Per-scenario stats so we can report each one separately
         sc_stats = {sc.name: Stats() for sc in scenarios}
 
         for sc in scenarios:
@@ -529,17 +421,17 @@ class ScenarioRunner:
             stats = sc_stats[sc.name]
 
             def make_stress(s=sc, st=stats):
-                def worker():
+                def _worker():
                     while not stop.is_set():
                         try:
                             op, status = s.stress_op()
                             st.record(op, status)
                         except Exception:
                             st.record("stress:error", 0)
-                return worker
+                return _worker
 
             def make_noise(s=sc, st=stats):
-                def worker():
+                def _worker():
                     while not stop.is_set():
                         try:
                             op, status = s.noise_op()
@@ -547,7 +439,7 @@ class ScenarioRunner:
                         except Exception:
                             st.record("noise:error", 0)
                         time.sleep(0.05)
-                return worker
+                return _worker
 
             for _ in range(self.stress_workers):
                 threads.append(threading.Thread(target=make_stress(), daemon=True))
@@ -584,11 +476,12 @@ class ScenarioRunner:
             for sc in scenarios:
                 sc.delete_index()
 
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Focused stress-test scenarios for the observability gateway")
     parser.add_argument("--scenario", default=None,
@@ -601,7 +494,8 @@ def main():
                         help="Number of stress workers (default: 4)")
     parser.add_argument("--noise-workers", type=int, default=2,
                         help="Number of noise workers (default: 2)")
-    parser.add_argument("--gateway", default=os.getenv("GATEWAY_URL", "http://localhost:9200"),
+    parser.add_argument("--gateway",
+                        default=os.getenv("GATEWAY_URL", "http://localhost:9200"),
                         help="Gateway base URL (default: %(default)s)")
     parser.add_argument("--cleanup", action="store_true",
                         help="Delete stress indices after run")
@@ -622,7 +516,7 @@ def main():
         parser.error("--scenario is required (use --list to see options)")
 
     # Verify gateway is reachable
-    status, _ = http(args.gateway, "GET", "/")
+    status, _ = http_request(args.gateway, "GET", "/")
     if status == 0:
         print(f"  ERROR: Cannot reach gateway at {args.gateway}", file=sys.stderr)
         sys.exit(1)

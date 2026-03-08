@@ -5,7 +5,7 @@ Pure extraction functions — no I/O, no side effects.
 import base64
 import json
 import re
-from typing import Callable
+from typing import Any, Callable
 
 _BASIC_AUTH_PREFIX = "Basic "
 _ES_DEFAULT_SIZE   = 10
@@ -87,7 +87,7 @@ def parse_size(body: dict) -> int:
     return body.get("size", _ES_DEFAULT_SIZE)
 
 
-def _scrub(node):
+def _scrub(node: Any) -> Any:
     if isinstance(node, dict):
         return {key: _scrub(value) for key, value in node.items()}
     if isinstance(node, list):

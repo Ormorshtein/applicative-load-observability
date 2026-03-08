@@ -5,7 +5,7 @@ All values default to 0; score is unbounded above.
 
 import os
 from dataclasses import dataclass
-from typing import Callable
+from typing import Any, Callable
 
 
 def _load_baselines() -> dict:
@@ -61,11 +61,11 @@ class StressContext:
     docs_affected:    int
 
 
-def norm(value: float, baseline: float) -> float:
+def normalize(value: float, baseline: float) -> float:
     return value / baseline
 
 
-def _walk_query_clauses(node, counts: dict) -> None:
+def _walk_query_clauses(node: Any, counts: dict[str, int]) -> None:
     if isinstance(node, dict):
         for key, value in node.items():
             if key in _SINGLE_CLAUSE_KEYS:
@@ -87,7 +87,7 @@ def _walk_query_clauses(node, counts: dict) -> None:
             _walk_query_clauses(item, counts)
 
 
-def _count_aggs(node) -> int:
+def _count_aggs(node: Any) -> int:
     if not isinstance(node, dict):
         return 0
     count = 0
@@ -98,8 +98,8 @@ def _count_aggs(node) -> int:
     return count
 
 
-def _count_clauses(body: dict) -> dict:
-    counts = {k: 0 for k in _ALL_COUNT_FIELDS}
+def count_clauses(body: dict) -> dict[str, int]:
+    counts: dict[str, int] = {k: 0 for k in _ALL_COUNT_FIELDS}
 
     aggs = body.get("aggs") or body.get("aggregations")
     if isinstance(aggs, dict):
@@ -114,10 +114,6 @@ def _count_clauses(body: dict) -> dict:
     _walk_query_clauses(body.get("query", {}), counts)
     _walk_query_clauses(body.get("script_fields", {}), counts)
     return counts
-
-
-def count_clauses(body: dict) -> dict:
-    return _count_clauses(body)
 
 
 _COST_INDICATOR_BOOL_THRESHOLD = int(os.environ.get("COST_INDICATOR_BOOL_THRESHOLD", 50))
@@ -168,39 +164,39 @@ def evaluate_cost_indicators(counts: dict) -> tuple[dict[str, int], float]:
 
 def _stress_query(ctx: StressContext) -> float:
     return (
-        0.55 * norm(ctx.es_took_ms, BASELINES["took_ms"])
-        + 0.20 * norm(ctx.shards_total, BASELINES["shards_total"])
-        + 0.15 * norm(ctx.hits, BASELINES["hits"])
-        + 0.10 * norm(ctx.size, BASELINES["size"])
+        0.55 * normalize(ctx.es_took_ms, BASELINES["took_ms"])
+        + 0.20 * normalize(ctx.shards_total, BASELINES["shards_total"])
+        + 0.15 * normalize(ctx.hits, BASELINES["hits"])
+        + 0.10 * normalize(ctx.size, BASELINES["size"])
     )
 
 
 def _stress_bulk(ctx: StressContext) -> float:
     return (
-        0.45 * norm(ctx.es_took_ms, BASELINES["took_ms"])
-        + 0.55 * norm(ctx.docs_affected, BASELINES["docs_affected"])
+        0.45 * normalize(ctx.es_took_ms, BASELINES["took_ms"])
+        + 0.55 * normalize(ctx.docs_affected, BASELINES["docs_affected"])
     )
 
 
 def _stress_by_query(ctx: StressContext) -> float:
     return (
-        0.40 * norm(ctx.es_took_ms, BASELINES["took_ms"])
-        + 0.35 * norm(ctx.docs_affected, BASELINES["docs_affected"])
-        + 0.25 * norm(ctx.shards_total, BASELINES["shards_total"])
+        0.40 * normalize(ctx.es_took_ms, BASELINES["took_ms"])
+        + 0.35 * normalize(ctx.docs_affected, BASELINES["docs_affected"])
+        + 0.25 * normalize(ctx.shards_total, BASELINES["shards_total"])
     )
 
 
 def _stress_update(ctx: StressContext) -> float:
     return (
-        0.60 * norm(ctx.es_took_ms, BASELINES["took_ms"])
-        + 0.40 * norm(ctx.shards_total, BASELINES["shards_total"])
+        0.60 * normalize(ctx.es_took_ms, BASELINES["took_ms"])
+        + 0.40 * normalize(ctx.shards_total, BASELINES["shards_total"])
     )
 
 
 def _stress_doc_write(ctx: StressContext) -> float:
     return (
-        0.70 * norm(ctx.es_took_ms, BASELINES["took_ms"])
-        + 0.30 * norm(ctx.shards_total, BASELINES["shards_total"])
+        0.70 * normalize(ctx.es_took_ms, BASELINES["took_ms"])
+        + 0.30 * normalize(ctx.shards_total, BASELINES["shards_total"])
     )
 
 

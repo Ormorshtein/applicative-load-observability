@@ -4,6 +4,8 @@ POST /analyze  — accepts raw Nginx payload, returns observability record.
 Never crashes: returns 200 with partial record on any parse error.
 """
 
+import json
+
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -14,10 +16,10 @@ app = FastAPI()
 
 
 @app.post("/analyze")
-async def analyze(request: Request):
+async def analyze(request: Request) -> JSONResponse:
     try:
         payload = await request.json()
-    except Exception:
+    except (json.JSONDecodeError, ValueError, UnicodeDecodeError):
         return JSONResponse(status_code=200, content={"error": "unparseable payload"})
 
     try:
@@ -29,7 +31,7 @@ async def analyze(request: Request):
 
 
 @app.get("/health")
-async def health():
+async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 

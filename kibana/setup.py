@@ -18,11 +18,10 @@ import json
 import os
 import sys
 import time
+from dataclasses import dataclass, field
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
-KIBANA = os.getenv("KIBANA_URL", "http://localhost:5601")
-ELASTICSEARCH = os.getenv("ELASTICSEARCH_URL", "http://localhost:9200")
 INDEX_PATTERN = "applicative-load-observability-v2"
 DATA_VIEW_ID = "alo-data-view"
 DASHBOARD_ID = "alo-dashboard"
@@ -30,6 +29,14 @@ CI_DASHBOARD_ID = "alo-ci-dashboard"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 NDJSON_PATH = os.path.join(SCRIPT_DIR, "dashboard.ndjson")
 CI_NDJSON_PATH = os.path.join(SCRIPT_DIR, "dashboard-cost-indicators.ndjson")
+
+
+@dataclass
+class StackConfig:
+    kibana_url: str = field(
+        default_factory=lambda: os.getenv("KIBANA_URL", "http://localhost:5601"))
+    elasticsearch_url: str = field(
+        default_factory=lambda: os.getenv("ELASTICSEARCH_URL", "http://localhost:9200"))
 
 # ── ES index template mapping ───────────────────────────────────────────────
 
@@ -129,24 +136,13 @@ INDEX_TEMPLATE = {
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
-def kbn(method, path, body=None):
-    url = f"{KIBANA}{path}"
-    headers = {"kbn-xsrf": "true", "Content-Type": "application/json"}
-    data = json.dumps(body).encode() if body else None
-    req = Request(url, data=data, headers=headers, method=method)
-    try:
-        resp = urlopen(req, timeout=30)
-        return resp.status, json.loads(resp.read() or b"{}")
-    except HTTPError as e:
-        try:
-            return e.code, json.loads(e.read())
-        except Exception:
-            return e.code, {}
-
-
-def es_request(method, path, body=None):
-    url = f"{ELASTICSEARCH}{path}"
+def _http_json(base_url: str, method: str, path: str,
+                body: dict | None = None,
+                extra_headers: dict[str, str] | None = None) -> tuple[int, dict]:
+    url = f"{base_url}{path}"
     headers = {"Content-Type": "application/json"}
+    if extra_headers:
+        headers.update(extra_headers)
     data = json.dumps(body).encode() if body else None
     req = Request(url, data=data, headers=headers, method=method)
     try:
@@ -159,52 +155,63 @@ def es_request(method, path, body=None):
             return e.code, {}
 
 
-def wait_kibana():
-    print("  Waiting for Kibana ...", end=" ", flush=True)
+def kibana_request(cfg: StackConfig, method: str, path: str,
+                   body: dict | None = None) -> tuple[int, dict]:
+    return _http_json(cfg.kibana_url, method, path, body,
+                      extra_headers={"kbn-xsrf": "true"})
+
+
+def es_request(cfg: StackConfig, method: str, path: str,
+               body: dict | None = None) -> tuple[int, dict]:
+    return _http_json(cfg.elasticsearch_url, method, path, body)
+
+
+def wait_for_service(cfg: StackConfig, name: str, check_fn) -> None:
+    print(f"  Waiting for {name} ...", end=" ", flush=True)
     for _ in range(30):
         try:
-            s, _ = kbn("GET", "/api/status")
-            if s == 200:
+            status, _ = check_fn(cfg)
+            if status == 200:
                 print("ready")
                 return
         except Exception:
             pass
         time.sleep(2)
-    print("TIMEOUT"); sys.exit(1)
+    print("TIMEOUT")
+    sys.exit(1)
 
 
-def wait_es():
-    print("  Waiting for Elasticsearch ...", end=" ", flush=True)
-    for _ in range(30):
-        try:
-            s, _ = es_request("GET", "/_cluster/health")
-            if s == 200:
-                print("ready")
-                return
-        except Exception:
-            pass
-        time.sleep(2)
-    print("TIMEOUT"); sys.exit(1)
+def wait_kibana(cfg: StackConfig) -> None:
+    wait_for_service(cfg, "Kibana",
+                     lambda c: kibana_request(c, "GET", "/api/status"))
 
 
-def upsert(obj_type, obj_id, attrs, refs=None):
-    kbn("DELETE", f"/api/saved_objects/{obj_type}/{obj_id}")
+def wait_es(cfg: StackConfig) -> None:
+    wait_for_service(cfg, "Elasticsearch",
+                     lambda c: es_request(c, "GET", "/_cluster/health"))
+
+
+def upsert(cfg: StackConfig, obj_type: str, obj_id: str,
+           attrs: dict, refs: list[dict] | None = None) -> bool:
+    kibana_request(cfg, "DELETE", f"/api/saved_objects/{obj_type}/{obj_id}")
     body = {"attributes": attrs}
     if refs:
         body["references"] = refs
-    s, _ = kbn("POST", f"/api/saved_objects/{obj_type}/{obj_id}", body)
-    return s in (200, 201)
+    status, _ = kibana_request(cfg, "POST",
+                               f"/api/saved_objects/{obj_type}/{obj_id}", body)
+    return status in (200, 201)
 
 
-def ensure_index_template():
-    s, _ = es_request("PUT", "/_index_template/alo-template", INDEX_TEMPLATE)
-    print(f"  {'OK' if s in (200, 201) else 'FAIL'}: Index template (alo-template)")
-    return s in (200, 201)
+def ensure_index_template(cfg: StackConfig) -> bool:
+    status, _ = es_request(cfg, "PUT", "/_index_template/alo-template",
+                           INDEX_TEMPLATE)
+    print(f"  {'OK' if status in (200, 201) else 'FAIL'}: Index template (alo-template)")
+    return status in (200, 201)
 
 
 # ── import mode ──────────────────────────────────────────────────────────────
 
-def import_ndjson(path, label):
+def import_ndjson(cfg: StackConfig, path: str, label: str) -> bool:
     if not os.path.exists(path):
         print(f"  ERROR: {path} not found. Run with --rebuild first.")
         return False
@@ -220,7 +227,7 @@ def import_ndjson(path, label):
         f"Content-Type: application/ndjson\r\n\r\n"
     ).encode() + ndjson_data + f"\r\n--{boundary}--\r\n".encode()
 
-    url = f"{KIBANA}/api/saved_objects/_import?overwrite=true"
+    url = f"{cfg.kibana_url}/api/saved_objects/_import?overwrite=true"
     req = Request(url, data=body, method="POST")
     req.add_header("kbn-xsrf", "true")
     req.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
@@ -241,9 +248,9 @@ def import_ndjson(path, label):
         return False
 
 
-def do_import():
-    ok1 = import_ndjson(NDJSON_PATH, "main dashboard")
-    ok2 = import_ndjson(CI_NDJSON_PATH, "cost indicators dashboard")
+def do_import(cfg: StackConfig) -> bool:
+    ok1 = import_ndjson(cfg, NDJSON_PATH, "main dashboard")
+    ok2 = import_ndjson(cfg, CI_NDJSON_PATH, "cost indicators dashboard")
     return ok1 and ok2
 
 
@@ -477,8 +484,9 @@ def mk_datatable(vis_id, title, bucket_field, bucket_label, metrics, size=10):
     }
 
 
-def export_dashboard(dashboard_id, ndjson_path):
-    url = f"{KIBANA}/api/saved_objects/_export"
+def export_dashboard(cfg: StackConfig, dashboard_id: str,
+                     ndjson_path: str) -> None:
+    url = f"{cfg.kibana_url}/api/saved_objects/_export"
     body = json.dumps({"objects": [{"type": "dashboard", "id": dashboard_id}],
                        "includeReferencesDeep": True}).encode()
     req = Request(url, data=body, headers={"kbn-xsrf": "true", "Content-Type": "application/json"}, method="POST")
@@ -493,10 +501,12 @@ def export_dashboard(dashboard_id, ndjson_path):
         print(f"  Export failed: {e.code}")
 
 
-def build_dashboard(dashboard_id, title, description, vis_ids, layout_fn):
+def build_dashboard(cfg: StackConfig, dashboard_id: str, title: str,
+                    description: str, vis_ids: list[str],
+                    layout_fn) -> bool:
     panels, refs = [], []
     layout_fn(vis_ids, panels, refs)
-    ok = upsert("dashboard", dashboard_id, {
+    ok = upsert(cfg, "dashboard", dashboard_id, {
         "title": title,
         "description": description,
         "kibanaSavedObjectMeta": {"searchSourceJSON": json.dumps(
@@ -598,10 +608,10 @@ def layout_cost_indicators(vis_ids, panels, refs):
         refs.append({"type": "lens", "id": vid, "name": f"panel_{vid}"})
 
 
-def do_rebuild():
+def do_rebuild(cfg: StackConfig) -> bool:
     # Data view
-    kbn("DELETE", f"/api/data_views/data_view/{DATA_VIEW_ID}")
-    s, _ = kbn("POST", "/api/data_views/data_view", {
+    kibana_request(cfg, "DELETE", f"/api/data_views/data_view/{DATA_VIEW_ID}")
+    s, _ = kibana_request(cfg, "POST", "/api/data_views/data_view", {
         "data_view": {"id": DATA_VIEW_ID, "title": INDEX_PATTERN,
                       "timeFieldName": "timestamp", "name": "Applicative Load Observability"},
         "override": True,
@@ -688,11 +698,11 @@ def do_rebuild():
 
     vis_ids = []
     for vid, attrs in all_vis:
-        ok = upsert("lens", vid, attrs, DV_REF)
+        ok = upsert(cfg, "lens", vid, attrs, DV_REF)
         print(f"  {'OK' if ok else 'FAIL'}: {attrs['title']}")
         vis_ids.append(vid)
 
-    ok1 = build_dashboard(DASHBOARD_ID, "Applicative Load Observability",
+    ok1 = build_dashboard(cfg, DASHBOARD_ID, "Applicative Load Observability",
                           "Stress analysis by application, target, operation, cost indicator, and template.",
                           vis_ids, layout_main)
 
@@ -739,53 +749,55 @@ def do_rebuild():
 
     ci_ids = []
     for vid, attrs in ci_vis:
-        ok = upsert("lens", vid, attrs, DV_REF)
+        ok = upsert(cfg, "lens", vid, attrs, DV_REF)
         print(f"  {'OK' if ok else 'FAIL'}: {attrs['title']}")
         ci_ids.append(vid)
 
-    ok2 = build_dashboard(CI_DASHBOARD_ID, "Cost Indicators & Query Patterns",
+    ok2 = build_dashboard(cfg, CI_DASHBOARD_ID, "Cost Indicators & Query Patterns",
                           "Cost indicators, clause counts, and query pattern analysis.",
                           ci_ids, layout_cost_indicators)
 
     # Export both dashboards
     print()
-    export_dashboard(DASHBOARD_ID, NDJSON_PATH)
-    export_dashboard(CI_DASHBOARD_ID, CI_NDJSON_PATH)
+    export_dashboard(cfg, DASHBOARD_ID, NDJSON_PATH)
+    export_dashboard(cfg, CI_DASHBOARD_ID, CI_NDJSON_PATH)
 
     return ok1 and ok2
 
 
 # ── main ─────────────────────────────────────────────────────────────────────
 
-def main():
-    global KIBANA, ELASTICSEARCH
+def main() -> None:
+    defaults = StackConfig()
     parser = argparse.ArgumentParser(description="Set up the ALO stack (ES template + Kibana dashboards)")
-    parser.add_argument("--kibana", default=KIBANA, help="Kibana URL (default: %(default)s)")
-    parser.add_argument("--elasticsearch", default=ELASTICSEARCH,
+    parser.add_argument("--kibana", default=defaults.kibana_url,
+                        help="Kibana URL (default: %(default)s)")
+    parser.add_argument("--elasticsearch", default=defaults.elasticsearch_url,
                         help="Elasticsearch URL (default: %(default)s)")
     parser.add_argument("--rebuild", action="store_true",
                         help="Recreate all objects via API and re-export dashboard.ndjson")
     args = parser.parse_args()
-    KIBANA = args.kibana
-    ELASTICSEARCH = args.elasticsearch
 
-    print(f"\n  Kibana:        {KIBANA}")
-    print(f"  Elasticsearch: {ELASTICSEARCH}\n")
+    cfg = StackConfig(kibana_url=args.kibana,
+                      elasticsearch_url=args.elasticsearch)
 
-    wait_es()
-    wait_kibana()
-    ensure_index_template()
+    print(f"\n  Kibana:        {cfg.kibana_url}")
+    print(f"  Elasticsearch: {cfg.elasticsearch_url}\n")
+
+    wait_es(cfg)
+    wait_kibana(cfg)
+    ensure_index_template(cfg)
 
     if args.rebuild:
         print("  Mode: rebuild\n")
-        ok = do_rebuild()
+        ok = do_rebuild(cfg)
     else:
         print("  Mode: import\n")
-        ok = do_import()
+        ok = do_import(cfg)
 
     if ok:
-        print(f"\n  Main dashboard:            {KIBANA}/app/dashboards#/view/{DASHBOARD_ID}")
-        print(f"  Cost indicators dashboard: {KIBANA}/app/dashboards#/view/{CI_DASHBOARD_ID}\n")
+        print(f"\n  Main dashboard:            {cfg.kibana_url}/app/dashboards#/view/{DASHBOARD_ID}")
+        print(f"  Cost indicators dashboard: {cfg.kibana_url}/app/dashboards#/view/{CI_DASHBOARD_ID}\n")
     sys.exit(0 if ok else 1)
 
 

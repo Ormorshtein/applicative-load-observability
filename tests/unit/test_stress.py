@@ -3,7 +3,7 @@
 import pytest
 
 from stress import (
-    norm,
+    normalize,
     count_clauses,
     evaluate_cost_indicators,
     calc_stress,
@@ -17,18 +17,18 @@ from stress import (
 # norm()
 # ---------------------------------------------------------------------------
 
-class TestNorm:
+class TestNormalize:
     def test_at_baseline(self):
-        assert norm(100, 100) == 1.0
+        assert normalize(100, 100) == 1.0
 
     def test_below_baseline(self):
-        assert norm(50, 100) == 0.5
+        assert normalize(50, 100) == 0.5
 
     def test_above_baseline(self):
-        assert norm(200, 100) == 2.0
+        assert normalize(200, 100) == 2.0
 
     def test_zero_value(self):
-        assert norm(0, 100) == 0.0
+        assert normalize(0, 100) == 0.0
 
 
 # ---------------------------------------------------------------------------
