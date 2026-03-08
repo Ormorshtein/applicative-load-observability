@@ -1,5 +1,7 @@
 """Unit tests for stress score formulas in analyzer/stress.py."""
 
+import math
+
 import pytest
 
 from stress import normalize, calc_stress, StressContext
@@ -119,3 +121,41 @@ class TestCalcStress:
         score = calc_stress("_search", ctx, stress_multiplier=3.0)
         base = 0.55 * 5.0 + 0.20 * 1.0 + 0.15 * 1.0 + 0.10 * 1.0
         assert score == pytest.approx(base * 3.0)
+
+    def test_search_with_clause_bonus(self):
+        """10 bool clauses (threshold=4) adds logarithmic bonus."""
+        ctx = self._ctx()
+        score_no_clauses = calc_stress("_search", ctx)
+        score_with = calc_stress("_search", ctx, bool_clause_total=10)
+        expected_bonus = min(0.10 * math.log(1 + 6), 0.50)
+        assert score_with == pytest.approx(score_no_clauses + expected_bonus)
+
+    def test_clause_bonus_below_threshold(self):
+        """3 clauses (below threshold=4) produces no bonus."""
+        ctx = self._ctx()
+        score_base = calc_stress("_search", ctx)
+        score_with = calc_stress("_search", ctx, bool_clause_total=3)
+        assert score_with == pytest.approx(score_base)
+
+    def test_clause_bonus_capped(self):
+        """Extreme clause count — bonus must not exceed CAP (0.50)."""
+        ctx = self._ctx()
+        score_base = calc_stress("_search", ctx)
+        score_with = calc_stress("_search", ctx, bool_clause_total=1000)
+        assert score_with == pytest.approx(score_base + 0.50)
+
+    def test_clause_bonus_ignored_for_bulk(self):
+        """Bulk operations get no clause bonus."""
+        ctx = self._ctx()
+        score_no = calc_stress("_bulk", ctx)
+        score_with = calc_stress("_bulk", ctx, bool_clause_total=20)
+        assert score_no == score_with
+
+    def test_clause_bonus_multiplied_by_indicator(self):
+        """Clause bonus is included in base before multiplier is applied."""
+        ctx = self._ctx()
+        base = 0.55 * 1.0 + 0.20 * 1.0 + 0.15 * 1.0 + 0.10 * 1.0
+        bonus = min(0.10 * math.log(1 + 6), 0.50)
+        expected = (base + bonus) * 1.5
+        score = calc_stress("_search", ctx, stress_multiplier=1.5, bool_clause_total=10)
+        assert score == pytest.approx(expected)

@@ -3,6 +3,7 @@ Stress score calculation — research-backed formula.
 All values default to 0; score is unbounded above.
 """
 
+import math
 import os
 from dataclasses import dataclass
 from typing import Any, Callable
@@ -214,10 +215,23 @@ _STRESS_DISPATCH: dict[str, Callable[[StressContext], float]] = {
 
 _NO_MULTIPLIER_OPS = {"_bulk", "_create", "index", "delete"}
 
+_CLAUSE_THRESHOLD = int(os.environ.get("STRESS_CLAUSE_THRESHOLD", 4))
+_CLAUSE_WEIGHT = float(os.environ.get("STRESS_CLAUSE_WEIGHT", 0.10))
+_CLAUSE_CAP = float(os.environ.get("STRESS_CLAUSE_CAP", 0.50))
 
-def calc_stress(operation: str, ctx: StressContext, stress_multiplier: float = 1.0) -> float:
+
+def calc_stress(
+    operation: str,
+    ctx: StressContext,
+    stress_multiplier: float = 1.0,
+    bool_clause_total: int = 0,
+) -> float:
     formula = _STRESS_DISPATCH.get(operation, _stress_doc_write)
     base = formula(ctx)
     if operation in _NO_MULTIPLIER_OPS:
         return base
+    if bool_clause_total > _CLAUSE_THRESHOLD:
+        excess = bool_clause_total - _CLAUSE_THRESHOLD
+        clause_bonus = min(_CLAUSE_WEIGHT * math.log(1 + excess), _CLAUSE_CAP)
+        base += clause_bonus
     return base * stress_multiplier

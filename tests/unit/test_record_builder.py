@@ -248,6 +248,21 @@ class TestBuildRecord:
         rec = build_record(raw)
         assert rec["response"]["docs_affected"] == 10
 
+    def test_multi_clause_bool_scores_higher(self):
+        """A 10-clause bool query should score higher than a simple match query."""
+        simple_raw = _make_raw()
+        bool_body = {
+            "query": {"bool": {
+                "must": [{"match": {"f": "v"}} for _ in range(5)],
+                "filter": [{"term": {"f": "v"}} for _ in range(5)],
+            }},
+            "size": 10,
+        }
+        complex_raw = _make_raw(request_body=bool_body)
+        simple_score = build_record(simple_raw)["stress"]["score"]
+        complex_score = build_record(complex_raw)["stress"]["score"]
+        assert complex_score > simple_score
+
     def test_es_took_fallback_to_gateway(self):
         """When es_took_ms is 0, stress uses gateway_took_ms."""
         raw = _make_raw(

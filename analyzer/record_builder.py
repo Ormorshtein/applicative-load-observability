@@ -107,6 +107,10 @@ def build_record(raw: RawFields) -> dict:
     es_took_ms           = parse_es_took_ms(raw.response_body)
 
     clause_counts = count_clauses(raw.request_body)
+    bool_clause_total = (clause_counts["bool_must_count"]
+                         + clause_counts["bool_should_count"]
+                         + clause_counts["bool_filter_count"]
+                         + clause_counts["bool_must_not_count"])
     cost_indicators, stress_multiplier = evaluate_cost_indicators(clause_counts)
 
     ctx = StressContext(
@@ -149,7 +153,7 @@ def build_record(raw: RawFields) -> dict:
         "clause_counts":    _output_clause_counts(clause_counts),
         "cost_indicators":  cost_indicators,
         "stress": {
-            "score":                round(calc_stress(operation, ctx, stress_multiplier), _STRESS_PRECISION),
+            "score":                round(calc_stress(operation, ctx, stress_multiplier, bool_clause_total), _STRESS_PRECISION),
             "multiplier":           stress_multiplier,
             "cost_indicator_count": len(cost_indicators),
             "cost_indicator_names": list(cost_indicators.keys()),
