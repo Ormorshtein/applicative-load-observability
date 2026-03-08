@@ -1,0 +1,22 @@
+metricbeat.modules:
+
+  - module: elasticsearch
+    xpack.enabled: true
+    period: 10s
+    hosts: ["http://elasticsearch:9200"]
+
+  - module: logstash
+    xpack.enabled: true
+    period: 10s
+    hosts: ["http://logstash:9600"]
+
+  - module: kibana
+    xpack.enabled: true
+    period: 10s
+    hosts: ["http://kibana:5601"]
+
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+
+setup.kibana:
+  host: "http://kibana:5601"

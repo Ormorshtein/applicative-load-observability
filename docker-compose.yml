@@ -5,7 +5,9 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
+      - xpack.monitoring.collection.enabled=false
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    cpus: 2
     volumes:
       - es-data:/usr/share/elasticsearch/data
     networks:
@@ -81,6 +83,23 @@ services:
       - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST:-elasticsearch:9200}
       - LOGSTASH_URL=${LOGSTASH_URL:-http://logstash:8080/}
       - GATEWAY_PORT=${GATEWAY_PORT:-9200}
+    networks:
+      - obs-net
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  metricbeat:
+    image: docker.elastic.co/beats/metricbeat:8.13.0
+    # Set METRICBEAT_ENABLED=0 to disable stack monitoring
+    scale: ${METRICBEAT_ENABLED:-1}
+    user: root
+    command: ["--strict.perms=false"]
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - KIBANA_HOST=http://kibana:5601
+    volumes:
+      - ./metricbeat/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml:ro
     networks:
       - obs-net
     depends_on:
