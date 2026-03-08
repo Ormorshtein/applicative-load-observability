@@ -34,7 +34,7 @@ from helpers import (
 
 INDEX = "loadtest"
 
-_DEFAULT_GATEWAY = os.getenv("GATEWAY_URL", "http://localhost:9200")
+_DEFAULT_GATEWAY = os.getenv("GATEWAY_URL", "http://127.0.0.1:9200")
 _DEFAULT_DURATION = 60
 _DEFAULT_WORKERS = 10
 

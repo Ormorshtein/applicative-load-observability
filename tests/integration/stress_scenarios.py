@@ -205,7 +205,7 @@ def main() -> None:
     parser.add_argument("--noise-workers", type=int, default=2,
                         help="Number of noise workers (default: 2)")
     parser.add_argument("--gateway",
-                        default=os.getenv("GATEWAY_URL", "http://localhost:9200"),
+                        default=os.getenv("GATEWAY_URL", "http://127.0.0.1:9200"),
                         help="Gateway base URL (default: %(default)s)")
     parser.add_argument("--cleanup", action="store_true",
                         help="Delete stress indices after run")
