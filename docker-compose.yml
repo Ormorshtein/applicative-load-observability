@@ -21,7 +21,7 @@ services:
       retries: 10
 
   logstash:
-    build: ./logstash
+    image: oracle1012/applicative-load-observability:alo-logstash
     ports:
       - "8080:8080"
       # - "9600:9600"  # Uncomment to expose Logstash monitoring API
@@ -29,6 +29,7 @@ services:
       - ELASTICSEARCH_URL=${ELASTICSEARCH_URL:-http://elasticsearch:9200}
       - ANALYZER_URL=${ANALYZER_URL:-http://analyzer:8000/analyze}
       - LOGSTASH_HTTP_PORT=${LOGSTASH_HTTP_PORT:-8080}
+      - CLUSTER_NAME=${CLUSTER_NAME:-default}
       # Set LOGSTASH_MONITORING=true to ship pipeline metrics to ES
       # (viewable in Kibana → Stack Monitoring)
       - LOGSTASH_MONITORING=${LOGSTASH_MONITORING:-false}
@@ -77,7 +78,7 @@ services:
         condition: service_healthy
 
   gateway:
-    build: ./gateway
+    image: oracle1012/applicative-load-observability:alo-gateway
     ports:
       - "${GATEWAY_PORT:-9200}:${GATEWAY_PORT:-9200}"
     environment:

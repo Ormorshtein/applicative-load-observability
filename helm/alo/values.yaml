@@ -6,8 +6,10 @@ pipelineMode: logstash
 
 # ── Global ──────────────────────────────────────────────────────────────────
 global:
-  # Observability index written by the pipeline
-  observabilityIndex: applicative-load-observability
+  # Name of the monitored Elasticsearch cluster (used as data stream namespace)
+  clusterName: default
+  # Observability data stream pattern written by the pipeline
+  observabilityIndex: alo
 
 # ── Elasticsearch ───────────────────────────────────────────────────────────
 elasticsearch:

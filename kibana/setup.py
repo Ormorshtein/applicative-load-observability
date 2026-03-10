@@ -23,7 +23,7 @@ from urllib.error import HTTPError
 
 KIBANA = os.getenv("KIBANA_URL", "http://localhost:5601")
 ELASTICSEARCH = os.getenv("ELASTICSEARCH_URL", "http://localhost:9200")
-INDEX_PATTERN = "applicative-load-observability-v2"
+INDEX_PATTERN = "alo-*-*"
 DATA_VIEW_ID = "alo-data-view"
 DASHBOARD_ID = "alo-dashboard"
 CI_DASHBOARD_ID = "alo-ci-dashboard"
@@ -34,7 +34,8 @@ CI_NDJSON_PATH = os.path.join(SCRIPT_DIR, "dashboard-cost-indicators.ndjson")
 # ── ES index template mapping ───────────────────────────────────────────────
 
 INDEX_TEMPLATE = {
-    "index_patterns": ["applicative-load-observability-*"],
+    "index_patterns": ["alo-*-*"],
+    "data_stream": {},
     "priority": 100,
     "template": {
         "settings": {
@@ -45,7 +46,7 @@ INDEX_TEMPLATE = {
         "mappings": {
             "dynamic": "strict",
             "properties": {
-                "timestamp": {"type": "date"},
+                "@timestamp": {"type": "date"},
                 "identity": {
                     "properties": {
                         "username":             {"type": "keyword"},
@@ -403,8 +404,8 @@ def mk_ts(vis_id, title, field, metric_field="stress.score", metric_label="Avg S
             },
             "datasourceStates": {"formBased": {"layers": {"layer1": {
                 "columns": {
-                    "time": {"label": "timestamp", "dataType": "date", "operationType": "date_histogram",
-                             "sourceField": "timestamp", "isBucketed": True, "params": {"interval": "auto"}},
+                    "time": {"label": "@timestamp", "dataType": "date", "operationType": "date_histogram",
+                             "sourceField": "@timestamp", "isBucketed": True, "params": {"interval": "auto"}},
                     "breakdown": {"label": field.split(".")[-1], "dataType": "string",
                                   "operationType": "terms", "sourceField": field, "isBucketed": True,
                                   "params": {"size": size, "orderBy": {"type": "column", "columnId": "metric"},
@@ -438,8 +439,8 @@ def mk_ts_response(vis_id, title, breakdown_field, latency_field, latency_label,
             },
             "datasourceStates": {"formBased": {"layers": {"layer1": {
                 "columns": {
-                    "time": {"label": "timestamp", "dataType": "date", "operationType": "date_histogram",
-                             "sourceField": "timestamp", "isBucketed": True, "params": {"interval": "auto"}},
+                    "time": {"label": "@timestamp", "dataType": "date", "operationType": "date_histogram",
+                             "sourceField": "@timestamp", "isBucketed": True, "params": {"interval": "auto"}},
                     "breakdown": {"label": breakdown_field.split(".")[-1], "dataType": "string",
                                   "operationType": "terms", "sourceField": breakdown_field, "isBucketed": True,
                                   "params": {"size": size, "orderBy": {"type": "column", "columnId": "latency"},
@@ -508,8 +509,8 @@ def mk_horizontal_bar(vis_id, title, field, metric_field, metric_op, metric_labe
 def mk_ts_multi(vis_id, title, metrics, series_type="line"):
     """Time series with multiple metric columns (no breakdown/split)."""
     cols = {
-        "time": {"label": "timestamp", "dataType": "date", "operationType": "date_histogram",
-                 "sourceField": "timestamp", "isBucketed": True, "params": {"interval": "auto"}},
+        "time": {"label": "@timestamp", "dataType": "date", "operationType": "date_histogram",
+                 "sourceField": "@timestamp", "isBucketed": True, "params": {"interval": "auto"}},
     }
     col_order = ["time"]
     accessors = []
@@ -686,7 +687,7 @@ def do_rebuild():
     kbn("DELETE", f"/api/data_views/data_view/{DATA_VIEW_ID}")
     s, _ = kbn("POST", "/api/data_views/data_view", {
         "data_view": {"id": DATA_VIEW_ID, "title": INDEX_PATTERN,
-                      "timeFieldName": "timestamp", "name": "Applicative Load Observability"},
+                      "timeFieldName": "@timestamp", "name": "Applicative Load Observability"},
         "override": True,
     })
     print(f"  {'OK' if s in (200,201) else 'FAIL'}: Data view")

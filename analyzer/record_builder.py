@@ -134,7 +134,7 @@ def build_record(raw: RawFields) -> dict:
         request["size"] = size
 
     return {
-        "timestamp": datetime.now(timezone.utc).strftime(_TIMESTAMP_FORMAT),
+        "@timestamp": datetime.now(timezone.utc).strftime(_TIMESTAMP_FORMAT),
         "identity": {
             "username":             username,
             "applicative_provider": applicative_provider,
@@ -163,7 +163,7 @@ def build_record(raw: RawFields) -> dict:
 
 def partial_error_record(payload: dict, exc: Exception) -> dict:
     return {
-        "timestamp": datetime.now(timezone.utc).strftime(_TIMESTAMP_FORMAT),
+        "@timestamp": datetime.now(timezone.utc).strftime(_TIMESTAMP_FORMAT),
         "error":     str(exc),
         "path":      payload.get("path", ""),
         "method":    payload.get("method", ""),

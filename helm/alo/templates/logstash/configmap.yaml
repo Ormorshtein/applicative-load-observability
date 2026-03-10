@@ -66,6 +66,15 @@ data:
           '
         }
       }
+
+      # Extract operation for data stream routing (strip leading _)
+      ruby {
+        code => '
+          op = event.get("[request][operation]") || "unknown"
+          op = op.sub(/^_/, "")
+          event.set("[@metadata][ds_dataset]", op)
+        '
+      }
     }
 
     output {
@@ -77,7 +86,10 @@ data:
       } else {
         elasticsearch {
           hosts => ["{{ include "alo.elasticsearchUrl" . }}"]
-          index => "applicative-load-observability-v2"
+          data_stream => true
+          data_stream_type => "alo"
+          data_stream_dataset => "%{[@metadata][ds_dataset]}"
+          data_stream_namespace => "{{ .Values.global.clusterName }}"
         }
       }
     }

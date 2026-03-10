@@ -59,7 +59,7 @@ class TestAnalyzeHappyPath:
     def test_search_record_has_required_structure(self):
         rec = client.post("/analyze", json=self._payload()).json()
         # Top-level keys
-        assert "timestamp" in rec
+        assert "@timestamp" in rec
         assert "identity" in rec
         assert "request" in rec
         assert "response" in rec

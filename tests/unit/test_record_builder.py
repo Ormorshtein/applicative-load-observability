@@ -164,7 +164,7 @@ class TestBuildRecord:
 
     def test_timestamp_format(self):
         rec = build_record(_make_raw())
-        ts = rec["timestamp"]
+        ts = rec["@timestamp"]
         # Should parse as valid datetime
         datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S.000Z")
 
@@ -286,7 +286,7 @@ class TestPartialErrorRecord:
         assert rec["error"] == "bad value"
         assert rec["path"] == "/test/_search"
         assert rec["method"] == "POST"
-        assert "timestamp" in rec
+        assert "@timestamp" in rec
 
     def test_empty_payload(self):
         rec = partial_error_record({}, RuntimeError("boom"))

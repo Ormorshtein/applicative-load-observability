@@ -175,8 +175,8 @@ def mk_ts(vis_id: str, title: str, field: str,
             },
             "datasourceStates": {"formBased": {"layers": {"layer1": {
                 "columns": {
-                    "time": {"label": "timestamp", "dataType": "date", "operationType": "date_histogram",
-                             "sourceField": "timestamp", "isBucketed": True, "params": {"interval": "auto"}},
+                    "time": {"label": "@timestamp", "dataType": "date", "operationType": "date_histogram",
+                             "sourceField": "@timestamp", "isBucketed": True, "params": {"interval": "auto"}},
                     "breakdown": {"label": field.split(".")[-1], "dataType": "string",
                                   "operationType": "terms", "sourceField": field, "isBucketed": True,
                                   "params": {"size": size, "orderBy": {"type": "column", "columnId": "metric"},
@@ -212,8 +212,8 @@ def mk_ts_response(vis_id: str, title: str, breakdown_field: str,
             },
             "datasourceStates": {"formBased": {"layers": {"layer1": {
                 "columns": {
-                    "time": {"label": "timestamp", "dataType": "date", "operationType": "date_histogram",
-                             "sourceField": "timestamp", "isBucketed": True, "params": {"interval": "auto"}},
+                    "time": {"label": "@timestamp", "dataType": "date", "operationType": "date_histogram",
+                             "sourceField": "@timestamp", "isBucketed": True, "params": {"interval": "auto"}},
                     "breakdown": {"label": breakdown_field.split(".")[-1], "dataType": "string",
                                   "operationType": "terms", "sourceField": breakdown_field, "isBucketed": True,
                                   "params": {"size": size, "orderBy": {"type": "column", "columnId": "latency"},
@@ -286,8 +286,8 @@ def mk_horizontal_bar(vis_id: str, title: str, field: str,
 def mk_ts_multi(vis_id: str, title: str, metrics: list[tuple],
                 series_type: str = "line") -> tuple[str, dict]:
     cols = {
-        "time": {"label": "timestamp", "dataType": "date", "operationType": "date_histogram",
-                 "sourceField": "timestamp", "isBucketed": True, "params": {"interval": "auto"}},
+        "time": {"label": "@timestamp", "dataType": "date", "operationType": "date_histogram",
+                 "sourceField": "@timestamp", "isBucketed": True, "params": {"interval": "auto"}},
     }
     col_order = ["time"]
     accessors = []

@@ -23,7 +23,7 @@ from _visualizations import (
     mk_ts_response,
 )
 
-INDEX_PATTERN = "applicative-load-observability-v2"
+INDEX_PATTERN = "alo-*-*"
 DATA_VIEW_ID = "alo-data-view"
 DASHBOARD_ID = "alo-dashboard"
 CI_DASHBOARD_ID = "alo-ci-dashboard"
@@ -127,7 +127,7 @@ def do_rebuild(cfg: StackConfig) -> bool:
     kibana_request(cfg, "DELETE", f"/api/data_views/data_view/{DATA_VIEW_ID}")
     s, _ = kibana_request(cfg, "POST", "/api/data_views/data_view", {
         "data_view": {"id": DATA_VIEW_ID, "title": INDEX_PATTERN,
-                      "timeFieldName": "timestamp", "name": "Applicative Load Observability"},
+                      "timeFieldName": "@timestamp", "name": "Applicative Load Observability"},
         "override": True,
     })
     print(f"  {'OK' if s in (200,201) else 'FAIL'}: Data view")

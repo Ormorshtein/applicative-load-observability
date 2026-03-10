@@ -1,7 +1,8 @@
-"""Elasticsearch index template for the applicative-load-observability index."""
+"""Elasticsearch composable index template for ALO data streams."""
 
 INDEX_TEMPLATE: dict = {
-    "index_patterns": ["applicative-load-observability-*"],
+    "index_patterns": ["alo-*-*"],
+    "data_stream": {},
     "priority": 100,
     "template": {
         "settings": {
@@ -12,7 +13,7 @@ INDEX_TEMPLATE: dict = {
         "mappings": {
             "dynamic": "strict",
             "properties": {
-                "timestamp": {"type": "date"},
+                "@timestamp": {"type": "date"},
                 "identity": {
                     "properties": {
                         "username":             {"type": "keyword"},
