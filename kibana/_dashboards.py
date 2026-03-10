@@ -151,6 +151,15 @@ def do_rebuild(cfg: StackConfig) -> bool:
     # Item 2: pie charts include request count in tooltip via extra metric
     # Item 3: each panel has a hover description
     for field, label in SECTIONS:
+        if label == "Cost Indicator":
+            # Overall stress trend replaces the Cost Indicator pie
+            # (CI breakdown is covered by the dedicated CI dashboard)
+            all_vis.append(mk_ts_multi(
+                "alo-stress-trend-overall", "Stress Trend (Overall)", [
+                    ("avg_stress", "Avg Stress", "stress.score", "average"),
+                    ("count", "Requests", "", "count"),
+                ], "line"))
+            continue
         size = 10 if field == "request.template" else 8
         slug = label.lower().replace(" ", "-")
         all_vis.append(mk_pie(
@@ -226,7 +235,7 @@ def do_rebuild(cfg: StackConfig) -> bool:
         vis_ids.append(vid)
 
     ok1 = build_dashboard(cfg, DASHBOARD_ID, "Applicative Load Observability",
-                          "Stress analysis by application, target, operation, cost indicator, and template.",
+                          "Stress analysis by application, target, operation, and template, with overall trend.",
                           vis_ids, layout_main)
 
     # ── Cost indicators dashboard visualizations ──

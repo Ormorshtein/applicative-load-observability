@@ -118,7 +118,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--kibana",
-        default=os.getenv("KIBANA_URL", "http://localhost:5601"),
+        default=os.getenv("KIBANA_URL", "http://127.0.0.1:5601"),
         help="Kibana URL (default: %(default)s)",
     )
     args = parser.parse_args()

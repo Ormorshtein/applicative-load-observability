@@ -25,8 +25,6 @@ PANEL_DESCRIPTIONS = {
                   "Hover slices to see request count and avg requests/sec.",
         "Operation": "Shows stress distribution across operation types (search, index, bulk, etc.). "
                      "Hover slices to see request count and avg requests/sec.",
-        "Cost Indicator": "Shows stress distribution across cost indicator types. "
-                          "Hover slices to see request count and avg requests/sec.",
         "Template": "Shows stress distribution across request templates. "
                     "Hover slices to see request count and avg requests/sec.",
     },
@@ -54,8 +52,9 @@ CHEAT_SHEET_MARKDOWN = """\
 
 **How to examine this dashboard:**
 
-1. **Start with the pie charts** (top row) — identify which application, target, \
-operation, or template contributes the most stress.
+1. **Start with the top row** — pie charts show which application, target, \
+operation, or template contributes the most stress; the overall trend shows \
+whether stress is rising or falling.
 2. **Check the time series** — look for spikes or trends in stress over time. \
 Correlate with deployments or traffic changes.
 3. **Review the Top 10 Templates table** — focus on templates with the highest \

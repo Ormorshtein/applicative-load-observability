@@ -19,9 +19,9 @@ from _index_template import (
 @dataclass
 class StackConfig:
     kibana_url: str = field(
-        default_factory=lambda: os.getenv("KIBANA_URL", "http://localhost:5601"))
+        default_factory=lambda: os.getenv("KIBANA_URL", "http://127.0.0.1:5601"))
     elasticsearch_url: str = field(
-        default_factory=lambda: os.getenv("ELASTICSEARCH_URL", "http://localhost:9200"))
+        default_factory=lambda: os.getenv("ELASTICSEARCH_URL", "http://127.0.0.1:9200"))
 
 
 def _http_json(base_url: str, method: str, path: str,
