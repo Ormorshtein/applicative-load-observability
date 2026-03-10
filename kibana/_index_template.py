@@ -1,9 +1,14 @@
-"""Elasticsearch composable index template for ALO data streams."""
+"""
+Elasticsearch data stream resources for ALO.
 
-INDEX_TEMPLATE: dict = {
-    "index_patterns": ["alo-*-*"],
-    "data_stream": {},
-    "priority": 100,
+Defines a shared component template (mappings), three ILM policies
+(search / write / default), and three composable index templates that
+route each operation category to the correct lifecycle.
+"""
+
+# ── Component template (shared mappings + settings) ─────────────────────────
+
+COMPONENT_TEMPLATE: dict = {
     "template": {
         "settings": {
             "number_of_shards": 1,
@@ -93,4 +98,88 @@ INDEX_TEMPLATE: dict = {
             }
         }
     }
+}
+
+COMPONENT_TEMPLATE_NAME = "alo-mappings"
+
+# ── Operation categories ────────────────────────────────────────────────────
+
+_SEARCH_OPS = [
+    "search", "msearch", "async_search",
+    "search_template", "msearch_template",
+    "sql", "esql", "eql",
+    "count", "scroll", "knn_search",
+]
+
+_WRITE_OPS = [
+    "bulk", "index", "create", "delete",
+    "update_by_query", "delete_by_query", "reindex",
+]
+
+# ── ILM policies ────────────────────────────────────────────────────────────
+
+
+def _ilm_policy(delete_after: str) -> dict:
+    return {
+        "policy": {
+            "phases": {
+                "hot": {
+                    "actions": {
+                        "rollover": {
+                            "max_age": "1d",
+                            "max_primary_shard_size": "50gb",
+                        }
+                    }
+                },
+                "delete": {
+                    "min_age": delete_after,
+                    "actions": {"delete": {}}
+                },
+            }
+        }
+    }
+
+
+ILM_POLICIES: dict[str, dict] = {
+    "alo-search-lifecycle":  _ilm_policy("90d"),
+    "alo-write-lifecycle":   _ilm_policy("30d"),
+    "alo-default-lifecycle": _ilm_policy("60d"),
+}
+
+# ── Composable index templates ──────────────────────────────────────────────
+
+INDEX_TEMPLATES: dict[str, dict] = {
+    "alo-search-operations": {
+        "index_patterns": [f"logs-alo.{op}-*" for op in _SEARCH_OPS],
+        "data_stream": {},
+        "composed_of": [COMPONENT_TEMPLATE_NAME],
+        "priority": 200,
+        "template": {
+            "settings": {
+                "index.lifecycle.name": "alo-search-lifecycle",
+            }
+        },
+    },
+    "alo-write-operations": {
+        "index_patterns": [f"logs-alo.{op}-*" for op in _WRITE_OPS],
+        "data_stream": {},
+        "composed_of": [COMPONENT_TEMPLATE_NAME],
+        "priority": 200,
+        "template": {
+            "settings": {
+                "index.lifecycle.name": "alo-write-lifecycle",
+            }
+        },
+    },
+    "alo-default": {
+        "index_patterns": ["logs-alo.*-*"],
+        "data_stream": {},
+        "composed_of": [COMPONENT_TEMPLATE_NAME],
+        "priority": 150,
+        "template": {
+            "settings": {
+                "index.lifecycle.name": "alo-default-lifecycle",
+            }
+        },
+    },
 }

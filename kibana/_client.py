@@ -8,7 +8,12 @@ from dataclasses import dataclass, field
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from _index_template import INDEX_TEMPLATE
+from _index_template import (
+    COMPONENT_TEMPLATE,
+    COMPONENT_TEMPLATE_NAME,
+    ILM_POLICIES,
+    INDEX_TEMPLATES,
+)
 
 
 @dataclass
@@ -85,8 +90,43 @@ def upsert(cfg: StackConfig, obj_type: str, obj_id: str,
     return status in (200, 201)
 
 
-def ensure_index_template(cfg: StackConfig) -> bool:
-    status, _ = es_request(cfg, "PUT", "/_index_template/alo-template",
-                           INDEX_TEMPLATE)
-    print(f"  {'OK' if status in (200, 201) else 'FAIL'}: Index template (alo-template)")
+def _put_ok(status: int) -> bool:
     return status in (200, 201)
+
+
+def _status_label(ok: bool) -> str:
+    return "OK" if ok else "FAIL"
+
+
+def ensure_es_resources(cfg: StackConfig) -> bool:
+    """Create ILM policies, component template, and composable index templates."""
+    all_ok = True
+
+    # 1. ILM policies (referenced by index templates)
+    for name, body in ILM_POLICIES.items():
+        status, _ = es_request(cfg, "PUT", f"/_ilm/policy/{name}", body)
+        ok = _put_ok(status)
+        print(f"  {_status_label(ok)}: ILM policy ({name})")
+        all_ok &= ok
+
+    # 2. Component template (referenced by composable templates)
+    status, _ = es_request(
+        cfg, "PUT",
+        f"/_component_template/{COMPONENT_TEMPLATE_NAME}",
+        COMPONENT_TEMPLATE,
+    )
+    ok = _put_ok(status)
+    print(f"  {_status_label(ok)}: Component template ({COMPONENT_TEMPLATE_NAME})")
+    all_ok &= ok
+
+    # 3. Composable index templates
+    for name, body in INDEX_TEMPLATES.items():
+        status, _ = es_request(cfg, "PUT", f"/_index_template/{name}", body)
+        ok = _put_ok(status)
+        print(f"  {_status_label(ok)}: Index template ({name})")
+        all_ok &= ok
+
+    # Clean up the legacy single template if it exists
+    es_request(cfg, "DELETE", "/_index_template/alo-template")
+
+    return all_ok

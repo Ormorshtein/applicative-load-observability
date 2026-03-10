@@ -23,7 +23,7 @@ from urllib.error import HTTPError
 
 KIBANA = os.getenv("KIBANA_URL", "http://localhost:5601")
 ELASTICSEARCH = os.getenv("ELASTICSEARCH_URL", "http://localhost:9200")
-INDEX_PATTERN = "alo-*-*"
+INDEX_PATTERN = "logs-alo.*-*"
 DATA_VIEW_ID = "alo-data-view"
 DASHBOARD_ID = "alo-dashboard"
 CI_DASHBOARD_ID = "alo-ci-dashboard"
@@ -31,12 +31,23 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 NDJSON_PATH = os.path.join(SCRIPT_DIR, "dashboard.ndjson")
 CI_NDJSON_PATH = os.path.join(SCRIPT_DIR, "dashboard-cost-indicators.ndjson")
 
-# ── ES index template mapping ───────────────────────────────────────────────
+# ── ES data stream resources ────────────────────────────────────────────────
 
-INDEX_TEMPLATE = {
-    "index_patterns": ["alo-*-*"],
-    "data_stream": {},
-    "priority": 100,
+_SEARCH_OPS = [
+    "search", "msearch", "async_search",
+    "search_template", "msearch_template",
+    "sql", "esql", "eql",
+    "count", "scroll", "knn_search",
+]
+
+_WRITE_OPS = [
+    "bulk", "index", "create", "delete",
+    "update_by_query", "delete_by_query", "reindex",
+]
+
+COMPONENT_TEMPLATE_NAME = "alo-mappings"
+
+COMPONENT_TEMPLATE = {
     "template": {
         "settings": {
             "number_of_shards": 1,
@@ -128,6 +139,70 @@ INDEX_TEMPLATE = {
     }
 }
 
+
+def _ilm_policy(delete_after):
+    return {
+        "policy": {
+            "phases": {
+                "hot": {
+                    "actions": {
+                        "rollover": {
+                            "max_age": "1d",
+                            "max_primary_shard_size": "50gb",
+                        }
+                    }
+                },
+                "delete": {
+                    "min_age": delete_after,
+                    "actions": {"delete": {}}
+                },
+            }
+        }
+    }
+
+
+ILM_POLICIES = {
+    "alo-search-lifecycle":  _ilm_policy("90d"),
+    "alo-write-lifecycle":   _ilm_policy("30d"),
+    "alo-default-lifecycle": _ilm_policy("60d"),
+}
+
+INDEX_TEMPLATES = {
+    "alo-search-operations": {
+        "index_patterns": [f"logs-alo.{op}-*" for op in _SEARCH_OPS],
+        "data_stream": {},
+        "composed_of": [COMPONENT_TEMPLATE_NAME],
+        "priority": 200,
+        "template": {
+            "settings": {
+                "index.lifecycle.name": "alo-search-lifecycle",
+            }
+        },
+    },
+    "alo-write-operations": {
+        "index_patterns": [f"logs-alo.{op}-*" for op in _WRITE_OPS],
+        "data_stream": {},
+        "composed_of": [COMPONENT_TEMPLATE_NAME],
+        "priority": 200,
+        "template": {
+            "settings": {
+                "index.lifecycle.name": "alo-write-lifecycle",
+            }
+        },
+    },
+    "alo-default": {
+        "index_patterns": ["logs-alo.*-*"],
+        "data_stream": {},
+        "composed_of": [COMPONENT_TEMPLATE_NAME],
+        "priority": 150,
+        "template": {
+            "settings": {
+                "index.lifecycle.name": "alo-default-lifecycle",
+            }
+        },
+    },
+}
+
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 def kbn(method, path, body=None):
@@ -197,10 +272,32 @@ def upsert(obj_type, obj_id, attrs, refs=None):
     return s in (200, 201)
 
 
-def ensure_index_template():
-    s, _ = es_request("PUT", "/_index_template/alo-template", INDEX_TEMPLATE)
-    print(f"  {'OK' if s in (200, 201) else 'FAIL'}: Index template (alo-template)")
-    return s in (200, 201)
+def ensure_es_resources():
+    """Create ILM policies, component template, and composable index templates."""
+    all_ok = True
+
+    for name, body in ILM_POLICIES.items():
+        s, _ = es_request("PUT", f"/_ilm/policy/{name}", body)
+        ok = s in (200, 201)
+        print(f"  {'OK' if ok else 'FAIL'}: ILM policy ({name})")
+        all_ok &= ok
+
+    s, _ = es_request("PUT", f"/_component_template/{COMPONENT_TEMPLATE_NAME}",
+                      COMPONENT_TEMPLATE)
+    ok = s in (200, 201)
+    print(f"  {'OK' if ok else 'FAIL'}: Component template ({COMPONENT_TEMPLATE_NAME})")
+    all_ok &= ok
+
+    for name, body in INDEX_TEMPLATES.items():
+        s, _ = es_request("PUT", f"/_index_template/{name}", body)
+        ok = s in (200, 201)
+        print(f"  {'OK' if ok else 'FAIL'}: Index template ({name})")
+        all_ok &= ok
+
+    # Clean up the legacy single template if it exists
+    es_request("DELETE", "/_index_template/alo-template")
+
+    return all_ok
 
 
 # ── import mode ──────────────────────────────────────────────────────────────
@@ -867,7 +964,7 @@ def main():
 
     wait_es()
     wait_kibana()
-    ensure_index_template()
+    ensure_es_resources()
 
     if args.rebuild:
         print("  Mode: rebuild\n")

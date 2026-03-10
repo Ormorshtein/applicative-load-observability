@@ -23,7 +23,7 @@ from _visualizations import (
     mk_ts_response,
 )
 
-INDEX_PATTERN = "alo-*-*"
+INDEX_PATTERN = "logs-alo.*-*"
 DATA_VIEW_ID = "alo-data-view"
 DASHBOARD_ID = "alo-dashboard"
 CI_DASHBOARD_ID = "alo-ci-dashboard"
