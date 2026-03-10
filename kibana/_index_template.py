@@ -91,6 +91,8 @@ COMPONENT_TEMPLATE: dict = {
                         "cost_indicator_names": {"type": "keyword"},
                     }
                 },
+                # Infrastructure
+                "cluster_name": {"type": "constant_keyword"},
                 # Error records (partial)
                 "error":  {"type": "text"},
                 "path":   {"type": "keyword"},
