@@ -8,9 +8,13 @@ metadata:
     "helm.sh/hook": test
 spec:
   restartPolicy: Never
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+    {{- include "alo.imagePullSecrets" $ | nindent 4 }}
+  {{- end }}
   containers:
     - name: test-analyzer
-      image: busybox:1.36
+      image: "{{ .Values.testImage.repository }}:{{ .Values.testImage.tag }}"
       command: ["sh", "-c"]
       args:
         - |
