@@ -1,7 +1,9 @@
 """HTTP client helpers for Elasticsearch and Kibana APIs."""
 
+import base64
 import json
 import os
+import ssl
 import sys
 import time
 from dataclasses import dataclass, field
@@ -22,19 +24,54 @@ class StackConfig:
         default_factory=lambda: os.getenv("KIBANA_URL", "http://127.0.0.1:5601"))
     elasticsearch_url: str = field(
         default_factory=lambda: os.getenv("ELASTICSEARCH_URL", "http://127.0.0.1:9200"))
+    username: str = field(
+        default_factory=lambda: os.getenv("ES_USERNAME", ""))
+    password: str = field(
+        default_factory=lambda: os.getenv("ES_PASSWORD", ""))
+    es_ca_cert: str = field(
+        default_factory=lambda: os.getenv("ES_CA_CERT", ""))
+    es_insecure: bool = field(
+        default_factory=lambda: os.getenv("ES_INSECURE", "").lower() in ("1", "true", "yes"))
+    kibana_ca_cert: str = field(
+        default_factory=lambda: os.getenv("KIBANA_CA_CERT", ""))
+    kibana_insecure: bool = field(
+        default_factory=lambda: os.getenv("KIBANA_INSECURE", "").lower() in ("1", "true", "yes"))
 
 
-def _http_json(base_url: str, method: str, path: str,
+def _build_ssl_context(ca_cert: str = "", insecure: bool = False) -> ssl.SSLContext | None:
+    if insecure:
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        return ctx
+    if ca_cert:
+        return ssl.create_default_context(cafile=ca_cert)
+    return None
+
+
+def _build_auth_header(cfg: StackConfig) -> str | None:
+    if cfg.username and cfg.password:
+        credentials = base64.b64encode(
+            f"{cfg.username}:{cfg.password}".encode()).decode()
+        return f"Basic {credentials}"
+    return None
+
+
+def _http_json(cfg: StackConfig, base_url: str, method: str, path: str,
                body: dict | None = None,
-               extra_headers: dict[str, str] | None = None) -> tuple[int, dict]:
+               extra_headers: dict[str, str] | None = None,
+               ssl_ctx: ssl.SSLContext | None = None) -> tuple[int, dict]:
     url = f"{base_url}{path}"
     headers = {"Content-Type": "application/json"}
+    auth = _build_auth_header(cfg)
+    if auth:
+        headers["Authorization"] = auth
     if extra_headers:
         headers.update(extra_headers)
     data = json.dumps(body).encode() if body else None
     req = Request(url, data=data, headers=headers, method=method)
     try:
-        resp = urlopen(req, timeout=30)
+        resp = urlopen(req, timeout=30, context=ssl_ctx)
         return resp.status, json.loads(resp.read() or b"{}")
     except HTTPError as e:
         try:
@@ -45,27 +82,34 @@ def _http_json(base_url: str, method: str, path: str,
 
 def kibana_request(cfg: StackConfig, method: str, path: str,
                    body: dict | None = None) -> tuple[int, dict]:
-    return _http_json(cfg.kibana_url, method, path, body,
-                      extra_headers={"kbn-xsrf": "true"})
+    ssl_ctx = _build_ssl_context(cfg.kibana_ca_cert, cfg.kibana_insecure)
+    return _http_json(cfg, cfg.kibana_url, method, path, body,
+                      extra_headers={"kbn-xsrf": "true"}, ssl_ctx=ssl_ctx)
 
 
 def es_request(cfg: StackConfig, method: str, path: str,
                body: dict | None = None) -> tuple[int, dict]:
-    return _http_json(cfg.elasticsearch_url, method, path, body)
+    ssl_ctx = _build_ssl_context(cfg.es_ca_cert, cfg.es_insecure)
+    return _http_json(cfg, cfg.elasticsearch_url, method, path, body,
+                      ssl_ctx=ssl_ctx)
 
 
 def wait_for_service(cfg: StackConfig, name: str, check_fn) -> None:
     print(f"  Waiting for {name} ...", end=" ", flush=True)
+    last_error = ""
     for _ in range(30):
         try:
             status, _ = check_fn(cfg)
             if status == 200:
                 print("ready")
                 return
-        except Exception:
-            pass
+        except ssl.SSLError as e:
+            print(f"TLS error: {e}")
+            sys.exit(1)
+        except Exception as e:
+            last_error = str(e)
         time.sleep(2)
-    print("TIMEOUT")
+    print(f"TIMEOUT (last error: {last_error})" if last_error else "TIMEOUT")
     sys.exit(1)
 
 
