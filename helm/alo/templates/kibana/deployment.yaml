@@ -51,7 +51,7 @@ spec:
                   name: {{ include "alo.esAuthSecretName" . }}
                   key: password
             {{- end }}
-            {{- if and .Values.elasticsearch.external.enabled .Values.elasticsearch.external.tls.caSecret }}
+            {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
             - name: ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES
               value: /etc/ssl/es/ca.crt
             {{- end }}
@@ -65,7 +65,7 @@ spec:
           ports:
             - name: http
               containerPort: 5601
-          {{- if and .Values.elasticsearch.external.enabled .Values.elasticsearch.external.tls.caSecret }}
+          {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
           volumeMounts:
             - name: es-ca
               mountPath: /etc/ssl/es
@@ -85,11 +85,11 @@ spec:
             periodSeconds: 30
           resources:
             {{- toYaml .Values.kibana.resources | nindent 12 }}
-      {{- if and .Values.elasticsearch.external.enabled .Values.elasticsearch.external.tls.caSecret }}
+      {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
       volumes:
         - name: es-ca
           secret:
-            secretName: {{ .Values.elasticsearch.external.tls.caSecret }}
+            secretName: {{ include "alo.esCaSecretName" . }}
       {{- end }}
       {{- include "alo.scheduling" .Values.kibana | nindent 6 }}
 {{- end }}

@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-: "${DNS_RESOLVER:=127.0.0.11}"
+: "${DNS_RESOLVER:=$(awk '/^nameserver/{print $2; exit}' /etc/resolv.conf 2>/dev/null || echo 127.0.0.11)}"
 : "${ELASTICSEARCH_HOST:=elasticsearch:9200}"
 : "${LOGSTASH_URL:=http://logstash:8080/}"
 : "${GATEWAY_PORT:=9200}"

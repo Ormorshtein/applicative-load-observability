@@ -39,7 +39,7 @@ Point your applications to the gateway instead of Elasticsearch directly.
 === Elasticsearch (external) ===
   URL: {{ .Values.elasticsearch.external.url }}
   Auth: {{ if .Values.elasticsearch.external.auth.enabled }}{{ .Values.elasticsearch.external.auth.type }}{{ if .Values.elasticsearch.external.auth.existingSecret }} (secret: {{ .Values.elasticsearch.external.auth.existingSecret }}){{ end }}{{ else }}disabled{{ end }}
-  TLS CA: {{ if .Values.elasticsearch.external.tls.caSecret }}{{ .Values.elasticsearch.external.tls.caSecret }}{{ else }}system default{{ end }}
+  TLS CA: {{ if eq (include "alo.esCaEnabled" .) "true" }}{{ include "alo.esCaSecretName" . }}{{ if .Values.elasticsearch.external.tls.create }} (chart-managed){{ end }}{{ else }}system default{{ end }}
 {{- else }}
 
 === Elasticsearch (internal) ===

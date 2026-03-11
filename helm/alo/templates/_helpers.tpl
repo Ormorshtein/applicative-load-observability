@@ -176,6 +176,26 @@ Name of the Secret holding NiFi UI credentials (internal).
 {{- end }}
 
 {{/*
+Name of the Secret holding the ES CA certificate.
+*/}}
+{{- define "alo.esCaSecretName" -}}
+{{- if .Values.elasticsearch.external.tls.caCertSecret }}
+{{- .Values.elasticsearch.external.tls.caCertSecret }}
+{{- else }}
+{{- printf "%s-es-ca" (include "alo.fullname" .) }}
+{{- end }}
+{{- end }}
+
+{{/*
+Whether an ES CA secret should be mounted.
+*/}}
+{{- define "alo.esCaEnabled" -}}
+{{- if or .Values.elasticsearch.external.tls.create .Values.elasticsearch.external.tls.caCertSecret }}true
+{{- else }}false
+{{- end }}
+{{- end }}
+
+{{/*
 Pod scheduling helpers — renders nodeSelector, tolerations, affinity.
 Usage: {{ include "alo.scheduling" .Values.gateway }}
 */}}

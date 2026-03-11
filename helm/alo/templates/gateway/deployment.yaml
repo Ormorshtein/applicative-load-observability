@@ -30,7 +30,7 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       initContainers:
         - name: resolve-dns
-          image: busybox:1.36
+          image: "{{ .Values.gateway.image.repository }}:{{ .Values.gateway.image.tag | default .Chart.AppVersion }}"
           command: ["sh", "-c"]
           args:
             - |
@@ -97,11 +97,15 @@ spec:
               containerPort: {{ .Values.gateway.port }}
               protocol: TCP
           volumeMounts:
+            - name: nginx-tmp
+              mountPath: /tmp/nginx
+            - name: nginx-logs
+              mountPath: /usr/local/openresty/nginx/logs
             - name: nginx-config-resolved
               mountPath: /usr/local/openresty/nginx/conf/nginx.conf
               subPath: nginx.conf
               readOnly: true
-            {{- if and (eq (include "alo.esAuthEnabled" .) "true") .Values.elasticsearch.external.enabled .Values.elasticsearch.external.tls.caSecret }}
+            {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
             - name: es-ca
               mountPath: /etc/ssl/es
               readOnly: true
@@ -127,12 +131,16 @@ spec:
         - name: nginx-config-template
           configMap:
             name: {{ include "alo.fullname" . }}-gateway-nginx
+        - name: nginx-tmp
+          emptyDir: {}
+        - name: nginx-logs
+          emptyDir: {}
         - name: nginx-config-resolved
           emptyDir: {}
-        {{- if and .Values.elasticsearch.external.enabled .Values.elasticsearch.external.tls.caSecret }}
+        {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
         - name: es-ca
           secret:
-            secretName: {{ .Values.elasticsearch.external.tls.caSecret }}
+            secretName: {{ include "alo.esCaSecretName" . }}
         {{- end }}
         {{- if and (eq .Values.pipelineMode "nifi") .Values.nifi.external.enabled .Values.nifi.external.tls.caSecret }}
         - name: nifi-ca

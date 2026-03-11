@@ -1,13 +1,21 @@
 worker_processes auto;
 error_log stderr warn;
+pid /tmp/nginx/nginx.pid;
 
 events {
     worker_connections 1024;
 }
 
 http {
+    client_body_temp_path /tmp/nginx/client_body;
+    proxy_temp_path       /tmp/nginx/proxy;
+    fastcgi_temp_path     /tmp/nginx/fastcgi;
+    uwsgi_temp_path       /tmp/nginx/uwsgi;
+    scgi_temp_path        /tmp/nginx/scgi;
     lua_package_path "/usr/local/openresty/site/lualib/?.lua;/usr/local/openresty/lualib/?.lua;;";
     lua_need_request_body on;
+    client_body_buffer_size 2m;
+    client_max_body_size 10m;
     resolver ${DNS_RESOLVER} valid=10s ipv6=off;
 
     upstream elasticsearch {

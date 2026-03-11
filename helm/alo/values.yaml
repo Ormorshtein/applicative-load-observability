@@ -36,9 +36,15 @@ elasticsearch:
       existingSecret: ""
     # TLS settings for the external cluster.
     tls:
-      # Mount a custom CA bundle so the gateway and Kibana trust the ES cert.
-      # The secret should contain key "ca.crt".
-      caSecret: ""
+      # CA certificate PEM content (used when create=true).
+      caCert: ""
+      # Name of the Secret containing key "ca.crt".
+      # When create=true, this is the name of the chart-managed secret.
+      # When create=false, this references a pre-existing secret.
+      caCertSecret: ""
+      # true  → chart creates a Secret from caCert.
+      # false → use a pre-existing Secret named by caCertSecret.
+      create: false
       # Skip TLS verification (not recommended in production).
       insecureSkipVerify: false
 

@@ -9,12 +9,19 @@ data:
   nginx.conf: |
     worker_processes {{ .Values.gateway.workerProcesses }};
     error_log stderr warn;
+    pid /tmp/nginx/nginx.pid;
 
     events {
         worker_connections {{ .Values.gateway.workerConnections }};
     }
 
     http {
+        client_body_temp_path /tmp/nginx/client_body;
+        proxy_temp_path       /tmp/nginx/proxy;
+        fastcgi_temp_path     /tmp/nginx/fastcgi;
+        uwsgi_temp_path       /tmp/nginx/uwsgi;
+        scgi_temp_path        /tmp/nginx/scgi;
+
         lua_package_path "/usr/local/openresty/site/lualib/?.lua;/usr/local/openresty/lualib/?.lua;;";
         lua_need_request_body on;
         lua_max_pending_timers 65536;
@@ -125,7 +132,7 @@ data:
                 proxy_set_header Authorization $es_auth_header;
                 {{- end }}
 
-                {{- if and $esIsHttps (or (and .Values.elasticsearch.external.enabled .Values.elasticsearch.external.tls.caSecret) (not .Values.elasticsearch.external.enabled)) }}
+                {{- if and $esIsHttps (or (and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true")) (not .Values.elasticsearch.external.enabled)) }}
                 proxy_ssl_trusted_certificate /etc/ssl/es/ca.crt;
                 proxy_ssl_verify on;
                 {{- end }}
