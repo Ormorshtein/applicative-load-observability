@@ -506,8 +506,7 @@ applicative-load-observability/
     │   ├── test_record_builder.py
     │   └── test_main.py
     └── integration/                 # live gateway tests
-        ├── load_test.py
-        └── stress_scenarios.py
+        └── load_test.py
 ```
 
 **To run the full stack:**
