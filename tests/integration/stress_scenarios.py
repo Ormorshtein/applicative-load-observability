@@ -20,7 +20,7 @@ import sys
 import threading
 import time
 
-from helpers import Stats, http_request
+from helpers import Stats, add_auth_args, apply_auth_args, http_request
 from _scenarios import _SCENARIOS
 
 
@@ -213,7 +213,10 @@ def main() -> None:
                         help="Pause between scenarios in 'all' mode (default: 10s)")
     parser.add_argument("--mix", action="store_true",
                         help="Run selected scenarios in parallel instead of sequentially")
+    add_auth_args(parser)
     args = parser.parse_args()
+
+    apply_auth_args(args)
 
     if args.list:
         print(f"\n  Available scenarios ({len(_SCENARIOS)}):\n")

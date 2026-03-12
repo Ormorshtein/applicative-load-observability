@@ -18,7 +18,7 @@ import os
 import sys
 from pathlib import Path
 
-from helpers import http_request
+from helpers import add_auth_args, apply_auth_args, http_request
 from _resilience import (
     cleanup_indices,
     run_integrity_test,
@@ -81,6 +81,7 @@ def parse_args() -> argparse.Namespace:
         "--cleanup", action="store_true",
         help="Delete test indices after run",
     )
+    add_auth_args(parser)
     return parser.parse_args()
 
 
@@ -88,6 +89,8 @@ def main() -> None:
     args = parse_args()
     skip = {s.strip() for s in args.skip.split(",") if s.strip()}
     worker_counts = [int(x) for x in args.scale_workers.split(",")]
+
+    apply_auth_args(args)
 
     print(f"\n  Gateway:    {args.gateway}")
     print(f"  Direct ES:  {args.direct_es}")

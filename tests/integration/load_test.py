@@ -23,6 +23,8 @@ import time
 from helpers import (
     Stats,
     LOADTEST_MAPPING,
+    add_auth_args,
+    apply_auth_args,
     http_request,
     rand_doc,
     rand_category,
@@ -317,7 +319,10 @@ def main() -> None:
                         help="Concurrent workers (default: %(default)s)")
     parser.add_argument("--seed", type=int, default=200,
                         help="Number of seed documents (default: %(default)s)")
+    add_auth_args(parser)
     args = parser.parse_args()
+
+    apply_auth_args(args)
 
     gateway = args.gateway
     duration = args.duration
