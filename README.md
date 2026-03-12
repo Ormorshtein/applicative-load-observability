@@ -84,7 +84,7 @@ Outcomes:
 
 ## 3. Dashboard: Applicative Load Observability
 
-All panels live in a **single dashboard**. A visual wireframe is available at [`docs/dashboard-wireframes.html`](docs/dashboard-wireframes.html).
+All panels live in a **single dashboard**.
 
 ### Row 1 — Top Loading Operations & Queries
 

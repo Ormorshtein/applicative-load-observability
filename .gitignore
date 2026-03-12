@@ -35,6 +35,9 @@ docker-compose.override.yml
 # Logs
 *.log
 
+# Test artifacts
+screenshots/
+
 # AI/Agentic
 .claude/
 CLAUDE.md

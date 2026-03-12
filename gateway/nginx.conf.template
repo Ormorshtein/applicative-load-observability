@@ -3,7 +3,7 @@ error_log stderr warn;
 pid /tmp/nginx/nginx.pid;
 
 events {
-    worker_connections 1024;
+    worker_connections ${WORKER_CONNECTIONS};
 }
 
 http {
@@ -82,7 +82,7 @@ http {
                         })
 
                         local httpc = http.new()
-                        httpc:set_timeout(1000)  -- 1 s connect+send timeout
+                        httpc:set_timeout(${LOGSTASH_TIMEOUT_MS})  -- connect+send timeout
                         local res, err = httpc:request_uri("${LOGSTASH_URL}", {
                             method  = "POST",
                             body    = payload,

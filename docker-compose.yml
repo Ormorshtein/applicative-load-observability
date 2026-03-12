@@ -21,7 +21,7 @@ services:
       retries: 10
 
   logstash:
-    image: oracle1012/applicative-load-observability:alo-logstash
+    image: oracle1012/applicative-load-observability:logstash-1.3.0
     ports:
       - "8080:8080"
       # - "9600:9600"  # Uncomment to expose Logstash monitoring API
@@ -47,6 +47,7 @@ services:
 
   analyzer:
     build: ./analyzer
+    image: oracle1012/applicative-load-observability:analyzer-1.3.0
     # Uncomment to override stress baselines per cluster:
     # environment:
     #   - STRESS_BASELINE_TOOK_MS=100
@@ -78,7 +79,7 @@ services:
         condition: service_healthy
 
   gateway:
-    image: oracle1012/applicative-load-observability:alo-gateway
+    image: oracle1012/applicative-load-observability:gateway-1.3.0
     ports:
       - "${GATEWAY_PORT:-9200}:${GATEWAY_PORT:-9200}"
     environment:
@@ -86,6 +87,8 @@ services:
       - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST:-elasticsearch:9200}
       - LOGSTASH_URL=${LOGSTASH_URL:-http://logstash:8080/}
       - GATEWAY_PORT=${GATEWAY_PORT:-9200}
+      - WORKER_CONNECTIONS=${WORKER_CONNECTIONS:-1024}
+      - LOGSTASH_TIMEOUT_MS=${LOGSTASH_TIMEOUT_MS:-1000}
     networks:
       - obs-net
     depends_on:

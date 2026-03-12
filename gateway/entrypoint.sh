@@ -5,11 +5,15 @@ set -e
 : "${ELASTICSEARCH_HOST:=elasticsearch:9200}"
 : "${LOGSTASH_URL:=http://logstash:8080/}"
 : "${GATEWAY_PORT:=9200}"
+: "${WORKER_CONNECTIONS:=1024}"
+: "${LOGSTASH_TIMEOUT_MS:=1000}"
 
-export DNS_RESOLVER ELASTICSEARCH_HOST LOGSTASH_URL GATEWAY_PORT
+export DNS_RESOLVER ELASTICSEARCH_HOST LOGSTASH_URL GATEWAY_PORT WORKER_CONNECTIONS LOGSTASH_TIMEOUT_MS
 
-envsubst '${DNS_RESOLVER} ${ELASTICSEARCH_HOST} ${LOGSTASH_URL} ${GATEWAY_PORT}' \
+envsubst '${DNS_RESOLVER} ${ELASTICSEARCH_HOST} ${LOGSTASH_URL} ${GATEWAY_PORT} ${WORKER_CONNECTIONS} ${LOGSTASH_TIMEOUT_MS}' \
   < /etc/nginx/nginx.conf.template \
   > /usr/local/openresty/nginx/conf/nginx.conf
+
+mkdir -p /tmp/nginx
 
 exec /usr/local/openresty/bin/openresty -g 'daemon off;'
