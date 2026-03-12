@@ -6,7 +6,9 @@ tests/
 ├── help.md                            # this file
 ├── unit/                              # fast, offline unit tests (pytest)
 │   ├── test_parser.py                 # parser.py — header, path, body, response extraction
-│   ├── test_stress.py                 # stress.py — clause counting, cost indicators, stress formulas
+│   ├── test_clause_counting.py        # stress.py — clause counting + aggregation depth
+│   ├── test_cost_indicators.py        # stress.py — cost indicator evaluation + compounding
+│   ├── test_stress_formulas.py        # stress.py — normalize + calc_stress formulas
 │   ├── test_record_builder.py         # record_builder.py — record assembly, raw field extraction
 │   └── test_main.py                   # main.py — FastAPI /analyze and /health endpoints
 └── integration/                       # live gateway tests (require running stack)
@@ -29,8 +31,8 @@ python -m pytest tests/unit/ -v
 python -m pytest tests/unit/test_parser.py -v
 
 # Run a single test class or test
-python -m pytest tests/unit/test_stress.py::TestCalcStress -v
-python -m pytest tests/unit/test_stress.py::TestCalcStress::test_search_at_baseline -v
+python -m pytest tests/unit/test_clause_counting.py -v
+python -m pytest tests/unit/test_stress_formulas.py::TestCalcStress::test_search_at_baseline -v
 ```
 
 ### What is covered
@@ -38,7 +40,9 @@ python -m pytest tests/unit/test_stress.py::TestCalcStress::test_search_at_basel
 | Module | Test file | Key areas |
 |--------|-----------|-----------|
 | `parser.py` | `test_parser.py` | Basic-auth username decode, applicative_provider fallback chain (x-opaque-id → x-app-name → user-agent), target/operation path parsing, size defaults, template scrubbing, hits/shards/docs_affected/es_took_ms extraction, bulk shard deduplication |
-| `stress.py` | `test_stress.py` | `norm()`, `count_clauses()` for every clause type (bool, wildcard/regexp/prefix, fuzzy, nested, knn, script, terms, geo_*, runtime_mappings, aggs at all nesting levels), `evaluate_cost_indicators()` for all 10 indicators (presence + threshold boundaries + multiplicative compounding + detail via dict), `calc_stress()` for all 8 operation formulas including multiplier application vs `_NO_MULTIPLIER_OPS`, unbounded score verification |
+| `stress.py` | `test_clause_counting.py` | `count_clauses()` for every clause type (bool, wildcard/regexp/prefix, fuzzy, nested, knn, script, terms, geo_*, runtime_mappings, aggs at all nesting levels) |
+| `stress.py` | `test_cost_indicators.py` | `evaluate_cost_indicators()` for all 10 indicators (presence + threshold boundaries + multiplicative compounding + detail via dict) |
+| `stress.py` | `test_stress_formulas.py` | `norm()`, `calc_stress()` for all 8 operation formulas including multiplier application vs `_NO_MULTIPLIER_OPS`, unbounded score verification |
 | `record_builder.py` | `test_record_builder.py` | `_parse_json_field`, `extract_raw_fields` (full/empty/malformed payloads), `build_record` (nested structure: identity/request/response/clause_counts/cost_indicators/stress groups, size inclusion/exclusion, template, timestamp format, cost indicators as dict, stress rounding, es_took fallback to gateway_took), `partial_error_record` |
 | `main.py` | `test_main.py` | `/health` endpoint, `/analyze` happy path (all operation types, nested structure validation, cost indicators), error handling (unparseable body, empty payload, malformed request/response — all return 200) |
 

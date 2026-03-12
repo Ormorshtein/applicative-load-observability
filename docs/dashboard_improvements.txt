@@ -1,5 +1,0 @@
-1. Remove the "top 10" in the title of the piechart
-2. Add hover count of requests and average request per second in the piechart
-3. Add notes hover on the panel title to explain what each panel does
-4. Generate cheat sheet in the top of the dashboard that explains how to examine the dashboard and what the user needs to focus on, add a playwright so you can see by yourself and correct the cheat sheet accordingly
-5. Add panel of total current stress score

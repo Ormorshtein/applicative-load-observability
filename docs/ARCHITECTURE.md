@@ -502,11 +502,13 @@ applicative-load-observability/
     ├── help.md                      # test documentation
     ├── unit/                        # fast offline unit tests
     │   ├── test_parser.py
-    │   ├── test_stress.py
+    │   ├── test_clause_counting.py
+    │   ├── test_cost_indicators.py
+    │   ├── test_stress_formulas.py
     │   ├── test_record_builder.py
     │   └── test_main.py
     └── integration/                 # live gateway tests
-        └── load_test.py
+        └── gateway_resilience.py
 ```
 
 **To run the full stack:**
