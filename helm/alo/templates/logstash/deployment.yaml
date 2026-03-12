@@ -35,16 +35,8 @@ spec:
           imagePullPolicy: {{ .Values.logstash.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- if eq (include "alo.esAuthEnabled" .) "true" }}
           env:
-            - name: ELASTICSEARCH_URL
-              value: {{ include "alo.elasticsearchUrl" . | quote }}
-            - name: ANALYZER_URL
-              value: "http://{{ include "alo.fullname" . }}-analyzer:{{ .Values.analyzer.port }}/analyze"
-            - name: LOGSTASH_HTTP_PORT
-              value: {{ .Values.logstash.service.httpPort | quote }}
-            - name: LOGSTASH_MONITORING
-              value: {{ .Values.logstash.monitoring.enabled | quote }}
-            {{- if eq (include "alo.esAuthEnabled" .) "true" }}
             - name: ES_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -55,7 +47,7 @@ spec:
                 secretKeyRef:
                   name: {{ include "alo.esAuthSecretName" . | trim }}
                   key: password
-            {{- end }}
+          {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.logstash.service.httpPort }}
