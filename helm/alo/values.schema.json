@@ -382,6 +382,29 @@
         }
       }
     },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "OpenShift Route configuration.",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "annotations": { "type": "object", "additionalProperties": { "type": "string" } },
+        "tls": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "termination": { "type": "string", "enum": ["edge", "passthrough", "reencrypt"] },
+            "insecureEdgeTerminationPolicy": { "type": "string", "enum": ["Allow", "Redirect", "None"] }
+          }
+        },
+        "gateway": { "$ref": "#/$defs/routeHost" },
+        "kibana": { "$ref": "#/$defs/routeHost" },
+        "elasticsearch": { "$ref": "#/$defs/routeHost" },
+        "analyzer": { "$ref": "#/$defs/routeHost" },
+        "logstash": { "$ref": "#/$defs/routeHost" },
+        "nifi": { "$ref": "#/$defs/routeHost" }
+      }
+    },
     "serviceAccount": {
       "type": "object",
       "additionalProperties": false,
@@ -495,6 +518,14 @@
       "properties": {
         "host": { "type": "string" },
         "path": { "type": "string" }
+      }
+    },
+    "routeHost": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "host": { "type": "string" }
       }
     }
   }

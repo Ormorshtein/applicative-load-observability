@@ -305,7 +305,7 @@ kibana:
   podAnnotations: {}
   extraEnv: []
 
-# ── Ingress ─────────────────────────────────────────────────────────────────
+# ── Ingress (Kubernetes) ────────────────────────────────────────────────────
 ingress:
   enabled: false
   className: ""
@@ -329,6 +329,34 @@ ingress:
     host: ""
     path: /
   tls: []
+
+# ── Route (OpenShift) ──────────────────────────────────────────────────────
+route:
+  enabled: false
+  annotations: {}
+  # TLS termination: edge, passthrough, or reencrypt
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  # Per-service routes.  host is optional — OpenShift assigns one when empty.
+  gateway:
+    enabled: true
+    host: ""
+  kibana:
+    enabled: true
+    host: ""
+  elasticsearch:
+    enabled: false
+    host: ""
+  analyzer:
+    enabled: false
+    host: ""
+  logstash:
+    enabled: false
+    host: ""
+  nifi:
+    enabled: false
+    host: ""
 
 # ── Service accounts ───────────────────────────────────────────────────────
 serviceAccount:

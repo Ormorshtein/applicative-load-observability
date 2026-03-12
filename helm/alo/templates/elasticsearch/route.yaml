@@ -1,0 +1,30 @@
+{{- if and .Values.route.enabled (not .Values.elasticsearch.external.enabled) .Values.route.elasticsearch.enabled }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "alo.fullname" . }}-elasticsearch
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "elasticsearch") | nindent 4 }}
+  {{- with .Values.route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.route.elasticsearch.host }}
+  host: {{ .Values.route.elasticsearch.host }}
+  {{- end }}
+  to:
+    kind: Service
+    name: {{ include "alo.fullname" . }}-elasticsearch
+    weight: 100
+  port:
+    targetPort: http
+  {{- with .Values.route.tls }}
+  tls:
+    termination: {{ .termination }}
+    {{- if .insecureEdgeTerminationPolicy }}
+    insecureEdgeTerminationPolicy: {{ .insecureEdgeTerminationPolicy }}
+    {{- end }}
+  {{- end }}
+{{- end }}

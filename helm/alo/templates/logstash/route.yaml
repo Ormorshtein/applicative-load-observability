@@ -1,0 +1,30 @@
+{{- if and .Values.route.enabled (eq .Values.pipelineMode "logstash") (not .Values.logstash.external.enabled) .Values.route.logstash.enabled }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "alo.fullname" . }}-logstash
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "logstash") | nindent 4 }}
+  {{- with .Values.route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.route.logstash.host }}
+  host: {{ .Values.route.logstash.host }}
+  {{- end }}
+  to:
+    kind: Service
+    name: {{ include "alo.fullname" . }}-logstash
+    weight: 100
+  port:
+    targetPort: http
+  {{- with .Values.route.tls }}
+  tls:
+    termination: {{ .termination }}
+    {{- if .insecureEdgeTerminationPolicy }}
+    insecureEdgeTerminationPolicy: {{ .insecureEdgeTerminationPolicy }}
+    {{- end }}
+  {{- end }}
+{{- end }}

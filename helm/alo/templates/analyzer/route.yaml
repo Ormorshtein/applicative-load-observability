@@ -1,0 +1,30 @@
+{{- if and .Values.route.enabled .Values.route.analyzer.enabled }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "alo.fullname" . }}-analyzer
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "analyzer") | nindent 4 }}
+  {{- with .Values.route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.route.analyzer.host }}
+  host: {{ .Values.route.analyzer.host }}
+  {{- end }}
+  to:
+    kind: Service
+    name: {{ include "alo.fullname" . }}-analyzer
+    weight: 100
+  port:
+    targetPort: http
+  {{- with .Values.route.tls }}
+  tls:
+    termination: {{ .termination }}
+    {{- if .insecureEdgeTerminationPolicy }}
+    insecureEdgeTerminationPolicy: {{ .insecureEdgeTerminationPolicy }}
+    {{- end }}
+  {{- end }}
+{{- end }}

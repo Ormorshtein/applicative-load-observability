@@ -1,0 +1,30 @@
+{{- if and .Values.route.enabled (eq .Values.pipelineMode "nifi") (not .Values.nifi.external.enabled) .Values.route.nifi.enabled }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "alo.fullname" . }}-nifi
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "nifi") | nindent 4 }}
+  {{- with .Values.route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.route.nifi.host }}
+  host: {{ .Values.route.nifi.host }}
+  {{- end }}
+  to:
+    kind: Service
+    name: {{ include "alo.fullname" . }}-nifi
+    weight: 100
+  port:
+    targetPort: https
+  {{- with .Values.route.tls }}
+  tls:
+    termination: {{ .termination }}
+    {{- if .insecureEdgeTerminationPolicy }}
+    insecureEdgeTerminationPolicy: {{ .insecureEdgeTerminationPolicy }}
+    {{- end }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,30 @@
+{{- if and .Values.route.enabled .Values.route.gateway.enabled }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "alo.fullname" . }}-gateway
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "gateway") | nindent 4 }}
+  {{- with .Values.route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.route.gateway.host }}
+  host: {{ .Values.route.gateway.host }}
+  {{- end }}
+  to:
+    kind: Service
+    name: {{ include "alo.fullname" . }}-gateway
+    weight: 100
+  port:
+    targetPort: http
+  {{- with .Values.route.tls }}
+  tls:
+    termination: {{ .termination }}
+    {{- if .insecureEdgeTerminationPolicy }}
+    insecureEdgeTerminationPolicy: {{ .insecureEdgeTerminationPolicy }}
+    {{- end }}
+  {{- end }}
+{{- end }}
