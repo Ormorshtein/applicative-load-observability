@@ -148,7 +148,7 @@ NiFi listen URL — either external or internal service.
 {{- if .Values.nifi.external.enabled }}
 {{- required "nifi.external.listenUrl is required when nifi.external.enabled=true" .Values.nifi.external.listenUrl }}
 {{- else }}
-{{- printf "http://%s-nifi:%d/%s" (include "alo.fullname" .) (.Values.nifi.service.listenPort | int) .Values.nifi.listenBasePath }}
+{{- printf "http://%s-nifi.%s.svc.cluster.local:%d/%s" (include "alo.fullname" .) .Release.Namespace (.Values.nifi.service.listenPort | int) .Values.nifi.listenBasePath }}
 {{- end }}
 {{- end }}
 
@@ -170,7 +170,7 @@ Logstash URL — either external or internal service.
 {{- if .Values.logstash.external.enabled }}
 {{- required "logstash.external.url is required when logstash.external.enabled=true" .Values.logstash.external.url }}
 {{- else }}
-{{- printf "http://%s-logstash:%d/" (include "alo.fullname" .) (.Values.logstash.service.httpPort | int) }}
+{{- printf "http://%s-logstash.%s.svc.cluster.local:%d/" (include "alo.fullname" .) .Release.Namespace (.Values.logstash.service.httpPort | int) }}
 {{- end }}
 {{- end }}
 
