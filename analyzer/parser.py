@@ -99,6 +99,38 @@ def scrub_template(body: dict) -> str:
     return json.dumps(_scrub(body), sort_keys=True)
 
 
+def scrub_bulk_template(raw_body: str) -> str:
+    """Build a structural template from an NDJSON bulk request body.
+
+    Extracts unique action types and target indices from action lines,
+    producing a stable template like:
+        {"actions": ["index"], "target": ["my-index"]}
+    """
+    actions = set()
+    targets = set()
+    for line in raw_body.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        for action_type in ("index", "create", "update", "delete"):
+            if action_type in obj:
+                actions.add(action_type)
+                idx = obj[action_type].get("_index", "")
+                if idx:
+                    targets.add(idx)
+                break
+    if not actions:
+        return ""
+    return json.dumps({
+        "actions": sorted(actions),
+        "target": sorted(targets) if targets else ["_all"],
+    }, sort_keys=True)
+
+
 # ---------------------------------------------------------------------------
 # Response body extraction
 # ---------------------------------------------------------------------------

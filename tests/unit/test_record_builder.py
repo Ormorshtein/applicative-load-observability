@@ -96,6 +96,7 @@ def _make_raw(**overrides):
             "user-agent": "elasticsearch-py/8.13.0",
         },
         request_body={"query": {"match": {"title": "shoes"}}, "size": 10},
+        request_body_raw='{"query": {"match": {"title": "shoes"}}, "size": 10}',
         response_body={
             "took": 42,
             "hits": {"total": {"value": 1500}, "hits": []},

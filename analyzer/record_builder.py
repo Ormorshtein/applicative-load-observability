@@ -19,6 +19,7 @@ from parser import (
     parse_target,
     parse_user_agent,
     parse_username,
+    scrub_bulk_template,
     scrub_template,
 )
 from stress import StressContext, count_clauses, evaluate_cost_indicators, calc_stress
@@ -33,6 +34,7 @@ class RawFields:
     path:                 str
     headers:              dict
     request_body:         dict
+    request_body_raw:     str
     response_body:        dict
     client_host:          str
     gateway_took_ms:      float
@@ -51,11 +53,13 @@ def _parse_json_field(raw: str) -> dict:
 
 
 def extract_raw_fields(payload: dict) -> RawFields:
+    raw_body = payload.get("request_body", "")
     return RawFields(
         method=              payload.get("method", "GET"),
         path=                payload.get("path", "/"),
         headers=             payload.get("headers", {}),
-        request_body=        _parse_json_field(payload.get("request_body", "")),
+        request_body=        _parse_json_field(raw_body),
+        request_body_raw=    raw_body,
         response_body=       _parse_json_field(payload.get("response_body", "")),
         client_host=         payload.get("client_host", ""),
         gateway_took_ms=     float(payload.get("gateway_took_ms", 0)),
@@ -88,10 +92,35 @@ def _output_clause_counts(counts: dict) -> dict:
     return {out: counts[internal] for internal, out in _CLAUSE_COUNT_OUTPUT_KEYS.items()}
 
 
+def _extract_bulk_target(raw_body: str) -> str:
+    """Extract comma-separated target indices from bulk NDJSON actions."""
+    targets = set()
+    for line in raw_body.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        for action_type in ("index", "create", "update", "delete"):
+            if action_type in obj:
+                idx = obj[action_type].get("_index", "")
+                if idx:
+                    targets.add(idx)
+                break
+    return ",".join(sorted(targets)) if targets else "_all"
+
+
 def build_record(raw: RawFields) -> dict:
     operation = parse_operation(raw.method, raw.path)
     target    = parse_target(raw.path)
-    template  = scrub_template(raw.request_body) if raw.request_body else ""
+    if operation == "_bulk":
+        template = scrub_bulk_template(raw.request_body_raw)
+        if target == "_all":
+            target = _extract_bulk_target(raw.request_body_raw)
+    else:
+        template = scrub_template(raw.request_body) if raw.request_body else ""
 
     username             = parse_username(raw.headers)
     applicative_provider = parse_applicative_provider(raw.headers)
