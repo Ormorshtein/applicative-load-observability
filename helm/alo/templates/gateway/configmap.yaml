@@ -28,7 +28,7 @@ data:
         lua_max_running_timers 4096;
         resolver __DNS_RESOLVER__ valid=10s ipv6=off;
 
-        {{- $esUrl := include "alo.elasticsearchUrl" . }}
+        {{- $esUrl := include "alo.gatewayElasticsearchUrl" . }}
         {{- $esHost := $esUrl | trimPrefix "http://" | trimPrefix "https://" }}
         {{- $esIsHttps := hasPrefix "https://" $esUrl }}
 
@@ -40,8 +40,28 @@ data:
         server {
             listen {{ .Values.gateway.port }};
 
-            {{- if eq (include "alo.esAuthEnabled" .) "true" }}
+            {{- if eq (include "alo.gatewayEsAuthEnabled" .) "true" }}
             set $es_auth_header "";
+
+            {{- $authType := include "alo.gatewayEsAuthType" . }}
+            {{- if eq $authType "basic" }}
+            set_by_lua_block $es_auth_header {
+                local user = os.getenv("ES_AUTH_USERNAME") or ""
+                local pass = os.getenv("ES_AUTH_PASSWORD") or ""
+                if user ~= "" then
+                    return "Basic " .. ngx.encode_base64(user .. ":" .. pass)
+                end
+                return ""
+            }
+            {{- else if eq $authType "apiKey" }}
+            set_by_lua_block $es_auth_header {
+                local key = os.getenv("ES_AUTH_API_KEY") or ""
+                if key ~= "" then
+                    return "ApiKey " .. key
+                end
+                return ""
+            }
+            {{- end }}
             {{- end }}
 
             location / {
@@ -127,12 +147,12 @@ data:
                 proxy_set_header X-Real-IP $remote_addr;
                 proxy_read_timeout {{ .Values.gateway.proxyReadTimeout }};
 
-                {{- if eq (include "alo.esAuthEnabled" .) "true" }}
+                {{- if eq (include "alo.gatewayEsAuthEnabled" .) "true" }}
                 # Forward ES credentials from env-injected variable
                 proxy_set_header Authorization $es_auth_header;
                 {{- end }}
 
-                {{- if and $esIsHttps (or (and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true")) (not .Values.elasticsearch.external.enabled)) }}
+                {{- if and $esIsHttps (eq (include "alo.gatewayEsCaEnabled" .) "true") }}
                 proxy_ssl_trusted_certificate /etc/ssl/es/ca.crt;
                 proxy_ssl_verify on;
                 {{- end }}

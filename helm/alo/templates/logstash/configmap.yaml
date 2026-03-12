@@ -19,6 +19,19 @@ data:
 
     xpack.monitoring.enabled: {{ .Values.logstash.monitoring.enabled }}
     xpack.monitoring.elasticsearch.hosts: ["{{ include "alo.elasticsearchUrl" . }}"]
+    {{- if and .Values.logstash.monitoring.enabled (eq (include "alo.esAuthEnabled" .) "true") }}
+    xpack.monitoring.elasticsearch.username: "${ES_USERNAME}"
+    xpack.monitoring.elasticsearch.password: "${ES_PASSWORD}"
+    {{- end }}
+    {{- if and .Values.logstash.monitoring.enabled (eq (include "alo.esSslEnabled" .) "true") }}
+    xpack.monitoring.elasticsearch.ssl.enabled: true
+    {{- end }}
+    {{- if and .Values.logstash.monitoring.enabled (eq (include "alo.esCaEnabled" .) "true") }}
+    xpack.monitoring.elasticsearch.ssl.certificate_authority: "/etc/ssl/es/ca.crt"
+    {{- end }}
+    {{- if and .Values.logstash.monitoring.enabled (eq (include "alo.esInsecure" .) "true") }}
+    xpack.monitoring.elasticsearch.ssl.verification_mode: none
+    {{- end }}
 
   pipelines.yml: |
     - pipeline.id: observability
@@ -80,12 +93,38 @@ data:
         elasticsearch {
           hosts => ["{{ include "alo.elasticsearchUrl" . }}"]
           index => "alo-dead-letter"
+          {{- if eq (include "alo.esAuthEnabled" .) "true" }}
+          user => "${ES_USERNAME}"
+          password => "${ES_PASSWORD}"
+          {{- end }}
+          {{- if eq (include "alo.esSslEnabled" .) "true" }}
+          ssl_enabled => true
+          {{- end }}
+          {{- if eq (include "alo.esCaEnabled" .) "true" }}
+          ssl_certificate_authorities => ["/etc/ssl/es/ca.crt"]
+          {{- end }}
+          {{- if eq (include "alo.esInsecure" .) "true" }}
+          ssl_verification_mode => none
+          {{- end }}
         }
       } else {
         elasticsearch {
           hosts => ["{{ include "alo.elasticsearchUrl" . }}"]
           index => "logs-alo.%{[@metadata][ds_dataset]}-{{ .Values.global.clusterName }}"
           action => "create"
+          {{- if eq (include "alo.esAuthEnabled" .) "true" }}
+          user => "${ES_USERNAME}"
+          password => "${ES_PASSWORD}"
+          {{- end }}
+          {{- if eq (include "alo.esSslEnabled" .) "true" }}
+          ssl_enabled => true
+          {{- end }}
+          {{- if eq (include "alo.esCaEnabled" .) "true" }}
+          ssl_certificate_authorities => ["/etc/ssl/es/ca.crt"]
+          {{- end }}
+          {{- if eq (include "alo.esInsecure" .) "true" }}
+          ssl_verification_mode => none
+          {{- end }}
         }
       }
     }

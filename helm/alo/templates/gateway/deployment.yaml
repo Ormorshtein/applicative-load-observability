@@ -56,29 +56,24 @@ spec:
           env:
             - name: PIPELINE_URL
               value: {{ include "alo.pipelineUrl" . | quote }}
-            {{- if eq (include "alo.esAuthEnabled" .) "true" }}
-            {{- $authType := "" }}
-            {{- if .Values.elasticsearch.external.enabled }}
-            {{- $authType = .Values.elasticsearch.external.auth.type }}
-            {{- else }}
-            {{- $authType = "basic" }}
-            {{- end }}
+            {{- if eq (include "alo.gatewayEsAuthEnabled" .) "true" }}
+            {{- $authType := include "alo.gatewayEsAuthType" . }}
             {{- if eq $authType "basic" }}
             - name: ES_AUTH_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "alo.esAuthSecretName" . }}
+                  name: {{ include "alo.gatewayEsAuthSecretName" . }}
                   key: username
             - name: ES_AUTH_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "alo.esAuthSecretName" . }}
+                  name: {{ include "alo.gatewayEsAuthSecretName" . }}
                   key: password
             {{- else if eq $authType "apiKey" }}
             - name: ES_AUTH_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "alo.esAuthSecretName" . }}
+                  name: {{ include "alo.gatewayEsAuthSecretName" . }}
                   key: apiKey
             {{- end }}
             {{- end }}
@@ -105,7 +100,7 @@ spec:
               mountPath: /usr/local/openresty/nginx/conf/nginx.conf
               subPath: nginx.conf
               readOnly: true
-            {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
+            {{- if eq (include "alo.gatewayEsCaEnabled" .) "true" }}
             - name: es-ca
               mountPath: /etc/ssl/es
               readOnly: true
@@ -137,10 +132,10 @@ spec:
           emptyDir: {}
         - name: nginx-config-resolved
           emptyDir: {}
-        {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
+        {{- if eq (include "alo.gatewayEsCaEnabled" .) "true" }}
         - name: es-ca
           secret:
-            secretName: {{ include "alo.esCaSecretName" . }}
+            secretName: {{ include "alo.gatewayEsCaSecretName" . }}
         {{- end }}
         {{- if and (eq .Values.pipelineMode "nifi") .Values.nifi.external.enabled .Values.nifi.external.tls.caSecret }}
         - name: nifi-ca

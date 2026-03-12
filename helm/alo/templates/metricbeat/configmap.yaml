@@ -14,6 +14,19 @@ data:
         xpack.enabled: true
         period: 10s
         hosts: ["{{ include "alo.elasticsearchUrl" . }}"]
+        {{- if eq (include "alo.esAuthEnabled" .) "true" }}
+        username: "${ES_USERNAME}"
+        password: "${ES_PASSWORD}"
+        {{- end }}
+        {{- if eq (include "alo.esSslEnabled" .) "true" }}
+        ssl.enabled: true
+        {{- end }}
+        {{- if eq (include "alo.esCaEnabled" .) "true" }}
+        ssl.certificate_authorities: ["/etc/ssl/es/ca.crt"]
+        {{- end }}
+        {{- if eq (include "alo.esInsecure" .) "true" }}
+        ssl.verification_mode: none
+        {{- end }}
 
       {{- if eq .Values.pipelineMode "logstash" }}
       - module: logstash
@@ -31,6 +44,19 @@ data:
 
     output.elasticsearch:
       hosts: ["{{ include "alo.elasticsearchUrl" . }}"]
+      {{- if eq (include "alo.esAuthEnabled" .) "true" }}
+      username: "${ES_USERNAME}"
+      password: "${ES_PASSWORD}"
+      {{- end }}
+      {{- if eq (include "alo.esSslEnabled" .) "true" }}
+      ssl.enabled: true
+      {{- end }}
+      {{- if eq (include "alo.esCaEnabled" .) "true" }}
+      ssl.certificate_authorities: ["/etc/ssl/es/ca.crt"]
+      {{- end }}
+      {{- if eq (include "alo.esInsecure" .) "true" }}
+      ssl.verification_mode: none
+      {{- end }}
 
     {{- if and .Values.kibana.enabled (not .Values.kibana.external.enabled) }}
     setup.kibana:

@@ -44,6 +44,18 @@ spec:
               value: {{ .Values.logstash.service.httpPort | quote }}
             - name: LOGSTASH_MONITORING
               value: {{ .Values.logstash.monitoring.enabled | quote }}
+            {{- if eq (include "alo.esAuthEnabled" .) "true" }}
+            - name: ES_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.esAuthSecretName" . | trim }}
+                  key: username
+            - name: ES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.esAuthSecretName" . | trim }}
+                  key: password
+            {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.logstash.service.httpPort }}
@@ -64,6 +76,11 @@ spec:
               mountPath: /usr/share/logstash/pipeline/observability.conf
               subPath: observability.conf
               readOnly: true
+            {{- if eq (include "alo.esCaEnabled" .) "true" }}
+            - name: es-ca
+              mountPath: /etc/ssl/es
+              readOnly: true
+            {{- end }}
           readinessProbe:
             httpGet:
               path: /
@@ -82,5 +99,10 @@ spec:
         - name: config
           configMap:
             name: {{ include "alo.fullname" . }}-logstash
+        {{- if eq (include "alo.esCaEnabled" .) "true" }}
+        - name: es-ca
+          secret:
+            secretName: {{ include "alo.esCaSecretName" . }}
+        {{- end }}
       {{- include "alo.scheduling" .Values.logstash | nindent 6 }}
 {{- end }}

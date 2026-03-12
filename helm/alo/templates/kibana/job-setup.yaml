@@ -38,5 +38,41 @@ spec:
               value: {{ include "alo.kibanaUrl" . | quote }}
             - name: ELASTICSEARCH_URL
               value: {{ include "alo.elasticsearchUrl" . | quote }}
+            {{- if eq (include "alo.esAuthEnabled" .) "true" }}
+            - name: ES_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.esAuthSecretName" . }}
+                  key: username
+            - name: ES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.esAuthSecretName" . }}
+                  key: password
+            {{- end }}
+            {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
+            - name: ES_CA_CERT
+              value: /etc/ssl/es/ca.crt
+            - name: KIBANA_CA_CERT
+              value: /etc/ssl/es/ca.crt
+            {{- end }}
+            {{- if and .Values.elasticsearch.external.enabled .Values.elasticsearch.external.tls.insecureSkipVerify }}
+            - name: ES_INSECURE
+              value: "true"
+            - name: KIBANA_INSECURE
+              value: "true"
+            {{- end }}
+          {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
+          volumeMounts:
+            - name: es-ca
+              mountPath: /etc/ssl/es
+              readOnly: true
+          {{- end }}
+      {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
+      volumes:
+        - name: es-ca
+          secret:
+            secretName: {{ include "alo.esCaSecretName" . }}
+      {{- end }}
       {{- include "alo.scheduling" .Values.kibana | nindent 6 }}
 {{- end }}

@@ -36,16 +36,39 @@ spec:
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           args: ["--strict.perms=false"]
+          {{- if eq (include "alo.esAuthEnabled" .) "true" }}
+          env:
+            - name: ES_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.esAuthSecretName" . | trim }}
+                  key: username
+            - name: ES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.esAuthSecretName" . | trim }}
+                  key: password
+          {{- end }}
           volumeMounts:
             - name: config
               mountPath: /usr/share/metricbeat/metricbeat.yml
               subPath: metricbeat.yml
               readOnly: true
+            {{- if eq (include "alo.esCaEnabled" .) "true" }}
+            - name: es-ca
+              mountPath: /etc/ssl/es
+              readOnly: true
+            {{- end }}
           resources:
             {{- toYaml .Values.metricbeat.resources | nindent 12 }}
       volumes:
         - name: config
           configMap:
             name: {{ include "alo.fullname" . }}-metricbeat
+        {{- if eq (include "alo.esCaEnabled" .) "true" }}
+        - name: es-ca
+          secret:
+            secretName: {{ include "alo.esCaSecretName" . }}
+        {{- end }}
       {{- include "alo.scheduling" .Values.metricbeat | nindent 6 }}
 {{- end }}

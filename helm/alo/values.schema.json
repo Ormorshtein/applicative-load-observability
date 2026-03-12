@@ -1,0 +1,501 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "pipelineMode": {
+      "type": "string",
+      "enum": ["logstash", "nifi"],
+      "description": "Pipeline processor to deploy: logstash or nifi."
+    },
+    "global": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "clusterName": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the monitored ES cluster (used as data stream namespace)."
+        },
+        "observabilityIndex": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Observability data stream pattern written by the pipeline."
+        }
+      },
+      "required": ["clusterName", "observabilityIndex"]
+    },
+    "elasticsearch": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "ALO storage Elasticsearch — where observability data is written.",
+      "properties": {
+        "external": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "url": {
+              "type": "string",
+              "description": "Full URL including scheme and port, e.g. https://es.prod:9200."
+            },
+            "auth": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "type": { "type": "string", "enum": ["basic", "apiKey"] },
+                "username": { "type": "string" },
+                "password": { "type": "string" },
+                "apiKey": { "type": "string" },
+                "existingSecret": { "type": "string" }
+              }
+            },
+            "tls": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "caCert": { "type": "string", "description": "CA certificate PEM content (used when create=true)." },
+                "caCertSecret": { "type": "string", "description": "Name of Secret containing key ca.crt." },
+                "create": { "type": "boolean", "description": "true: chart creates Secret from caCert; false: use pre-existing Secret." },
+                "insecureSkipVerify": { "type": "boolean" }
+              }
+            }
+          }
+        },
+        "image": { "$ref": "#/$defs/image" },
+        "replicas": { "$ref": "#/$defs/replicas" },
+        "resources": { "$ref": "#/$defs/resources" },
+        "javaOpts": { "type": "string" },
+        "persistence": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "size": { "type": "string", "pattern": "^[0-9]+(Gi|Mi|Ti)$" },
+            "storageClass": { "type": "string" }
+          }
+        },
+        "security": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "xpack.security for the internal ES cluster.",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "username": { "type": "string" },
+            "password": { "type": "string" },
+            "existingSecret": { "type": "string" }
+          }
+        },
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "port": { "$ref": "#/$defs/port" }
+          }
+        },
+        "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
+        "tolerations": { "$ref": "#/$defs/tolerations" },
+        "affinity": { "$ref": "#/$defs/affinity" },
+        "podAnnotations": { "$ref": "#/$defs/podAnnotations" }
+      }
+    },
+    "nifi": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "external": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "listenUrl": { "type": "string" },
+            "auth": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "headerName": { "type": "string" },
+                "headerValue": { "type": "string" },
+                "existingSecret": { "type": "string" }
+              }
+            },
+            "tls": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "caSecret": { "type": "string" },
+                "insecureSkipVerify": { "type": "boolean" }
+              }
+            }
+          }
+        },
+        "image": { "$ref": "#/$defs/image" },
+        "resources": { "$ref": "#/$defs/resources" },
+        "auth": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "username": { "type": "string" },
+            "password": { "type": "string", "minLength": 12, "description": "NiFi requires at least 12 characters." },
+            "existingSecret": { "type": "string" }
+          }
+        },
+        "sensitivePropsKey": { "type": "string", "minLength": 12 },
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "httpsPort": { "$ref": "#/$defs/port" },
+            "listenPort": { "$ref": "#/$defs/port" }
+          }
+        },
+        "listenBasePath": { "type": "string" },
+        "flow": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "seedEnabled": { "type": "boolean" }
+          }
+        },
+        "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
+        "tolerations": { "$ref": "#/$defs/tolerations" },
+        "affinity": { "$ref": "#/$defs/affinity" },
+        "podAnnotations": { "$ref": "#/$defs/podAnnotations" }
+      }
+    },
+    "logstash": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "external": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "url": { "type": "string" }
+          }
+        },
+        "image": { "$ref": "#/$defs/image" },
+        "replicas": { "$ref": "#/$defs/replicas" },
+        "resources": { "$ref": "#/$defs/resources" },
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "httpPort": { "$ref": "#/$defs/port" },
+            "monitoringPort": { "$ref": "#/$defs/port" }
+          }
+        },
+        "monitoring": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" }
+          }
+        },
+        "pipeline": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "batchSize": { "type": "integer", "minimum": 1 },
+            "batchDelay": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "queue": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string", "enum": ["memory", "persisted"] },
+            "maxBytes": { "type": "string" }
+          }
+        },
+        "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
+        "tolerations": { "$ref": "#/$defs/tolerations" },
+        "affinity": { "$ref": "#/$defs/affinity" },
+        "podAnnotations": { "$ref": "#/$defs/podAnnotations" }
+      }
+    },
+    "metricbeat": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "image": { "$ref": "#/$defs/image" },
+        "replicas": { "$ref": "#/$defs/replicas" },
+        "resources": { "$ref": "#/$defs/resources" },
+        "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
+        "tolerations": { "$ref": "#/$defs/tolerations" },
+        "affinity": { "$ref": "#/$defs/affinity" },
+        "podAnnotations": { "$ref": "#/$defs/podAnnotations" }
+      }
+    },
+    "analyzer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "image": { "$ref": "#/$defs/image" },
+        "replicas": { "$ref": "#/$defs/replicas" },
+        "port": { "$ref": "#/$defs/port" },
+        "resources": { "$ref": "#/$defs/resources" },
+        "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
+        "tolerations": { "$ref": "#/$defs/tolerations" },
+        "affinity": { "$ref": "#/$defs/affinity" },
+        "podAnnotations": { "$ref": "#/$defs/podAnnotations" },
+        "extraEnv": { "$ref": "#/$defs/extraEnv" }
+      }
+    },
+    "gateway": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "elasticsearch": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The ES cluster the gateway proxies to (monitored cluster). Falls back to main elasticsearch when url is empty.",
+          "properties": {
+            "url": { "type": "string" },
+            "auth": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "type": { "type": "string", "enum": ["basic", "apiKey"] },
+                "username": { "type": "string" },
+                "password": { "type": "string" },
+                "apiKey": { "type": "string" },
+                "existingSecret": { "type": "string" }
+              }
+            },
+            "tls": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "caCert": { "type": "string" },
+                "caCertSecret": { "type": "string" },
+                "create": { "type": "boolean" },
+                "insecureSkipVerify": { "type": "boolean" }
+              }
+            }
+          }
+        },
+        "dnsResolver": {
+          "type": "string",
+          "description": "DNS resolver for OpenResty. Empty = auto-detect from /etc/resolv.conf."
+        },
+        "image": { "$ref": "#/$defs/image" },
+        "replicas": { "$ref": "#/$defs/replicas" },
+        "port": { "$ref": "#/$defs/port" },
+        "resources": { "$ref": "#/$defs/resources" },
+        "workerProcesses": {
+          "oneOf": [
+            { "type": "string", "enum": ["auto"] },
+            { "type": "integer", "minimum": 1 }
+          ]
+        },
+        "workerConnections": { "type": "integer", "minimum": 1 },
+        "proxyReadTimeout": { "type": "string", "pattern": "^[0-9]+(s|m|h)$" },
+        "pipelineTimeout": { "type": "integer", "minimum": 0, "description": "Timeout for pipeline notification in milliseconds." },
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"] },
+            "port": { "$ref": "#/$defs/port" }
+          }
+        },
+        "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
+        "tolerations": { "$ref": "#/$defs/tolerations" },
+        "affinity": { "$ref": "#/$defs/affinity" },
+        "podAnnotations": { "$ref": "#/$defs/podAnnotations" },
+        "extraEnv": { "$ref": "#/$defs/extraEnv" }
+      }
+    },
+    "kibana": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "external": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "url": { "type": "string" }
+          }
+        },
+        "image": { "$ref": "#/$defs/image" },
+        "replicas": { "$ref": "#/$defs/replicas" },
+        "resources": { "$ref": "#/$defs/resources" },
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"] },
+            "port": { "$ref": "#/$defs/port" }
+          }
+        },
+        "dashboardSetup": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" }
+          }
+        },
+        "setup": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "image": { "$ref": "#/$defs/image" }
+          }
+        },
+        "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
+        "tolerations": { "$ref": "#/$defs/tolerations" },
+        "affinity": { "$ref": "#/$defs/affinity" },
+        "podAnnotations": { "$ref": "#/$defs/podAnnotations" },
+        "extraEnv": { "$ref": "#/$defs/extraEnv" }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "className": { "type": "string" },
+        "annotations": { "type": "object", "additionalProperties": { "type": "string" } },
+        "gateway": { "$ref": "#/$defs/ingressRoute" },
+        "kibana": { "$ref": "#/$defs/ingressRoute" },
+        "elasticsearch": { "$ref": "#/$defs/ingressRoute" },
+        "analyzer": { "$ref": "#/$defs/ingressRoute" },
+        "logstash": { "$ref": "#/$defs/ingressRoute" },
+        "nifi": { "$ref": "#/$defs/ingressRoute" },
+        "tls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "secretName": { "type": "string" },
+              "hosts": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "serviceAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "create": { "type": "boolean" },
+        "name": { "type": "string" },
+        "annotations": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    },
+    "podSecurityContext": { "type": "object", "description": "Pod-level security context applied to all components." },
+    "securityContext": { "type": "object", "description": "Container-level security context applied to all components." },
+    "testImage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": { "type": "string" },
+        "tag": { "type": "string" }
+      },
+      "required": ["repository", "tag"]
+    },
+    "imagePullSecrets": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of Secret names for pulling images from private registries."
+    }
+  },
+  "required": ["pipelineMode", "global"],
+  "$defs": {
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "tag": { "type": "string", "minLength": 1 },
+        "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] }
+      },
+      "required": ["repository", "tag"]
+    },
+    "replicas": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requests": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cpu": { "type": ["string", "number"] },
+            "memory": { "type": "string" }
+          }
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cpu": { "type": ["string", "number"] },
+            "memory": { "type": "string" }
+          }
+        }
+      }
+    },
+    "nodeSelector": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "tolerations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": { "type": "string" },
+          "operator": { "type": "string", "enum": ["Exists", "Equal"] },
+          "value": { "type": "string" },
+          "effect": { "type": "string", "enum": ["NoSchedule", "PreferNoSchedule", "NoExecute"] },
+          "tolerationSeconds": { "type": "integer" }
+        }
+      }
+    },
+    "affinity": {
+      "type": "object",
+      "description": "Kubernetes affinity rules."
+    },
+    "podAnnotations": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "extraEnv": {
+      "type": "array",
+      "description": "Additional environment variables injected into the container.",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "value": { "type": "string" },
+          "valueFrom": { "type": "object" }
+        }
+      }
+    },
+    "ingressRoute": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "host": { "type": "string" },
+        "path": { "type": "string" }
+      }
+    }
+  }
+}

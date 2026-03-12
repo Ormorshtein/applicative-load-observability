@@ -43,12 +43,101 @@ app.kubernetes.io/component: {{ .component }}
 
 {{/*
 Elasticsearch URL — either external or internal service.
+Used by logstash, kibana, and setup (ALO storage).
 */}}
 {{- define "alo.elasticsearchUrl" -}}
 {{- if .Values.elasticsearch.external.enabled }}
 {{- required "elasticsearch.external.url is required when elasticsearch.external.enabled=true" .Values.elasticsearch.external.url }}
 {{- else }}
 {{- printf "http://%s-elasticsearch:%d" (include "alo.fullname" .) (.Values.elasticsearch.service.port | int) }}
+{{- end }}
+{{- end }}
+
+{{/*
+Gateway Elasticsearch URL — the cluster being monitored/proxied.
+Falls back to the main elasticsearch config when gateway.elasticsearch.url is empty.
+*/}}
+{{- define "alo.gatewayElasticsearchUrl" -}}
+{{- if .Values.gateway.elasticsearch.url }}
+{{- .Values.gateway.elasticsearch.url }}
+{{- else }}
+{{- include "alo.elasticsearchUrl" . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Whether gateway-specific ES config is active (has its own URL).
+*/}}
+{{- define "alo.gatewayEsOverride" -}}
+{{- if .Values.gateway.elasticsearch.url }}true
+{{- else }}false
+{{- end }}
+{{- end }}
+
+{{/*
+Whether gateway ES auth is active.
+*/}}
+{{- define "alo.gatewayEsAuthEnabled" -}}
+{{- if eq (include "alo.gatewayEsOverride" .) "true" }}
+{{- if .Values.gateway.elasticsearch.auth.enabled }}true{{- else }}false{{- end }}
+{{- else }}
+{{- include "alo.esAuthEnabled" . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Name of the Secret holding gateway ES auth credentials.
+*/}}
+{{- define "alo.gatewayEsAuthSecretName" -}}
+{{- if eq (include "alo.gatewayEsOverride" .) "true" }}
+{{- if .Values.gateway.elasticsearch.auth.existingSecret }}
+{{- .Values.gateway.elasticsearch.auth.existingSecret }}
+{{- else }}
+{{- printf "%s-gateway-es-auth" (include "alo.fullname" .) }}
+{{- end }}
+{{- else }}
+{{- include "alo.esAuthSecretName" . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Gateway ES auth type.
+*/}}
+{{- define "alo.gatewayEsAuthType" -}}
+{{- if eq (include "alo.gatewayEsOverride" .) "true" }}
+{{- .Values.gateway.elasticsearch.auth.type }}
+{{- else if .Values.elasticsearch.external.enabled }}
+{{- .Values.elasticsearch.external.auth.type }}
+{{- else }}
+{{- "basic" }}
+{{- end }}
+{{- end }}
+
+{{/*
+Whether a gateway ES CA secret should be mounted.
+*/}}
+{{- define "alo.gatewayEsCaEnabled" -}}
+{{- if eq (include "alo.gatewayEsOverride" .) "true" }}
+{{- if or .Values.gateway.elasticsearch.tls.create .Values.gateway.elasticsearch.tls.caCertSecret }}true
+{{- else }}false
+{{- end }}
+{{- else }}
+{{- include "alo.esCaEnabled" . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Name of the Secret holding the gateway ES CA certificate.
+*/}}
+{{- define "alo.gatewayEsCaSecretName" -}}
+{{- if eq (include "alo.gatewayEsOverride" .) "true" }}
+{{- if .Values.gateway.elasticsearch.tls.caCertSecret }}
+{{- .Values.gateway.elasticsearch.tls.caCertSecret }}
+{{- else }}
+{{- printf "%s-gateway-es-ca" (include "alo.fullname" .) }}
+{{- end }}
+{{- else }}
+{{- include "alo.esCaSecretName" . }}
 {{- end }}
 {{- end }}
 
@@ -191,6 +280,24 @@ Whether an ES CA secret should be mounted.
 */}}
 {{- define "alo.esCaEnabled" -}}
 {{- if or .Values.elasticsearch.external.tls.create .Values.elasticsearch.external.tls.caCertSecret }}true
+{{- else }}false
+{{- end }}
+{{- end }}
+
+{{/*
+Whether storage ES TLS verification should be skipped.
+*/}}
+{{- define "alo.esInsecure" -}}
+{{- if and .Values.elasticsearch.external.enabled .Values.elasticsearch.external.tls.insecureSkipVerify }}true
+{{- else }}false
+{{- end }}
+{{- end }}
+
+{{/*
+Whether storage ES URL is HTTPS (SSL must be enabled in clients).
+*/}}
+{{- define "alo.esSslEnabled" -}}
+{{- if or (eq (include "alo.esCaEnabled" .) "true") (eq (include "alo.esInsecure" .) "true") (hasPrefix "https://" (include "alo.elasticsearchUrl" .)) }}true
 {{- else }}false
 {{- end }}
 {{- end }}
