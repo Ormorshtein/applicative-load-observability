@@ -57,7 +57,7 @@ spec:
               protocol: TCP
           volumeMounts:
             - name: config
-              mountPath: /usr/share/logstash/logstash.yml
+              mountPath: /usr/share/logstash/config/logstash.yml
               subPath: logstash.yml
               readOnly: true
             - name: config
