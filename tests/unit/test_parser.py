@@ -177,11 +177,17 @@ class TestParseOperation:
     def test_delete_by_query(self):
         assert parse_operation("POST", "/myindex/_delete_by_query") == "_delete_by_query"
 
-    def test_no_underscore_segment_defaults_to_search(self):
-        assert parse_operation("GET", "/myindex") == "_search"
+    def test_no_underscore_segment_dispatches_on_method(self):
+        assert parse_operation("GET", "/myindex") == "get"
+        assert parse_operation("PUT", "/myindex") == "index"
+        assert parse_operation("DELETE", "/myindex") == "delete"
 
-    def test_root_defaults_to_search(self):
-        assert parse_operation("GET", "/") == "_search"
+    def test_root_dispatches_on_method(self):
+        assert parse_operation("GET", "/") == "get"
+        assert parse_operation("POST", "/") == "index"
+
+    def test_doc_get(self):
+        assert parse_operation("GET", "/myindex/_doc/123") == "get"
 
 
 # ---------------------------------------------------------------------------

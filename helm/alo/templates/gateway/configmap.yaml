@@ -44,6 +44,35 @@ data:
         client_max_body_size 10m;
         resolver __DNS_RESOLVER__ valid=10s ipv6=off;
 
+        -- Cache env vars and modules once per worker
+        init_worker_by_lua_block {
+            _G._alo_http  = require("resty.http")
+            _G._alo_cjson = require("cjson")
+            _G._alo_pipeline_url = os.getenv("PIPELINE_URL") or ""
+            {{- if eq (include "alo.gatewayEsAuthEnabled" .) "true" }}
+            {{- $initAuthType := include "alo.gatewayEsAuthType" . }}
+            {{- if eq $initAuthType "basic" }}
+            local user = os.getenv("ES_AUTH_USERNAME") or ""
+            local pass = os.getenv("ES_AUTH_PASSWORD") or ""
+            if user ~= "" then
+                _G._alo_es_auth_header = "Basic " .. ngx.encode_base64(user .. ":" .. pass)
+            else
+                _G._alo_es_auth_header = ""
+            end
+            {{- else if eq $initAuthType "apiKey" }}
+            local key = os.getenv("ES_AUTH_API_KEY") or ""
+            if key ~= "" then
+                _G._alo_es_auth_header = "ApiKey " .. key
+            else
+                _G._alo_es_auth_header = ""
+            end
+            {{- end }}
+            {{- end }}
+            {{- if and (eq .Values.pipelineMode "nifi") .Values.nifi.external.enabled .Values.nifi.external.auth.enabled }}
+            _G._alo_nifi_auth = os.getenv("NIFI_AUTH_HEADER_VALUE") or ""
+            {{- end }}
+        }
+
         {{- $esUrl := include "alo.gatewayElasticsearchUrl" . }}
         {{- $esHost := $esUrl | trimPrefix "http://" | trimPrefix "https://" }}
         {{- $esIsHttps := hasPrefix "https://" $esUrl }}
@@ -59,25 +88,9 @@ data:
             {{- if eq (include "alo.gatewayEsAuthEnabled" .) "true" }}
             set $es_auth_header "";
 
-            {{- $authType := include "alo.gatewayEsAuthType" . }}
-            {{- if eq $authType "basic" }}
             set_by_lua_block $es_auth_header {
-                local user = os.getenv("ES_AUTH_USERNAME") or ""
-                local pass = os.getenv("ES_AUTH_PASSWORD") or ""
-                if user ~= "" then
-                    return "Basic " .. ngx.encode_base64(user .. ":" .. pass)
-                end
-                return ""
+                return _G._alo_es_auth_header or ""
             }
-            {{- else if eq $authType "apiKey" }}
-            set_by_lua_block $es_auth_header {
-                local key = os.getenv("ES_AUTH_API_KEY") or ""
-                if key ~= "" then
-                    return "ApiKey " .. key
-                end
-                return ""
-            }
-            {{- end }}
             {{- end }}
 
             location / {
@@ -97,6 +110,7 @@ data:
                 }
 
                 log_by_lua_block {
+                    local urt = tonumber(ngx.var.upstream_response_time)
                     local ctx = {
                         method          = ngx.var.request_method,
                         path            = ngx.var.uri,
@@ -104,8 +118,7 @@ data:
                         request_body    = ngx.req.get_body_data() or "",
                         response_body   = ngx.ctx.resp_body or "",
                         response_status = ngx.status,
-                        gateway_took_ms = tonumber(ngx.var.upstream_response_time) and
-                                            tonumber(ngx.var.upstream_response_time) * 1000 or 0,
+                        gateway_took_ms = urt and (urt * 1000) or 0,
                         request_size_bytes  = tonumber(ngx.var.content_length) or 0,
                         response_size_bytes = #(ngx.ctx.resp_body or ""),
                         client_host     = ngx.var.remote_addr,
@@ -114,22 +127,21 @@ data:
                     local function notify_pipeline(premature, ctx)
                         if premature then return end
                         local ok, err = pcall(function()
-                            local http  = require("resty.http")
-                            local cjson = require("cjson")
+                            local http  = _G._alo_http
+                            local cjson = _G._alo_cjson
                             local httpc = http.new()
                             httpc:set_timeout({{ .Values.gateway.pipelineTimeout }})
 
                             local pipeline_headers = { ["Content-Type"] = "application/json" }
 
                             {{- if and (eq .Values.pipelineMode "nifi") .Values.nifi.external.enabled .Values.nifi.external.auth.enabled }}
-                            -- Inject NiFi auth header from environment variable
-                            local nifi_auth = os.getenv("NIFI_AUTH_HEADER_VALUE")
+                            local nifi_auth = _G._alo_nifi_auth
                             if nifi_auth and nifi_auth ~= "" then
                                 pipeline_headers["{{ .Values.nifi.external.auth.headerName }}"] = nifi_auth
                             end
                             {{- end }}
 
-                            local pipeline_url = os.getenv("PIPELINE_URL")
+                            local pipeline_url = _G._alo_pipeline_url
                             local res, err = httpc:request_uri(pipeline_url, {
                                 method  = "POST",
                                 body    = cjson.encode({

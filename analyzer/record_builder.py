@@ -22,7 +22,13 @@ from parser import (
     scrub_bulk_template,
     scrub_template,
 )
-from stress import StressContext, count_clauses, evaluate_cost_indicators, calc_stress
+from stress import (
+    _ALL_COUNT_FIELDS,
+    StressContext,
+    calc_stress,
+    count_clauses,
+    evaluate_cost_indicators,
+)
 
 _TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%S.000Z"
 _STRESS_PRECISION = 4
@@ -87,38 +93,20 @@ _CLAUSE_COUNT_OUTPUT_KEYS = {
     "script_clause_count":  "script",
 }
 
+_QUERY_OPS = frozenset({"_search", "_update_by_query", "_delete_by_query", "_count", "_validate"})
+
 
 def _output_clause_counts(counts: dict) -> dict:
     return {out: counts[internal] for internal, out in _CLAUSE_COUNT_OUTPUT_KEYS.items()}
-
-
-def _extract_bulk_target(raw_body: str) -> str:
-    """Extract comma-separated target indices from bulk NDJSON actions."""
-    targets = set()
-    for line in raw_body.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            obj = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        for action_type in ("index", "create", "update", "delete"):
-            if action_type in obj:
-                idx = obj[action_type].get("_index", "")
-                if idx:
-                    targets.add(idx)
-                break
-    return ",".join(sorted(targets)) if targets else "_all"
 
 
 def build_record(raw: RawFields) -> dict:
     operation = parse_operation(raw.method, raw.path)
     target    = parse_target(raw.path)
     if operation == "_bulk":
-        template = scrub_bulk_template(raw.request_body_raw)
+        template, bulk_target = scrub_bulk_template(raw.request_body_raw)
         if target == "_all":
-            target = _extract_bulk_target(raw.request_body_raw)
+            target = bulk_target
     else:
         template = scrub_template(raw.request_body) if raw.request_body else ""
 
@@ -135,12 +123,17 @@ def build_record(raw: RawFields) -> dict:
     size                 = parse_size(raw.request_body)
     es_took_ms           = parse_es_took_ms(raw.response_body)
 
-    clause_counts = count_clauses(raw.request_body)
-    bool_clause_total = (clause_counts["bool_must_count"]
-                         + clause_counts["bool_should_count"]
-                         + clause_counts["bool_filter_count"]
-                         + clause_counts["bool_must_not_count"])
-    cost_indicators, stress_multiplier = evaluate_cost_indicators(clause_counts)
+    if operation in _QUERY_OPS:
+        clause_counts = count_clauses(raw.request_body)
+        bool_clause_total = (clause_counts["bool_must_count"]
+                             + clause_counts["bool_should_count"]
+                             + clause_counts["bool_filter_count"]
+                             + clause_counts["bool_must_not_count"])
+        cost_indicators, stress_multiplier = evaluate_cost_indicators(clause_counts)
+    else:
+        clause_counts = {k: 0 for k in _ALL_COUNT_FIELDS}
+        bool_clause_total = 0
+        cost_indicators, stress_multiplier = {}, 1.0
 
     ctx = StressContext(
         es_took_ms=       es_took_ms or raw.gateway_took_ms,

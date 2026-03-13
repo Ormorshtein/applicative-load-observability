@@ -70,13 +70,22 @@ def parse_target(path: str) -> str:
     return "_all"
 
 
+_METHOD_DISPATCH = {
+    "GET":    "get",
+    "HEAD":   "get",
+    "PUT":    "index",
+    "POST":   "index",
+    "DELETE": "delete",
+}
+
+
 def parse_operation(method: str, path: str) -> str:
     for segment in reversed(path.split("/")):
         if segment.startswith("_"):
             if segment == "_doc":
-                return "index" if method == "PUT" else "delete"
+                return _METHOD_DISPATCH.get(method, "index")
             return segment
-    return "_search"
+    return _METHOD_DISPATCH.get(method, "index")
 
 
 # ---------------------------------------------------------------------------
@@ -99,12 +108,14 @@ def scrub_template(body: dict) -> str:
     return json.dumps(_scrub(body), sort_keys=True)
 
 
-def scrub_bulk_template(raw_body: str) -> str:
+def scrub_bulk_template(raw_body: str) -> tuple[str, str]:
     """Build a structural template from an NDJSON bulk request body.
 
     Extracts unique action types and target indices from action lines,
     producing a stable template like:
         {"actions": ["index"], "target": ["my-index"]}
+
+    Returns (template_str, comma_separated_targets).
     """
     actions = set()
     targets = set()
@@ -123,12 +134,15 @@ def scrub_bulk_template(raw_body: str) -> str:
                 if idx:
                     targets.add(idx)
                 break
+    sorted_targets = sorted(targets) if targets else ["_all"]
+    target_str = ",".join(sorted_targets) if targets else "_all"
     if not actions:
-        return ""
-    return json.dumps({
+        return "", target_str
+    template = json.dumps({
         "actions": sorted(actions),
-        "target": sorted(targets) if targets else ["_all"],
+        "target": sorted_targets,
     }, sort_keys=True)
+    return template, target_str
 
 
 # ---------------------------------------------------------------------------
