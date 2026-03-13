@@ -11,6 +11,20 @@ data:
     error_log stderr warn;
     pid /tmp/nginx/nginx.pid;
 
+    env PIPELINE_URL;
+    {{- if eq (include "alo.gatewayEsAuthEnabled" .) "true" }}
+    {{- $authType := include "alo.gatewayEsAuthType" . }}
+    {{- if eq $authType "basic" }}
+    env ES_AUTH_USERNAME;
+    env ES_AUTH_PASSWORD;
+    {{- else if eq $authType "apiKey" }}
+    env ES_AUTH_API_KEY;
+    {{- end }}
+    {{- end }}
+    {{- if and (eq .Values.pipelineMode "nifi") .Values.nifi.external.enabled .Values.nifi.external.auth.enabled }}
+    env NIFI_AUTH_HEADER_VALUE;
+    {{- end }}
+
     events {
         worker_connections {{ .Values.gateway.workerConnections }};
     }
