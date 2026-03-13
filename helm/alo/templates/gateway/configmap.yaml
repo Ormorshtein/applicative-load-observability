@@ -40,6 +40,8 @@ data:
         lua_need_request_body on;
         lua_max_pending_timers 65536;
         lua_max_running_timers 4096;
+        client_body_buffer_size 2m;
+        client_max_body_size 10m;
         resolver __DNS_RESOLVER__ valid=10s ipv6=off;
 
         {{- $esUrl := include "alo.gatewayElasticsearchUrl" . }}
