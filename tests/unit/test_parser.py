@@ -8,7 +8,6 @@ from parser import (
     parse_username,
     parse_applicative_provider,
     parse_user_agent,
-    parse_client_host,
     parse_target,
     parse_operation,
     parse_size,
@@ -93,7 +92,7 @@ class TestParseApplicativeProvider:
 
 
 # ---------------------------------------------------------------------------
-# Header extraction: parse_user_agent, parse_client_host
+# Header extraction: parse_user_agent
 # ---------------------------------------------------------------------------
 
 class TestParseUserAgent:
@@ -102,14 +101,6 @@ class TestParseUserAgent:
 
     def test_missing(self):
         assert parse_user_agent({}) == ""
-
-
-class TestParseClientHost:
-    def test_present(self):
-        assert parse_client_host({"client_host": "10.0.0.5"}) == "10.0.0.5"
-
-    def test_missing(self):
-        assert parse_client_host({}) == ""
 
 
 # ---------------------------------------------------------------------------

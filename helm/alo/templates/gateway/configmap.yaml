@@ -44,7 +44,7 @@ data:
         client_max_body_size 10m;
         resolver __DNS_RESOLVER__ valid=10s ipv6=off;
 
-        -- Cache env vars and modules once per worker
+        # Cache env vars and modules once per worker
         init_worker_by_lua_block {
             _G._alo_http  = require("resty.http")
             _G._alo_cjson = require("cjson")

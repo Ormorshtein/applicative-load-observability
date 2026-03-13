@@ -54,9 +54,6 @@ def parse_user_agent(headers: dict) -> str:
     return headers.get("user-agent", "")
 
 
-def parse_client_host(payload: dict) -> str:
-    return payload.get("client_host", "")
-
 
 # ---------------------------------------------------------------------------
 # Path / URL extraction
