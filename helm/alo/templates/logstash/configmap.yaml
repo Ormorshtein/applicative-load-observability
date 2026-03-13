@@ -23,9 +23,6 @@ data:
     xpack.monitoring.elasticsearch.username: "${ES_USERNAME}"
     xpack.monitoring.elasticsearch.password: "${ES_PASSWORD}"
     {{- end }}
-    {{- if eq (include "alo.esSslEnabled" .) "true" }}
-    xpack.monitoring.elasticsearch.ssl.enabled: true
-    {{- end }}
     {{- if eq (include "alo.esCaEnabled" .) "true" }}
     xpack.monitoring.elasticsearch.ssl.certificate_authority: "/etc/ssl/es/ca.crt"
     {{- end }}
