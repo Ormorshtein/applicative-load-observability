@@ -185,11 +185,11 @@ class BulkStress(Workload):
             actions.append(json.dumps(rand_doc()))
             self.tracker.remember(doc_id)
         body = "\n".join(actions) + "\n"
-        s, _ = http_request(
+        s, resp = http_request(
             self.gateway, "POST", "/_bulk", body,
             headers={**self._h(), "Content-Type": "application/x-ndjson"},
             content_type="application/x-ndjson", timeout=30)
-        return "_bulk", s
+        return "_bulk", s, resp
 
 
 # ---------------------------------------------------------------------------
@@ -214,8 +214,8 @@ class UbqStress(Workload):
                 "params": {"v": 1},
             },
         }
-        s, _ = http_request(
+        s, resp = http_request(
             self.gateway, "POST",
             f"/{self.index}/_update_by_query?conflicts=proceed",
             body, headers=self._h())
-        return "_update_by_query", s
+        return "_update_by_query", s, resp

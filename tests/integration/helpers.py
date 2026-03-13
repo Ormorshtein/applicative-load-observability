@@ -148,8 +148,8 @@ def http_request(gateway: str, method: str, path: str,
         return resp.status, resp.read()
     except HTTPError as e:
         return e.code, e.read()
-    except (URLError, OSError):
-        return 0, b""
+    except (URLError, OSError) as e:
+        return 0, str(e).encode()
 
 
 # ---------------------------------------------------------------------------

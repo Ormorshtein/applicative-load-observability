@@ -29,11 +29,14 @@ def _fmt_ms(ms: float) -> str:
 class LatencyTracker:
     """Thread-safe per-operation latency and error tracker."""
 
+    MAX_ERROR_SAMPLES = 10
+
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._latencies: dict[str, list[float]] = defaultdict(list)
         self._counts: dict[str, int] = defaultdict(int)
         self._errors: dict[str, int] = defaultdict(int)
+        self._error_samples: list[tuple[str, int, str]] = []
         self._total = 0
         self._total_errors = 0
         self.start = time.monotonic()
@@ -43,6 +46,7 @@ class LatencyTracker:
             self._latencies.clear()
             self._counts.clear()
             self._errors.clear()
+            self._error_samples.clear()
             self._total = 0
             self._total_errors = 0
             self.start = time.monotonic()
@@ -60,7 +64,8 @@ class LatencyTracker:
         e = self.elapsed
         return self._total / e if e > 0.01 else 0.0
 
-    def record(self, op: str, latency_ms: float, status: int) -> None:
+    def record(self, op: str, latency_ms: float, status: int,
+               body: bytes = b"") -> None:
         is_err = (status == 0 or status >= 400)
         with self._lock:
             self._latencies[op].append(latency_ms)
@@ -69,6 +74,9 @@ class LatencyTracker:
             if is_err:
                 self._errors[op] += 1
                 self._total_errors += 1
+                if len(self._error_samples) < self.MAX_ERROR_SAMPLES:
+                    snippet = body[:512].decode("utf-8", errors="replace") if body else ""
+                    self._error_samples.append((op, status, snippet))
 
     def snapshot(self) -> dict:
         with self._lock:
@@ -88,6 +96,7 @@ class LatencyTracker:
                 "ops": ops,
                 "total": self._total,
                 "errors": self._total_errors,
+                "error_samples": list(self._error_samples),
                 "elapsed": elapsed,
                 "rate": self._total / max(elapsed, 0.01),
             }
@@ -134,6 +143,14 @@ def format_report(snap: dict, label: str = "") -> str:
     lines.extend([
         f"  {'-' * (w - 4)}",
         f"  {'TOTAL':<24} {snap['total']:>9,} {snap['errors']:>6}",
-        sep, "",
+        sep,
     ])
+    if snap.get("error_samples"):
+        lines.append(f"\n  Error samples (first {len(snap['error_samples'])}):")
+        lines.append(f"  {'-' * (w - 4)}")
+        for op, status, snippet in snap["error_samples"]:
+            status_label = f"HTTP {status}" if status else "connection error"
+            lines.append(f"  [{op}] {status_label}: {snippet}")
+        lines.append(sep)
+    lines.append("")
     return "\n".join(lines)

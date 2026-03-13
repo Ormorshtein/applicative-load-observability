@@ -55,10 +55,10 @@ class Workload:
         """Default headers with X-App-Name."""
         return {"X-App-Name": self.app_name}
 
-    def _post_search(self, body) -> tuple[str, int]:
-        s, _ = http_request(self.gateway, "POST", f"/{self.index}/_search",
-                            body, headers=self._h())
-        return "_search", s
+    def _post_search(self, body) -> tuple[str, int, bytes]:
+        s, resp = http_request(self.gateway, "POST", f"/{self.index}/_search",
+                               body, headers=self._h())
+        return "_search", s, resp
 
 
 # ---------------------------------------------------------------------------
@@ -164,21 +164,21 @@ class MixedWorkload(Workload):
 
     def _index(self):
         doc_id = rand_str(12)
-        s, _ = http_request(self.gateway, "PUT",
-                            f"/{self.index}/_doc/{doc_id}",
-                            rand_doc(), headers=self._h())
+        s, body = http_request(self.gateway, "PUT",
+                               f"/{self.index}/_doc/{doc_id}",
+                               rand_doc(), headers=self._h())
         if 200 <= s < 300:
             self.tracker.remember(doc_id)
-        return "index", s
+        return "index", s, body
 
     def _create(self):
         doc_id = rand_str(12)
-        s, _ = http_request(self.gateway, "PUT",
-                            f"/{self.index}/_create/{doc_id}",
-                            rand_doc(), headers=self._h())
+        s, body = http_request(self.gateway, "PUT",
+                               f"/{self.index}/_create/{doc_id}",
+                               rand_doc(), headers=self._h())
         if 200 <= s < 300:
             self.tracker.remember(doc_id)
-        return "_create", s
+        return "_create", s, body
 
     def _bulk(self):
         actions = []
@@ -188,21 +188,21 @@ class MixedWorkload(Workload):
             actions.append(json.dumps(rand_doc()))
             self.tracker.remember(doc_id)
         body = "\n".join(actions) + "\n"
-        s, _ = http_request(
+        s, resp = http_request(
             self.gateway, "POST", "/_bulk", body,
             headers={**self._h(), "Content-Type": "application/x-ndjson"},
             content_type="application/x-ndjson", timeout=30)
-        return "_bulk", s
+        return "_bulk", s, resp
 
     def _update(self):
         doc_id = self.tracker.pick()
         if not doc_id:
             return self._index()
-        body = {"doc": {"price": rand_price(), "quantity": rand_int(0, 500)}}
-        s, _ = http_request(self.gateway, "POST",
-                            f"/{self.index}/_update/{doc_id}",
-                            body, headers=self._h())
-        return "_update", s
+        payload = {"doc": {"price": rand_price(), "quantity": rand_int(0, 500)}}
+        s, body = http_request(self.gateway, "POST",
+                               f"/{self.index}/_update/{doc_id}",
+                               payload, headers=self._h())
+        return "_update", s, body
 
     def _ubq(self):
         body = {
@@ -210,28 +210,28 @@ class MixedWorkload(Workload):
             "script": {"source": "ctx._source.quantity += params.n",
                        "params": {"n": random.randint(1, 10)}},
         }
-        s, _ = http_request(
+        s, resp = http_request(
             self.gateway, "POST",
             f"/{self.index}/_update_by_query?conflicts=proceed",
             body, headers=self._h())
-        return "_update_by_query", s
+        return "_update_by_query", s, resp
 
     def _delete(self):
         doc_id = self.tracker.pick()
         if not doc_id:
             return self._index()
-        s, _ = http_request(self.gateway, "DELETE",
-                            f"/{self.index}/_doc/{doc_id}",
-                            headers=self._h())
-        return "delete", s
+        s, body = http_request(self.gateway, "DELETE",
+                               f"/{self.index}/_doc/{doc_id}",
+                               headers=self._h())
+        return "delete", s, body
 
     def _dbq(self):
         body = {"query": {"range": {"price": {"lt": rand_int(1, 20)}}}}
-        s, _ = http_request(
+        s, resp = http_request(
             self.gateway, "POST",
             f"/{self.index}/_delete_by_query?conflicts=proceed",
             body, headers=self._h())
-        return "_delete_by_query", s
+        return "_delete_by_query", s, resp
 
 
 # ---------------------------------------------------------------------------
