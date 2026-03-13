@@ -81,8 +81,16 @@ data:
             location / {
                 body_filter_by_lua_block {
                     local chunk = ngx.arg[1]
-                    if chunk then
-                        ngx.ctx.resp_body = (ngx.ctx.resp_body or "") .. chunk
+                    if chunk and chunk ~= "" then
+                        local chunks = ngx.ctx.resp_chunks
+                        if not chunks then
+                            chunks = {}
+                            ngx.ctx.resp_chunks = chunks
+                        end
+                        chunks[#chunks + 1] = chunk
+                    end
+                    if ngx.arg[2] then
+                        ngx.ctx.resp_body = table.concat(ngx.ctx.resp_chunks or {})
                     end
                 }
 

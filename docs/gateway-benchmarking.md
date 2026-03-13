@@ -248,3 +248,45 @@ Total cluster resources needed at each throughput level:
 | Gateway | Cheapest | nginx event loop is extremely efficient; Lua work is fire-and-forget |
 | Logstash | Memory-hungry | JVM heap (512m-1g) + 256MB in-memory queue per replica |
 | Analyzer | Pod-hungry | CPU-bound Python with GIL; must scale horizontally |
+
+## Known Optimizations (Not Yet Implemented)
+
+### Extract response fields in gateway Lua instead of forwarding full body
+
+**Impact: High** -- affects all three components, biggest potential throughput gain.
+
+Currently the full ES response body (potentially megabytes for large search results or
+bulk responses) traverses the entire pipeline: gateway → Logstash → analyzer. The analyzer
+only extracts ~5 integer fields from it:
+
+- `took` (int)
+- `hits.total.value` (int)
+- `_shards.total` (int)
+- `updated` / `deleted` (int, for by-query ops)
+- `len(items)` + per-item shard dedup (for bulk)
+
+The fix is to extract these fields in the gateway's `log_by_lua_block` using `cjson.decode`,
+send a small `response_meta` dict instead of the raw body, and update the analyzer to read
+pre-extracted values. This would cut pipeline data transfer by 90%+ for typical responses.
+
+**Why it's deferred:** Touches all three components (gateway Lua, Logstash Ruby filter,
+analyzer Python) plus unit tests. No data loss -- the response body is never stored in the
+final observability record.
+
+### Add connection pooling for pipeline POST
+
+**Impact: High** -- eliminates per-request TCP connection overhead in gateway.
+
+The gateway creates a new `resty.http` client and TCP connection for every pipeline POST.
+At high throughput this means tens of thousands of TCP connection setups/teardowns per second.
+Switching from `request_uri()` to `connect()` + `request()` + `set_keepalive()` would reuse
+connections across requests.
+
+### Batch analyzer calls in Logstash
+
+**Impact: High** -- the synchronous per-event HTTP filter is Logstash's binding constraint.
+
+The Logstash `http` filter makes a blocking POST to the analyzer for each event. Each pipeline
+worker processes events serially through this filter. With a 3ms round-trip, a single worker
+tops out at ~333 events/s. Batching multiple events per analyzer call (e.g., a `/analyze_batch`
+endpoint) would amortize the HTTP overhead and dramatically increase per-worker throughput.
