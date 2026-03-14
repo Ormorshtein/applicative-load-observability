@@ -12,6 +12,7 @@ from parser import (
     parse_operation,
     parse_size,
     scrub_template,
+    scrub_bulk_template,
     parse_hits,
     parse_shards_total,
     parse_shards_total_bulk,
@@ -180,6 +181,21 @@ class TestParseOperation:
     def test_doc_get(self):
         assert parse_operation("GET", "/myindex/_doc/123") == "get"
 
+    def test_head_is_get(self):
+        assert parse_operation("HEAD", "/myindex/_doc/123") == "get"
+
+    def test_post_doc_is_index(self):
+        assert parse_operation("POST", "/myindex/_doc") == "index"
+
+    def test_count(self):
+        assert parse_operation("POST", "/myindex/_count") == "_count"
+
+    def test_validate(self):
+        assert parse_operation("POST", "/myindex/_validate/query") == "_validate"
+
+    def test_msearch(self):
+        assert parse_operation("POST", "/_msearch") == "_msearch"
+
 
 # ---------------------------------------------------------------------------
 # Request body extraction
@@ -219,6 +235,71 @@ class TestScrubTemplate:
         body = {"z_field": 1, "a_field": 2}
         template = scrub_template(body)
         assert template.index("a_field") < template.index("z_field")
+
+
+class TestScrubBulkTemplate:
+    def test_index_actions(self):
+        body = (
+            '{"index":{"_index":"products"}}\n'
+            '{"title":"shoes"}\n'
+            '{"index":{"_index":"products"}}\n'
+            '{"title":"hat"}\n'
+        )
+        template, targets = scrub_bulk_template(body)
+        result = json.loads(template)
+        assert result["actions"] == ["index"]
+        assert result["target"] == ["products"]
+        assert targets == "products"
+
+    def test_mixed_actions(self):
+        body = (
+            '{"index":{"_index":"products"}}\n'
+            '{"title":"shoes"}\n'
+            '{"delete":{"_index":"logs","_id":"1"}}\n'
+        )
+        template, targets = scrub_bulk_template(body)
+        result = json.loads(template)
+        assert sorted(result["actions"]) == ["delete", "index"]
+        assert sorted(result["target"]) == ["logs", "products"]
+        assert "logs" in targets
+        assert "products" in targets
+
+    def test_multiple_indices(self):
+        body = (
+            '{"index":{"_index":"idx1"}}\n'
+            '{"data":1}\n'
+            '{"create":{"_index":"idx2"}}\n'
+            '{"data":2}\n'
+        )
+        template, targets = scrub_bulk_template(body)
+        result = json.loads(template)
+        assert sorted(result["target"]) == ["idx1", "idx2"]
+        assert targets == "idx1,idx2"
+
+    def test_empty_body(self):
+        template, targets = scrub_bulk_template("")
+        assert template == ""
+        assert targets == "_all"
+
+    def test_no_index_in_actions(self):
+        body = '{"index":{}}\n{"data":1}\n'
+        template, targets = scrub_bulk_template(body)
+        result = json.loads(template)
+        assert result["target"] == ["_all"]
+        assert targets == "_all"
+
+    def test_malformed_lines_skipped(self):
+        body = 'not json\n{"index":{"_index":"products"}}\n{"data":1}\n'
+        template, targets = scrub_bulk_template(body)
+        result = json.loads(template)
+        assert result["actions"] == ["index"]
+        assert targets == "products"
+
+    def test_blank_lines_skipped(self):
+        body = '\n{"index":{"_index":"products"}}\n\n{"data":1}\n\n'
+        template, targets = scrub_bulk_template(body)
+        result = json.loads(template)
+        assert result["actions"] == ["index"]
 
 
 # ---------------------------------------------------------------------------

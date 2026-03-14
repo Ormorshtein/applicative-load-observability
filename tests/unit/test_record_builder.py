@@ -211,10 +211,17 @@ class TestBuildRecord:
             assert len(score_str.split(".")[1]) <= 4
 
     def test_bulk_uses_bulk_shards(self):
+        bulk_ndjson = (
+            '{"index":{"_index":"idx1"}}\n'
+            '{"title":"a"}\n'
+            '{"index":{"_index":"idx2"}}\n'
+            '{"title":"b"}\n'
+        )
         raw = _make_raw(
             method="POST",
             path="/_bulk",
             request_body={},
+            request_body_raw=bulk_ndjson,
             response_body={
                 "took": 10,
                 "items": [
@@ -227,6 +234,8 @@ class TestBuildRecord:
         assert rec["request"]["operation"] == "_bulk"
         assert rec["response"]["shards_total"] == 5  # 2 + 3
         assert rec["response"]["docs_affected"] == 2
+        assert rec["request"]["target"] == "idx1,idx2"
+        assert "index" in rec["request"]["template"]
 
     def test_update_by_query_docs_affected(self):
         raw = _make_raw(
@@ -248,6 +257,43 @@ class TestBuildRecord:
         )
         rec = build_record(raw)
         assert rec["response"]["docs_affected"] == 10
+
+    def test_non_query_ops_zero_clause_counts(self):
+        raw = _make_raw(
+            method="PUT",
+            path="/myindex/_doc/123",
+            request_body={"title": "test"},
+            response_body={"took": 5, "_shards": {"total": 2}},
+        )
+        rec = build_record(raw)
+        assert rec["request"]["operation"] == "index"
+        assert all(v == 0 for v in rec["clause_counts"].values())
+        assert rec["cost_indicators"] == {}
+        assert rec["stress"]["multiplier"] == 1.0
+
+    def test_get_operation(self):
+        raw = _make_raw(
+            method="GET",
+            path="/myindex/_doc/123",
+            request_body={},
+            response_body={"took": 5, "_shards": {"total": 2}},
+        )
+        rec = build_record(raw)
+        assert rec["request"]["operation"] == "get"
+        assert all(v == 0 for v in rec["clause_counts"].values())
+        assert rec["stress"]["score"] > 0
+
+    def test_count_operation_gets_clause_counts(self):
+        raw = _make_raw(
+            method="POST",
+            path="/myindex/_count",
+            request_body={"query": {"bool": {"must": [{"match": {"f": "v"}}]}}},
+            response_body={"count": 42, "_shards": {"total": 3}},
+        )
+        rec = build_record(raw)
+        assert rec["request"]["operation"] == "_count"
+        assert rec["clause_counts"]["bool"] == 1
+        assert rec["clause_counts"]["bool_must"] == 1
 
     def test_multi_clause_bool_scores_higher(self):
         """A 10-clause bool query should score higher than a simple match query."""

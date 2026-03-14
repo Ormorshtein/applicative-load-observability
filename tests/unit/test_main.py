@@ -155,15 +155,19 @@ class TestAnalyzeErrorHandling:
     def test_empty_payload_returns_200(self):
         resp = client.post("/analyze", json={})
         assert resp.status_code == 200
-        # Should still produce a valid record with defaults
         rec = resp.json()
-        assert "request" in rec or "error" in rec
+        assert "request" in rec
+        assert rec["request"]["method"] == "GET"
+        assert rec["request"]["path"] == "/"
+        assert rec["request"]["operation"] == "get"
 
     def test_missing_fields_best_effort(self):
         resp = client.post("/analyze", json={"method": "GET", "path": "/"})
         assert resp.status_code == 200
         rec = resp.json()
-        assert rec.get("request", {}).get("operation") is not None or "error" in rec
+        assert rec["request"]["operation"] == "get"
+        assert rec["response"]["es_took_ms"] == 0
+        assert rec["identity"]["username"] == ""
 
     def test_malformed_request_body_still_works(self):
         payload = {

@@ -200,6 +200,28 @@ data:
                 {{- end }}
             }
 
+            location /health {
+                content_by_lua_block {
+                    local http = require("resty.http")
+                    local httpc = http.new()
+                    httpc:set_timeout(3000)
+                    local ok, err = httpc:request_uri("{{ $esUrl }}/", {
+                        method = "HEAD",
+                        {{- if eq (include "alo.gatewayEsAuthEnabled" .) "true" }}
+                        headers = { ["Authorization"] = _G._alo_es_auth_header or "" },
+                        {{- end }}
+                        ssl_verify = {{ and $esIsHttps (eq (include "alo.gatewayEsCaEnabled" .) "true") }},
+                    })
+                    if ok and ok.status < 500 then
+                        ngx.status = 200
+                        ngx.say('{"status":"ok"}')
+                    else
+                        ngx.status = 503
+                        ngx.say('{"status":"unavailable","error":"' .. (err or "upstream error") .. '"}')
+                    end
+                }
+            }
+
             location @upstream_error {
                 content_by_lua_block {
                     ngx.log(ngx.ERR,

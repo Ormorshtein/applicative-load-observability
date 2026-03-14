@@ -146,6 +146,7 @@ ILM_POLICIES: dict[str, dict] = {
     "alo-search-lifecycle":  _ilm_policy("90d"),
     "alo-write-lifecycle":   _ilm_policy("30d"),
     "alo-default-lifecycle": _ilm_policy("60d"),
+    "alo-dead-letter-lifecycle": _ilm_policy("7d"),
 }
 
 # ── Composable index templates ──────────────────────────────────────────────
@@ -181,6 +182,17 @@ INDEX_TEMPLATES: dict[str, dict] = {
         "template": {
             "settings": {
                 "index.lifecycle.name": "alo-default-lifecycle",
+            }
+        },
+    },
+    "alo-dead-letter": {
+        "index_patterns": ["alo-dead-letter*"],
+        "priority": 100,
+        "template": {
+            "settings": {
+                "index.lifecycle.name": "alo-dead-letter-lifecycle",
+                "number_of_shards": 1,
+                "number_of_replicas": 0,
             }
         },
     },

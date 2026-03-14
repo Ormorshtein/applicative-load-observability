@@ -104,6 +104,16 @@ class TestCalcStress:
         score_with = calc_stress("delete", self._ctx(), stress_multiplier=2.0)
         assert score_no == score_with
 
+    def test_get_uses_doc_write(self):
+        score = calc_stress("get", self._ctx())
+        expected = 0.70 * 1.0 + 0.30 * 1.0
+        assert score == pytest.approx(expected)
+
+    def test_get_applies_multiplier(self):
+        score = calc_stress("get", self._ctx(), stress_multiplier=1.5)
+        expected = (0.70 * 1.0 + 0.30 * 1.0) * 1.5
+        assert score == pytest.approx(expected)
+
     def test_unknown_operation_uses_doc_write(self):
         score = calc_stress("_unknown", self._ctx())
         expected = 0.70 * 1.0 + 0.30 * 1.0

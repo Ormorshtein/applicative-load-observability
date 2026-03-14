@@ -125,6 +125,25 @@ http {
             error_page 502 503 504 = @upstream_error;
         }
 
+        location /health {
+            content_by_lua_block {
+                local http = require("resty.http")
+                local httpc = http.new()
+                httpc:set_timeout(3000)
+                local ok, err = httpc:request_uri("${ELASTICSEARCH_URL:http://elasticsearch:9200}/", {
+                    method = "HEAD",
+                    ssl_verify = false,
+                })
+                if ok and ok.status < 500 then
+                    ngx.status = 200
+                    ngx.say('{"status":"ok"}')
+                else
+                    ngx.status = 503
+                    ngx.say('{"status":"unavailable","error":"' .. (err or "upstream error") .. '"}')
+                end
+            }
+        }
+
         location @upstream_error {
             content_by_lua_block {
                 ngx.log(ngx.ERR,
