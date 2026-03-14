@@ -41,20 +41,37 @@ This system wraps any Elasticsearch deployment with a transparent observability 
 
 ### 2.1 Gateway
 
-**Technology:** Nginx / OpenResty (Lua — ~25 lines, no parsing logic)
+**Technology:** Nginx / OpenResty (Lua)
 
 **Philosophy:** The gateway is a pure proxy. It does zero parsing and zero analytical logic. Its only responsibilities are:
 1. Forward every request to Elasticsearch verbatim
 2. Return the ES response to the client immediately
-3. After the response is sent, fire a single async HTTP POST to Logstash with raw data
+3. After the response is sent, fire a single async HTTP POST to the pipeline with raw data
 
 All extraction, parsing, and analysis happens downstream in Python.
 
 **How the async notification works:**
-- `body_filter_by_lua_block` accumulates response chunks into `ngx.ctx.resp_body`
-- `log_by_lua_block` fires `ngx.timer.at(0, notify_logstash, ctx)` — this runs after the response is already sent to the client
-- `notify_logstash` uses `lua-resty-http` to POST JSON to Logstash (URL configured via `LOGSTASH_URL` env var, default `http://logstash:8080/`)
+- `body_filter_by_lua_block` accumulates response chunks using `table.insert` + `table.concat` (O(n) instead of O(n²) string concatenation) into `ngx.ctx.resp_body`
+- `log_by_lua_block` fires `ngx.timer.at(0, notify_pipeline, ctx)` — this runs after the response is already sent to the client
+- `notify_pipeline` uses `lua-resty-http` to POST JSON to the pipeline (URL configured via `PIPELINE_URL` env var)
 - The entire call is wrapped in `pcall` — any error is silently dropped
+- `resty.http` and `cjson` modules are loaded lazily inside the timer callback (cosocket API is unavailable in `init_worker_by_lua_block`)
+
+**Worker initialization (`init_worker_by_lua_block`):**
+- Caches environment variables (`PIPELINE_URL`, ES auth credentials, NiFi auth) into `_G.*` globals once per worker
+- Auth headers (Basic or ApiKey) are pre-computed at init time to avoid per-request overhead
+
+**Health check endpoint (`/health`):**
+- Sends a `HEAD` request to Elasticsearch with a 3-second timeout
+- Returns `200 {"status":"ok"}` if ES responds with status < 500
+- Returns `503 {"status":"unavailable"}` if ES is down or unreachable
+- Used by Kubernetes readiness and liveness probes (HTTP, not TCP)
+- Does **not** trigger the observability pipeline (separate location block)
+
+**Upstream error handling (`@upstream_error`):**
+- Catches 502/503/504 from Elasticsearch
+- Logs structured error details (upstream addr, status, connect/response times)
+- Returns a JSON error body to the client instead of a default nginx error page
 
 **What Nginx sends to Logstash (raw variables, no processing):**
 
@@ -93,7 +110,7 @@ All extraction, parsing, and analysis happens downstream in Python.
 | `client_host` | `ngx.var.remote_addr` |
 
 **Drop behavior:**
-- Logstash **down** → connect fails within 1s → pcall catches → drop
+- Pipeline **down** → connect fails within timeout → pcall catches → drop
 - No local queue, no retry, no buffer
 
 ---
@@ -110,10 +127,9 @@ All extraction, parsing, and analysis happens downstream in Python.
 |-------|--------|---------------|
 | Input | `http` | Port configurable via `LOGSTASH_HTTP_PORT` (default 8080), JSON codec |
 | Filter | `ruby` | Builds clean JSON payload from gateway fields, stores in `@metadata` |
-| Filter | `http` | POST to analyzer (URL configurable via `ANALYZER_URL`, default `http://analyzer:8000/analyze`) |
-| Filter | `ruby` | Replaces Logstash event fields with analyzer response |
-| Filter | `drop` | Drops events tagged `_httprequestfailure` (analyzer unreachable) |
-| Output | `elasticsearch` | Index `applicative-load-observability` |
+| Filter | `http` | POST to analyzer (URL configurable via `ANALYZER_URL`, default `http://analyzer:8000/analyze`); `keepalive => true` for TCP connection reuse |
+| Filter | `ruby` | Replaces Logstash event fields with analyzer response, extracts operation for data stream routing |
+| Output | `elasticsearch` | Events tagged `_httprequestfailure` → `alo-dead-letter` index; successful events → `logs-alo.{operation}-{cluster}` data streams |
 
 The ruby filter extracts only the gateway fields (`method`, `path`, `headers`, `request_body`, `response_body`, `client_host`, `gateway_took_ms`, `request_size_bytes`, `response_size_bytes`) into a clean JSON payload, stripping Logstash metadata (`@version`, `@timestamp`, `event`, etc.) before sending to the analyzer.
 
@@ -154,9 +170,13 @@ The ruby filter extracts only the gateway fields (`method`, `path`, `headers`, `
 
 | Condition | `request.operation` |
 |-----------|-------------|
-| path contains `_doc`, method `PUT` | `index` |
+| path contains `_doc`, method `GET` or `HEAD` | `get` |
+| path contains `_doc`, method `PUT` or `POST` | `index` |
 | path contains `_doc`, method `DELETE` | `delete` |
-| default | last `_`-prefixed segment in path (`_search`, `_bulk`, `_create`, `_update`, `_update_by_query`, `_delete_by_query`, …) |
+| path contains `_`-prefixed segment (not `_doc`) | segment name (`_search`, `_bulk`, `_create`, `_update`, `_count`, `_validate`, …) |
+| no `_`-prefixed segment, method `GET`/`HEAD` | `get` |
+| no `_`-prefixed segment, method `PUT`/`POST` | `index` |
+| no `_`-prefixed segment, method `DELETE` | `delete` |
 
 #### Request Body Extraction
 
@@ -414,16 +434,26 @@ The record uses a structured nested layout grouping related fields:
 
 ---
 
-## 4. Elasticsearch Index Template
+## 4. Elasticsearch Index Templates & ILM
 
-An index template (`alo-template`) is applied to all `applicative-load-observability-*` indices, defining:
+The system uses **composable index templates** with a shared component template (`alo-mappings`), three operation-category templates, and a dead-letter template. All are created automatically by `kibana/setup.py`.
 
-- **Strict mapping** — only known fields are accepted; no dynamic field creation (prevents mapping explosion from `request.body`)
-- **`request.body`** — stored as `"enabled": false` (searchable via `_source` but not indexed, preventing sub-field mapping explosion)
+**Component template (`alo-mappings`):**
+- **Strict mapping** — only known fields are accepted; no dynamic field creation
+- **`request.body`** — stored as `"enabled": false` (in `_source` but not indexed, preventing mapping explosion)
 - **`cost_indicators.*`** — each indicator is an explicitly mapped integer field
 - **`stress.cost_indicator_names`** — keyword array for Kibana terms aggregation
 
-The template is created automatically by `kibana/setup.py` (both import and rebuild modes).
+**Composable index templates:**
+
+| Template | Pattern | ILM Policy | Retention | Priority |
+|----------|---------|------------|-----------|----------|
+| `alo-search-operations` | `logs-alo.{search ops}-*` | `alo-search-lifecycle` | 90 days | 200 |
+| `alo-write-operations` | `logs-alo.{write ops}-*` | `alo-write-lifecycle` | 30 days | 200 |
+| `alo-default` | `logs-alo.*-*` | `alo-default-lifecycle` | 60 days | 150 |
+| `alo-dead-letter` | `alo-dead-letter*` | `alo-dead-letter-lifecycle` | 7 days | 100 |
+
+All ILM policies use hot→delete phases. Hot phase rolls over at 1 day or 50 GB. The dead-letter index captures events that failed analyzer processing (`_httprequestfailure` tag) for debugging — short retention since these are diagnostic, not analytical data.
 
 ---
 
@@ -431,9 +461,11 @@ The template is created automatically by `kibana/setup.py` (both import and rebu
 
 | Scenario | Component | Behavior |
 |----------|-----------|----------|
-| Logstash down | Gateway | Connect fails within 1s → pcall → drop |
+| Pipeline down | Gateway | Connect fails within timeout → pcall → drop |
 | Lua timer error | Gateway | pcall → silent drop, client unaffected |
-| Analyzer down | Logstash | http filter failure → `_httprequestfailure` tag → drop |
+| ES upstream down | Gateway | `/health` returns 503, readiness probe fails, pod removed from service |
+| ES upstream error | Gateway | `@upstream_error` logs details, returns JSON error to client |
+| Analyzer down | Logstash | http filter failure → `_httprequestfailure` tag → `alo-dead-letter` index |
 | ES write fails | Logstash | elasticsearch output retries with backoff |
 | Malformed body | Analyzer | Returns 200 with partial record, best-effort |
 
@@ -528,11 +560,13 @@ Override any of the environment variables below. Docker Compose defaults work ou
 | `ELASTICSEARCH_URL` | `http://elasticsearch:9200` | Logstash, Kibana | Elasticsearch connection URL |
 | `ELASTICSEARCH_HOST` | `elasticsearch:9200` | Gateway | Upstream host:port for nginx proxy |
 | `ANALYZER_URL` | `http://analyzer:8000/analyze` | Logstash | Analyzer service endpoint |
-| `LOGSTASH_URL` | `http://logstash:8080/` | Gateway | Logstash HTTP input endpoint |
+| `PIPELINE_URL` | `http://logstash:8080/` | Gateway | Pipeline HTTP input endpoint |
 | `LOGSTASH_HTTP_PORT` | `8080` | Logstash | Port for Logstash HTTP input |
 | `GATEWAY_PORT` | `9200` | Gateway | Port the gateway listens on |
-| `DNS_RESOLVER` | `127.0.0.11` | Gateway | DNS resolver (use `kube-dns.kube-system.svc.cluster.local` for K8s) |
-| `LOGSTASH_MONITORING` | `false` | Logstash | Ship pipeline metrics to ES (Kibana Stack Monitoring) |
+| `DNS_RESOLVER` | `127.0.0.11` | Gateway | DNS resolver (auto-detected from `/etc/resolv.conf` in K8s) |
+| `CLUSTER_NAME` | `default` | Logstash | Cluster name added to observability records |
+| `LOGSTASH_TIMEOUT_MS` | `1000` | Gateway | Timeout for pipeline POST (ms) |
+| `WORKER_CONNECTIONS` | `4096` | Gateway | Max concurrent connections per nginx worker |
 
 ---
 
