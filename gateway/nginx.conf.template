@@ -30,39 +30,49 @@ http {
         listen ${GATEWAY_PORT};
 
         location / {
-            # Accumulate response chunks so we can forward them to Logstash
-            # Uses table.insert + table.concat (O(n)) instead of repeated
-            # string concatenation (O(n²)) to avoid GC pressure on large bodies
+            # Accumulate response chunks (capped at 64KB) for pipeline notification
+            # Tracks true size separately so response_size_bytes is accurate
             body_filter_by_lua_block {
                 local chunk = ngx.arg[1]
                 if chunk and chunk ~= "" then
-                    local chunks = ngx.ctx.resp_chunks
-                    if not chunks then
-                        chunks = {}
-                        ngx.ctx.resp_chunks = chunks
+                    local ctx = ngx.ctx
+                    ctx.resp_size = (ctx.resp_size or 0) + #chunk
+                    if not ctx.resp_capped then
+                        local chunks = ctx.resp_chunks
+                        if not chunks then
+                            chunks = {}
+                            ctx.resp_chunks = chunks
+                        end
+                        chunks[#chunks + 1] = chunk
+                        if ctx.resp_size >= 65536 then
+                            ctx.resp_capped = true
+                        end
                     end
-                    chunks[#chunks + 1] = chunk
                 end
                 if ngx.arg[2] then
                     ngx.ctx.resp_body = table.concat(ngx.ctx.resp_chunks or {})
+                    ngx.ctx.resp_chunks = nil
                 end
             }
 
             # Fire-and-forget notification AFTER response is sent to client
             log_by_lua_block {
                 local urt = tonumber(ngx.var.upstream_response_time)
+                local max_body = 65536
+                local raw_req  = ngx.req.get_body_data() or ""
                 local ctx = {
                     method          = ngx.var.request_method,
                     path            = ngx.var.uri,
                     headers         = ngx.req.get_headers(),
-                    request_body    = ngx.req.get_body_data() or "",
+                    request_body    = #raw_req > max_body and raw_req:sub(1, max_body) or raw_req,
                     response_body   = ngx.ctx.resp_body or "",
                     response_status = ngx.status,
                     gateway_took_ms = urt and (urt * 1000) or 0,
                     request_size_bytes  = tonumber(ngx.var.content_length) or 0,
-                    response_size_bytes = #(ngx.ctx.resp_body or ""),
+                    response_size_bytes = ngx.ctx.resp_size or 0,
                     client_host     = ngx.var.remote_addr,
                 }
+                ngx.ctx.resp_body = nil
 
                 local function notify_logstash(premature, ctx)
                     if premature then return end

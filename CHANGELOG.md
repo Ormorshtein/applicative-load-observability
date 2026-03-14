@@ -2,6 +2,13 @@
 
 ## 1.7.0
 
+### Gateway memory hardening
+
+- Fixed OOM (exit 137): changed `workerProcesses` from `auto` to `2` — `auto` sees host cores, not cgroup limits, spawning too many workers for the 512Mi memory limit
+- Capped response and request body buffering at 64KB in `body_filter_by_lua_block` — previously the full response (potentially tens of MB for search/scroll) was accumulated in memory before the cap was applied in the log phase. True `response_size_bytes` tracked via counter, unaffected by the cap
+- Explicit `ngx.ctx` cleanup — `resp_chunks` freed after concat, `resp_body` freed after timer extraction, releases memory immediately instead of waiting for request context GC
+- Installed `lua-resty-openssl` via OPM — eliminates per-worker `resty.openssl.x509.chain not found` warnings from `lua-resty-http` v0.17.2
+
 ### Dead-letter ILM
 
 - Added `alo-dead-letter-lifecycle` ILM policy with 7-day retention

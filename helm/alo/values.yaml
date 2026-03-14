@@ -250,7 +250,7 @@ gateway:
       cpu: "1"
       memory: 512Mi
   # Workers and connections per OpenResty instance
-  workerProcesses: auto
+  workerProcesses: 2
   workerConnections: 4096
   # Timeout for ES proxy
   proxyReadTimeout: 60s
