@@ -44,10 +44,8 @@ data:
         client_max_body_size 10m;
         resolver __DNS_RESOLVER__ valid=10s ipv6=off;
 
-        # Cache env vars and modules once per worker
+        # Cache env vars once per worker (modules loaded lazily in timer context)
         init_worker_by_lua_block {
-            _G._alo_http  = require("resty.http")
-            _G._alo_cjson = require("cjson")
             _G._alo_pipeline_url = os.getenv("PIPELINE_URL") or ""
             {{- if eq (include "alo.gatewayEsAuthEnabled" .) "true" }}
             {{- $initAuthType := include "alo.gatewayEsAuthType" . }}
@@ -127,8 +125,8 @@ data:
                     local function notify_pipeline(premature, ctx)
                         if premature then return end
                         local ok, err = pcall(function()
-                            local http  = _G._alo_http
-                            local cjson = _G._alo_cjson
+                            local http  = require("resty.http")
+                            local cjson = require("cjson")
                             local httpc = http.new()
                             httpc:set_timeout({{ .Values.gateway.pipelineTimeout }})
 
@@ -197,6 +195,7 @@ data:
                 {{- if and $esIsHttps (eq (include "alo.gatewayEsCaEnabled" .) "true") }}
                 proxy_ssl_trusted_certificate /etc/ssl/es/ca.crt;
                 proxy_ssl_verify on;
+                proxy_ssl_verify_depth {{ .Values.gateway.elasticsearch.tls.verifyDepth | default 3 }};
                 {{- end }}
             }
 

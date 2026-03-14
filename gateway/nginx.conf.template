@@ -20,11 +20,6 @@ http {
     client_max_body_size 10m;
     resolver ${DNS_RESOLVER} valid=10s ipv6=off;
 
-    init_worker_by_lua_block {
-        _G._alo_http  = require("resty.http")
-        _G._alo_cjson = require("cjson")
-    }
-
     upstream elasticsearch {
         server ${ELASTICSEARCH_HOST};
         keepalive 32;
@@ -72,8 +67,8 @@ http {
                     if premature then return end
 
                     local ok, err = pcall(function()
-                        local http  = _G._alo_http
-                        local cjson = _G._alo_cjson
+                        local http  = require("resty.http")
+                        local cjson = require("cjson")
 
                         local payload = cjson.encode({
                             method              = ctx.method,
