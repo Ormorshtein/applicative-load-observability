@@ -62,7 +62,7 @@ data:
         verb => "POST"
         body => "%{[@metadata][analyzer_body]}"
         target_body => "[analyzer_response]"
-        target_headers => "[analyzer_headers]"
+        keepalive => true
       }
 
       if [analyzer_response] {
