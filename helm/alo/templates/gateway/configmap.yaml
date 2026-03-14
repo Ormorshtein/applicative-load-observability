@@ -201,25 +201,20 @@ data:
             }
 
             location /health {
-                content_by_lua_block {
-                    local http = require("resty.http")
-                    local httpc = http.new()
-                    httpc:set_timeout(3000)
-                    local ok, err = httpc:request_uri("{{ $esUrl }}/", {
-                        method = "HEAD",
-                        {{- if eq (include "alo.gatewayEsAuthEnabled" .) "true" }}
-                        headers = { ["Authorization"] = _G._alo_es_auth_header or "" },
-                        {{- end }}
-                        ssl_verify = {{ and $esIsHttps (eq (include "alo.gatewayEsCaEnabled" .) "true") }},
-                    })
-                    if ok and ok.status < 500 then
-                        ngx.status = 200
-                        ngx.say('{"status":"ok"}')
-                    else
-                        ngx.status = 503
-                        ngx.say('{"status":"unavailable","error":"' .. (err or "upstream error") .. '"}')
-                    end
-                }
+                proxy_pass {{ $esUrl }}/;
+                proxy_http_version 1.1;
+                proxy_set_header Connection "";
+                proxy_set_header Host $proxy_host;
+                proxy_connect_timeout 3s;
+                proxy_read_timeout 3s;
+                {{- if eq (include "alo.gatewayEsAuthEnabled" .) "true" }}
+                proxy_set_header Authorization $es_auth_header;
+                {{- end }}
+                {{- if and $esIsHttps (eq (include "alo.gatewayEsCaEnabled" .) "true") }}
+                proxy_ssl_trusted_certificate /etc/ssl/es/ca.crt;
+                proxy_ssl_verify on;
+                proxy_ssl_verify_depth {{ .Values.gateway.elasticsearch.tls.verifyDepth | default 3 }};
+                {{- end }}
             }
 
             location @upstream_error {
