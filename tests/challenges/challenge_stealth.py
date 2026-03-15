@@ -21,7 +21,10 @@ import sys
 import threading
 import time
 
-from helpers import LOADTEST_MAPPING, Stats, http_request, rand_doc, rand_str
+from helpers import (
+    LOADTEST_MAPPING, Stats, add_auth_args, apply_auth_args, http_request,
+    rand_doc, rand_str,
+)
 from _challenge_stealth import (
     CULPRIT, INDEX, SCRIPT_BUILDERS, TASK_CONFIGS,
 )
@@ -170,12 +173,13 @@ def _stdin_ready():
 # Interactive challenge
 # ---------------------------------------------------------------------------
 
-def run_challenge(gateway, seed_count, max_docs):
+def run_challenge(gateway, seed_count, max_docs, scale=1):
     tracker = DocIdTracker(max_docs=max_docs)
     monitor = HealthMonitor(gateway)
 
     print(f"\n  Gateway:   {gateway}")
-    print(f"  Index:     {INDEX}    Max docs: {max_docs}\n")
+    print(f"  Index:     {INDEX}    Max docs: {max_docs}"
+          f"    Scale: {scale}x\n")
 
     status, _ = http_request(gateway, "GET", "/")
     if status == 0:
@@ -195,19 +199,20 @@ def run_challenge(gateway, seed_count, max_docs):
 
     total_w = 0
     for name, workers, think_ms, op_defs in TASK_CONFIGS:
+        scaled_workers = workers * scale
         ops = [fn for fn, _ in op_defs]
         wts = [w for _, w in op_defs]
         ts = [threading.Thread(target=_run_worker, daemon=True,
               args=(ops, wts, think_ms, gateway, tracker,
                     stats[name], stops[name], monitor))
-              for _ in range(workers)]
+              for _ in range(scaled_workers)]
         threads[name] = ts
-        total_w += workers
+        total_w += scaled_workers
 
-    print(f"\n  Starting 8 services ({total_w} workers) "
+    print(f"\n  Starting {n_tasks} services ({total_w} workers) "
           f"under app 'platform-core' ...")
     for name, workers, _, _ in TASK_CONFIGS:
-        print(f"    {name:<25} {workers} workers")
+        print(f"    {name:<25} {workers * scale} workers")
     print(f"\n  Something is killing your cluster. Find the bad service.")
     print(f"  Hint: 'Stress by Application' won't help — it's all one app.")
     print(f"  Commands: <service-name> to stop | status | quit")
@@ -330,8 +335,13 @@ def main():
                         help="Number of seed documents (default: %(default)s)")
     parser.add_argument("--max-docs", type=int, default=50000,
                         help="Stop writing after N docs (default: %(default)s)")
+    parser.add_argument("--scale", type=int, default=1,
+                        help="Worker multiplier for larger clusters (default: %(default)s)")
+    add_auth_args(parser)
     args = parser.parse_args()
-    run_challenge(args.gateway, args.seed, args.max_docs)
+    apply_auth_args(args)
+    run_challenge(args.gateway, args.seed * args.scale, args.max_docs * args.scale,
+                  args.scale)
 
 
 if __name__ == "__main__":

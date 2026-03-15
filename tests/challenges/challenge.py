@@ -22,7 +22,7 @@ import threading
 import time
 
 from helpers import (
-    LOADTEST_MAPPING, Stats, http_request,
+    LOADTEST_MAPPING, Stats, add_auth_args, apply_auth_args, http_request,
     rand_category, rand_doc, rand_str,
 )
 
@@ -339,12 +339,13 @@ def _stdin_ready():
 # Interactive challenge loop
 # ---------------------------------------------------------------------------
 
-def run_challenge(gateway, seed_count, max_docs):
+def run_challenge(gateway, seed_count, max_docs, scale=1):
     tracker = DocIdTracker(max_docs=max_docs)
     monitor = HealthMonitor(gateway)
 
     print(f"\n  Gateway:   {gateway}")
-    print(f"  Index:     {INDEX}    Max docs: {max_docs}\n")
+    print(f"  Index:     {INDEX}    Max docs: {max_docs}"
+          f"    Scale: {scale}x\n")
 
     status, _ = http_request(gateway, "GET", "/")
     if status == 0:
@@ -364,18 +365,19 @@ def run_challenge(gateway, seed_count, max_docs):
 
     total_w = 0
     for name, workers, _, op_defs in APP_CONFIGS:
+        scaled_workers = workers * scale
         ops = [fn for fn, _ in op_defs]
         wts = [w for _, w in op_defs]
         ts = [threading.Thread(target=_run_worker, daemon=True,
               args=(name, ops, wts, gateway, tracker, stats[name], stops[name],
                     monitor))
-              for _ in range(workers)]
+              for _ in range(scaled_workers)]
         threads[name] = ts
-        total_w += workers
+        total_w += scaled_workers
 
     print(f"\n  Starting 4 applications ({total_w} workers)...")
     for n, w, _, _ in APP_CONFIGS:
-        print(f"    {n:<25} {w} workers")
+        print(f"    {n:<25} {w * scale} workers")
     print(f"\n  Commands: <app-name> to stop | status | quit")
     print(f"  Runs until you type 'quit' or press Ctrl+C\n")
 
@@ -477,8 +479,13 @@ def main():
                         help="Number of seed documents (default: %(default)s)")
     parser.add_argument("--max-docs", type=int, default=50000,
                         help="Stop writing new docs after this count (default: %(default)s)")
+    parser.add_argument("--scale", type=int, default=1,
+                        help="Worker multiplier for larger clusters (default: %(default)s)")
+    add_auth_args(parser)
     args = parser.parse_args()
-    run_challenge(args.gateway, args.seed, args.max_docs)
+    apply_auth_args(args)
+    run_challenge(args.gateway, args.seed * args.scale, args.max_docs * args.scale,
+                  args.scale)
 
 
 if __name__ == "__main__":

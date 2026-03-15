@@ -136,7 +136,8 @@ def build_record(raw: RawFields) -> dict:
         cost_indicators, stress_multiplier = {}, 1.0
 
     ctx = StressContext(
-        es_took_ms=       es_took_ms or raw.gateway_took_ms,
+        es_took_ms=       es_took_ms,
+        gateway_took_ms=  raw.gateway_took_ms,
         hits=             hits,
         size=             size,
         shards_total=     shards_total,
@@ -171,6 +172,7 @@ def build_record(raw: RawFields) -> dict:
             "shards_total":  shards_total,
             "docs_affected": docs_affected,
             "size_bytes":    raw.response_size_bytes,
+            "body":          raw.response_body,
         },
         "clause_counts":    _output_clause_counts(clause_counts),
         "cost_indicators":  cost_indicators,

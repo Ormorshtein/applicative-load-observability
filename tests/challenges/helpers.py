@@ -18,3 +18,5 @@ rand_int = _mod.rand_int
 rand_price = _mod.rand_price
 rand_str = _mod.rand_str
 rand_text = _mod.rand_text
+add_auth_args = _mod.add_auth_args
+apply_auth_args = _mod.apply_auth_args

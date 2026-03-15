@@ -317,7 +317,6 @@ class TestBuildRecord:
             gateway_took_ms=200.0,
         )
         rec = build_record(raw)
-        # es_took_ms is 0, so ctx.es_took_ms should be gateway_took_ms=200
         assert rec["response"]["es_took_ms"] == 0
         assert rec["stress"]["score"] > 0  # gateway_took_ms drives score
 

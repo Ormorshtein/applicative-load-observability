@@ -13,7 +13,10 @@ import sys
 import threading
 import time
 
-from helpers import LOADTEST_MAPPING, Stats, http_request, rand_doc, rand_str
+from helpers import (
+    LOADTEST_MAPPING, Stats, add_auth_args, apply_auth_args, http_request,
+    rand_doc, rand_str,
+)
 
 
 _DEFAULT_GATEWAY = os.getenv("GATEWAY_URL", "http://127.0.0.1:9200")
@@ -162,7 +165,7 @@ def _stdin_ready():
 # Interactive challenge
 # ---------------------------------------------------------------------------
 
-def run_challenge(gateway, seed_count, max_docs, config):
+def run_challenge(gateway, seed_count, max_docs, config, scale=1):
     """Run the interactive challenge loop.
 
     *config* is a module exposing: INDEX, APP_NAME, CULPRIT, TASK_CONFIGS,
@@ -179,7 +182,8 @@ def run_challenge(gateway, seed_count, max_docs, config):
     monitor = HealthMonitor(gateway)
 
     print(f"\n  Gateway:   {gateway}")
-    print(f"  Index:     {index}    Max docs: {max_docs}\n")
+    print(f"  Index:     {index}    Max docs: {max_docs}"
+          f"    Scale: {scale}x\n")
 
     status, _ = http_request(gateway, "GET", "/")
     if status == 0:
@@ -201,19 +205,20 @@ def run_challenge(gateway, seed_count, max_docs, config):
 
     total_w = 0
     for name, workers, think_ms, op_defs in task_configs:
+        scaled_workers = workers * scale
         ops = [fn for fn, _ in op_defs]
         wts = [w for _, w in op_defs]
         ts = [threading.Thread(target=_run_worker, daemon=True,
               args=(ops, wts, think_ms, gateway, tracker,
                     stats[name], stops[name], monitor))
-              for _ in range(workers)]
+              for _ in range(scaled_workers)]
         threads[name] = ts
-        total_w += workers
+        total_w += scaled_workers
 
     print(f"\n  Starting {n_tasks} services ({total_w} workers) "
           f"under app '{config.APP_NAME}' ...")
     for name, workers, _, _ in task_configs:
-        print(f"    {name:<25} {workers} workers")
+        print(f"    {name:<25} {workers * scale} workers")
     print(f"\n  Something is killing your cluster. Find the bad service.")
     if config.HINT:
         print(f"  {config.HINT}")
@@ -339,5 +344,10 @@ def main_cli(config):
                         help="Number of seed documents (default: %(default)s)")
     parser.add_argument("--max-docs", type=int, default=50000,
                         help="Stop writing after N docs (default: %(default)s)")
+    parser.add_argument("--scale", type=int, default=1,
+                        help="Worker multiplier for larger clusters (default: %(default)s)")
+    add_auth_args(parser)
     args = parser.parse_args()
-    run_challenge(args.gateway, args.seed, args.max_docs, config)
+    apply_auth_args(args)
+    run_challenge(args.gateway, args.seed * args.scale, args.max_docs * args.scale,
+                  config, args.scale)
