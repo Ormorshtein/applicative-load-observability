@@ -188,11 +188,6 @@ data:
                 proxy_read_timeout {{ .Values.gateway.proxyReadTimeout }};
                 proxy_connect_timeout {{ .Values.gateway.proxyConnectTimeout | default "10s" }};
 
-                # Log upstream errors so they're visible in gateway logs
-                proxy_next_upstream error timeout;
-                proxy_intercept_errors on;
-                error_page 502 503 504 = @upstream_error;
-
                 {{- if eq (include "alo.gatewayEsAuthEnabled" .) "true" }}
                 # Forward ES credentials from env-injected variable
                 proxy_set_header Authorization $es_auth_header;
@@ -209,23 +204,6 @@ data:
                 proxy_ssl_verify_depth {{ .Values.gateway.elasticsearch.tls.verifyDepth | default 3 }};
                 {{- end }}
                 {{- end }}
-            }
-
-            location @upstream_error {
-                content_by_lua_block {
-                    ngx.log(ngx.ERR,
-                        "upstream error: status=", ngx.status,
-                        " method=", ngx.var.request_method,
-                        " path=", ngx.var.uri,
-                        " upstream=", ngx.var.upstream_addr or "none",
-                        " upstream_status=", ngx.var.upstream_status or "none",
-                        " connect_time=", ngx.var.upstream_connect_time or "-",
-                        " response_time=", ngx.var.upstream_response_time or "-")
-                    ngx.header["Content-Type"] = "application/json"
-                    ngx.say('{"error":"upstream_error","status":' .. ngx.status ..
-                        ',"upstream":"' .. (ngx.var.upstream_addr or "none") ..
-                        '","detail":"check gateway logs for details"}')
-                }
             }
         }
     }
