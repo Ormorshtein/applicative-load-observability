@@ -47,6 +47,7 @@ COMPONENT_TEMPLATE: dict = {
                         "shards_total":    {"type": "integer"},
                         "docs_affected":   {"type": "long"},
                         "size_bytes":      {"type": "integer"},
+                        "body":            {"type": "object", "enabled": False},
                     }
                 },
                 "clause_counts": {
