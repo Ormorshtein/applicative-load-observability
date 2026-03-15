@@ -223,7 +223,10 @@ gateway:
   elasticsearch:
     url: ""
     auth:
-      enabled: false
+      # When true, the gateway injects its own Authorization header, overriding
+      # any credentials the client sends. When false (default), client auth
+      # headers pass through to ES untouched (transparent proxy).
+      injectAuth: false
       type: basic           # "basic" or "apiKey"
       username: ""
       password: ""

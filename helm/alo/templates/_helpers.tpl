@@ -79,7 +79,7 @@ Whether gateway ES auth is active.
 */}}
 {{- define "alo.gatewayEsAuthEnabled" -}}
 {{- if eq (include "alo.gatewayEsOverride" .) "true" }}
-{{- if .Values.gateway.elasticsearch.auth.enabled }}true{{- else }}false{{- end }}
+{{- if .Values.gateway.elasticsearch.auth.injectAuth }}true{{- else }}false{{- end }}
 {{- else }}
 {{- include "alo.esAuthEnabled" . }}
 {{- end }}
