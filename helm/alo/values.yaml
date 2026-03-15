@@ -249,6 +249,8 @@ gateway:
     limits:
       cpu: "1"
       memory: 512Mi
+  # Nginx error log level (debug, info, notice, warn, error, crit)
+  errorLogLevel: warn
   # Workers and connections per OpenResty instance
   workerProcesses: 2
   workerConnections: 4096

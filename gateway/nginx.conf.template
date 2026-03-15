@@ -142,6 +142,24 @@ http {
             proxy_set_header Host $proxy_host;
             proxy_connect_timeout 3s;
             proxy_read_timeout 3s;
+
+            proxy_intercept_errors on;
+            error_page 502 503 504 = @health_error;
+        }
+
+        location @health_error {
+            content_by_lua_block {
+                ngx.log(ngx.ERR,
+                    "health check failed: status=", ngx.status,
+                    " upstream=", ngx.var.upstream_addr or "none",
+                    " upstream_status=", ngx.var.upstream_status or "none",
+                    " connect_time=", ngx.var.upstream_connect_time or "-",
+                    " response_time=", ngx.var.upstream_response_time or "-")
+                ngx.header["Content-Type"] = "application/json"
+                ngx.status = 503
+                ngx.say('{"status":"unavailable","upstream":"' ..
+                    (ngx.var.upstream_addr or "none") .. '"}')
+            }
         }
 
         location @upstream_error {
