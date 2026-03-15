@@ -99,17 +99,12 @@ data:
                     if chunk and chunk ~= "" then
                         local ctx = ngx.ctx
                         ctx.resp_size = (ctx.resp_size or 0) + #chunk
-                        if not ctx.resp_capped then
-                            local chunks = ctx.resp_chunks
-                            if not chunks then
-                                chunks = {}
-                                ctx.resp_chunks = chunks
-                            end
-                            chunks[#chunks + 1] = chunk
-                            if ctx.resp_size >= 65536 then
-                                ctx.resp_capped = true
-                            end
+                        local chunks = ctx.resp_chunks
+                        if not chunks then
+                            chunks = {}
+                            ctx.resp_chunks = chunks
                         end
+                        chunks[#chunks + 1] = chunk
                     end
                     if ngx.arg[2] then
                         ngx.ctx.resp_body = table.concat(ngx.ctx.resp_chunks or {})
