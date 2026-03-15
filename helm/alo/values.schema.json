@@ -259,7 +259,7 @@
               "type": "object",
               "additionalProperties": false,
               "properties": {
-                "enabled": { "type": "boolean" },
+                "injectAuth": { "type": "boolean", "description": "When true, the gateway injects its own Authorization header, overriding client credentials. When false (default), client auth passes through." },
                 "type": { "type": "string", "enum": ["basic", "apiKey"] },
                 "username": { "type": "string" },
                 "password": { "type": "string" },
@@ -274,7 +274,8 @@
                 "caCert": { "type": "string" },
                 "caCertSecret": { "type": "string" },
                 "create": { "type": "boolean" },
-                "insecureSkipVerify": { "type": "boolean" }
+                "insecureSkipVerify": { "type": "boolean" },
+                "verifyDepth": { "type": "integer", "minimum": 1 }
               }
             }
           }
@@ -287,6 +288,15 @@
         "replicas": { "$ref": "#/$defs/replicas" },
         "port": { "$ref": "#/$defs/port" },
         "resources": { "$ref": "#/$defs/resources" },
+        "errorLogLevel": {
+          "type": "string",
+          "enum": ["debug", "info", "notice", "warn", "error", "crit"],
+          "description": "Nginx error log level."
+        },
+        "proxyConnectTimeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(s|m|h)$"
+        },
         "workerProcesses": {
           "oneOf": [
             { "type": "string", "enum": ["auto"] },
