@@ -211,41 +211,6 @@ data:
                 {{- end }}
             }
 
-            location /health {
-                proxy_pass {{ $esUrl }}/;
-                proxy_http_version 1.1;
-                proxy_set_header Connection "";
-                proxy_set_header Host $proxy_host;
-                proxy_connect_timeout 3s;
-                proxy_read_timeout 3s;
-                {{- if eq (include "alo.gatewayEsAuthEnabled" .) "true" }}
-                proxy_set_header Authorization $es_auth_header;
-                {{- end }}
-                {{- if and $esIsHttps (eq (include "alo.gatewayEsCaEnabled" .) "true") }}
-                proxy_ssl_trusted_certificate /etc/ssl/es/ca.crt;
-                proxy_ssl_verify on;
-                proxy_ssl_verify_depth {{ .Values.gateway.elasticsearch.tls.verifyDepth | default 3 }};
-                {{- end }}
-
-                proxy_intercept_errors on;
-                error_page 502 503 504 = @health_error;
-            }
-
-            location @health_error {
-                content_by_lua_block {
-                    ngx.log(ngx.ERR,
-                        "health check failed: status=", ngx.status,
-                        " upstream=", ngx.var.upstream_addr or "none",
-                        " upstream_status=", ngx.var.upstream_status or "none",
-                        " connect_time=", ngx.var.upstream_connect_time or "-",
-                        " response_time=", ngx.var.upstream_response_time or "-")
-                    ngx.header["Content-Type"] = "application/json"
-                    ngx.status = 503
-                    ngx.say('{"status":"unavailable","upstream":"' ..
-                        (ngx.var.upstream_addr or "none") .. '"}')
-                }
-            }
-
             location @upstream_error {
                 content_by_lua_block {
                     ngx.log(ngx.ERR,

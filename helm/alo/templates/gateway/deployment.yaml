@@ -110,20 +110,6 @@ spec:
               mountPath: /etc/ssl/nifi
               readOnly: true
             {{- end }}
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: http
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            timeoutSeconds: 5
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: http
-            initialDelaySeconds: 10
-            periodSeconds: 30
-            timeoutSeconds: 5
           resources:
             {{- toYaml .Values.gateway.resources | nindent 12 }}
       volumes:
