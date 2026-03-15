@@ -154,18 +154,7 @@ data:
                             local pipeline_url = _G._alo_pipeline_url
                             local res, err = httpc:request_uri(pipeline_url, {
                                 method  = "POST",
-                                body    = cjson.encode({
-                                    method              = ctx.method,
-                                    path                = ctx.path,
-                                    headers             = ctx.headers,
-                                    request_body        = ctx.request_body,
-                                    response_body       = ctx.response_body,
-                                    response_status     = ctx.response_status,
-                                    gateway_took_ms     = ctx.gateway_took_ms,
-                                    request_size_bytes  = ctx.request_size_bytes,
-                                    response_size_bytes = ctx.response_size_bytes,
-                                    client_host         = ctx.client_host,
-                                }),
+                                body    = cjson.encode(ctx),
                                 headers = pipeline_headers,
                                 ssl_verify = pipeline_url:sub(1, 5) == "https" and {{ not (and (eq .Values.pipelineMode "nifi") .Values.nifi.external.enabled .Values.nifi.external.tls.insecureSkipVerify) }} or false,
                             })

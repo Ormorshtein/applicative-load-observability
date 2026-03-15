@@ -81,24 +81,11 @@ http {
                         local http  = require("resty.http")
                         local cjson = require("cjson")
 
-                        local payload = cjson.encode({
-                            method              = ctx.method,
-                            path                = ctx.path,
-                            headers             = ctx.headers,
-                            request_body        = ctx.request_body,
-                            response_body       = ctx.response_body,
-                            response_status     = ctx.response_status,
-                            gateway_took_ms    = ctx.gateway_took_ms,
-                            request_size_bytes  = ctx.request_size_bytes,
-                            response_size_bytes = ctx.response_size_bytes,
-                            client_host         = ctx.client_host,
-                        })
-
                         local httpc = http.new()
                         httpc:set_timeout(${LOGSTASH_TIMEOUT_MS})  -- connect+send timeout
                         local res, err = httpc:request_uri("${LOGSTASH_URL}", {
                             method  = "POST",
-                            body    = payload,
+                            body    = cjson.encode(ctx),
                             headers = {
                                 ["Content-Type"] = "application/json",
                             },
