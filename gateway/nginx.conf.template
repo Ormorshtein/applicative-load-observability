@@ -22,8 +22,9 @@ http {
     resolver ${DNS_RESOLVER} valid=10s ipv6=off;
 
     upstream elasticsearch {
-        server ${ELASTICSEARCH_HOST};
+        server ${ELASTICSEARCH_HOST} max_fails=0;
         keepalive 32;
+        keepalive_timeout 60s;
     }
 
     server {

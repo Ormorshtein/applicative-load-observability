@@ -77,8 +77,9 @@ data:
         {{- $esIsHttps := hasPrefix "https://" $esUrl }}
 
         upstream elasticsearch {
-            server {{ $esHost }};
+            server {{ $esHost }} max_fails=0;
             keepalive 32;
+            keepalive_timeout 60s;
         }
 
         server {
