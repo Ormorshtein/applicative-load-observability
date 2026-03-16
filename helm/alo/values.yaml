@@ -248,10 +248,10 @@ gateway:
   resources:
     requests:
       cpu: 100m
-      memory: 128Mi
+      memory: 256Mi
     limits:
       cpu: "1"
-      memory: 512Mi
+      memory: 1Gi
   # Nginx error log level (debug, info, notice, warn, error, crit)
   errorLogLevel: warn
   # Workers and connections per OpenResty instance

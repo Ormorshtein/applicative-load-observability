@@ -199,10 +199,10 @@ Per-core throughput: ~15-25k ops/s (proxy + Lua overhead + async pipeline POST).
 
 | Target ops/s | Replicas | CPU (req / limit) | Memory (req / limit) | workerConnections |
 |-------------|----------|---------------------|----------------------|-------------------|
-| 30k | 2 | 500m / 1 | 128Mi / 256Mi | 4096 |
-| 60k | 2 | 1 / 2 | 256Mi / 512Mi | 4096 |
-| 120k | 4 | 1 / 2 | 256Mi / 512Mi | 8192 |
-| 200k+ | 6 | 1 / 2 | 256Mi / 512Mi | 8192 |
+| 30k | 2 | 500m / 1 | 256Mi / 512Mi | 4096 |
+| 60k | 2 | 1 / 2 | 512Mi / 1Gi | 4096 |
+| 120k | 4 | 1 / 2 | 512Mi / 1Gi | 8192 |
+| 200k+ | 6 | 1 / 2 | 512Mi / 1Gi | 8192 |
 
 ### Logstash Sizing
 

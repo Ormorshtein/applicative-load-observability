@@ -17,8 +17,8 @@ http {
     lua_need_request_body on;
     lua_max_pending_timers 65536;
     lua_max_running_timers 4096;
-    client_body_buffer_size 2m;
-    client_max_body_size 10m;
+    client_body_buffer_size 10m;
+    client_max_body_size 0;
     resolver ${DNS_RESOLVER} valid=10s ipv6=off;
 
     upstream elasticsearch {
@@ -53,18 +53,16 @@ http {
 
             # Fire-and-forget notification AFTER response is sent to client
             log_by_lua_block {
-                local urt = tonumber(ngx.var.upstream_response_time)
-                local max_body = 65536
                 local raw_req  = ngx.req.get_body_data() or ""
                 local ctx = {
                     method          = ngx.var.request_method,
                     path            = ngx.var.uri,
                     headers         = ngx.req.get_headers(),
-                    request_body    = #raw_req > max_body and raw_req:sub(1, max_body) or raw_req,
+                    request_body    = raw_req,
                     response_body   = ngx.ctx.resp_body or "",
                     response_status = ngx.status,
-                    gateway_took_ms = urt and (urt * 1000) or 0,
-                    request_size_bytes  = tonumber(ngx.var.content_length) or 0,
+                    upstream_response_time = ngx.var.upstream_response_time or "",
+                    content_length  = ngx.var.content_length or "",
                     response_size_bytes = ngx.ctx.resp_size or 0,
                     client_host     = ngx.var.remote_addr,
                 }
