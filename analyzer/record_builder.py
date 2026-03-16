@@ -147,14 +147,9 @@ def build_record(raw: RawFields) -> dict:
 
     if operation in _QUERY_OPS:
         clause_counts = count_clauses(raw.request_body)
-        bool_clause_total = (clause_counts["bool_must_count"]
-                             + clause_counts["bool_should_count"]
-                             + clause_counts["bool_filter_count"]
-                             + clause_counts["bool_must_not_count"])
         cost_indicators, stress_multiplier = evaluate_cost_indicators(clause_counts)
     else:
         clause_counts = {k: 0 for k in _ALL_COUNT_FIELDS}
-        bool_clause_total = 0
         cost_indicators, stress_multiplier = {}, 1.0
 
     ctx = StressContext(
@@ -165,6 +160,7 @@ def build_record(raw: RawFields) -> dict:
         shards_total=     shards_total,
         docs_affected=    docs_affected,
     )
+    score, bonuses = calc_stress(operation, ctx, stress_multiplier, clause_counts)
 
     request = {
         "method":     raw.method,
@@ -198,8 +194,9 @@ def build_record(raw: RawFields) -> dict:
         "clause_counts":    _output_clause_counts(clause_counts),
         "cost_indicators":  cost_indicators,
         "stress": {
-            "score":                round(calc_stress(operation, ctx, stress_multiplier, bool_clause_total), _STRESS_PRECISION),
+            "score":                round(score, _STRESS_PRECISION),
             "multiplier":           stress_multiplier,
+            "bonuses":              {k: round(v, _STRESS_PRECISION) for k, v in bonuses.items()},
             "cost_indicator_count": len(cost_indicators),
             "cost_indicator_names": list(cost_indicators.keys()),
         },

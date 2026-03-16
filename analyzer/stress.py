@@ -204,20 +204,48 @@ _CLAUSE_THRESHOLD = int(os.environ.get("STRESS_CLAUSE_THRESHOLD", 4))
 _CLAUSE_WEIGHT = float(os.environ.get("STRESS_CLAUSE_WEIGHT", 0.10))
 _CLAUSE_CAP = float(os.environ.get("STRESS_CLAUSE_CAP", 0.50))
 
+_AGG_THRESHOLD = int(os.environ.get("STRESS_AGG_THRESHOLD", 3))
+_AGG_WEIGHT = float(os.environ.get("STRESS_AGG_WEIGHT", 0.10))
+_AGG_CAP = float(os.environ.get("STRESS_AGG_CAP", 0.50))
+
+# (count_key, threshold, weight, cap) — applied additively to base before multiplier
+_CONTINUOUS_BONUSES: list[tuple[str, int, float, float]] = [
+    ("bool_total",            _CLAUSE_THRESHOLD, _CLAUSE_WEIGHT, _CLAUSE_CAP),
+    ("agg_clause_count",      _AGG_THRESHOLD,    _AGG_WEIGHT,    _AGG_CAP),
+    ("wildcard_clause_count", 1, 0.10, 0.50),
+    ("nested_clause_count",   1, 0.10, 0.50),
+    ("fuzzy_clause_count",    1, 0.10, 0.50),
+    ("geo_total",             1, 0.10, 0.50),
+    ("knn_clause_count",      1, 0.10, 0.50),
+    ("script_clause_count",   1, 0.10, 0.50),
+    ("terms_values_count",    50, 0.10, 0.50),
+]
+
 
 def calc_stress(
     operation: str,
     ctx: StressContext,
     stress_multiplier: float = 1.0,
-    bool_clause_total: int = 0,
-) -> float:
+    clause_counts: dict[str, int] | None = None,
+) -> tuple[float, dict[str, float]]:
     bl = get_baselines()
     formula = _STRESS_DISPATCH.get(operation, _stress_doc_write)
     base = formula(ctx, bl)
     if operation in _NO_MULTIPLIER_OPS:
-        return base
-    if bool_clause_total > _CLAUSE_THRESHOLD:
-        excess = bool_clause_total - _CLAUSE_THRESHOLD
-        clause_bonus = min(_CLAUSE_WEIGHT * math.log(1 + excess), _CLAUSE_CAP)
-        base += clause_bonus
-    return base * stress_multiplier
+        return base, {}
+    bonuses: dict[str, float] = {}
+    if clause_counts:
+        counts = {
+            **clause_counts,
+            "bool_total": (clause_counts["bool_must_count"] + clause_counts["bool_should_count"]
+                           + clause_counts["bool_filter_count"] + clause_counts["bool_must_not_count"]),
+            "geo_total": (clause_counts["geo_distance_count"] + clause_counts["geo_shape_count"]
+                          + clause_counts["geo_bbox_count"]),
+        }
+        for key, threshold, weight, cap in _CONTINUOUS_BONUSES:
+            count = counts[key]
+            if count > threshold:
+                bonus = min(weight * math.log(1 + count - threshold), cap)
+                bonuses[key] = bonus
+                base += bonus
+    return base * stress_multiplier, bonuses
