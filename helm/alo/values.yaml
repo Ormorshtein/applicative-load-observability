@@ -199,10 +199,23 @@ metricbeat:
 analyzer:
   image:
     repository: oracle1012/applicative-load-observability
-    tag: analyzer-1.9.0
+    tag: analyzer-1.10.0
     pullPolicy: IfNotPresent
   replicas: 2
   port: 8000
+  # Dynamic baselines — P50 from recent search traffic, refreshed every cacheTTL.
+  # ES connection is injected automatically from the elasticsearch config above.
+  dynamicBaselines:
+    cacheTTL: "60"
+    queryWindow: "1h"
+  # Static baseline overrides — bypass dynamic computation for these keys.
+  # Empty string means use the code default (or dynamic value when available).
+  stressBaselines:
+    tookMs: ""
+    hits: ""
+    shardsTotal: ""
+    size: ""
+    docsAffected: ""
   resources:
     requests:
       cpu: 100m

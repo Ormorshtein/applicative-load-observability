@@ -8,23 +8,7 @@ import os
 from dataclasses import dataclass
 from typing import Any, Callable
 
-
-def _load_baselines() -> dict:
-    defaults = {
-        "took_ms":          100,
-        "hits":           10000,
-        "shards_total":       5,
-        "size":             100,
-        "docs_affected":    500,
-    }
-    for key in defaults:
-        env_val = os.environ.get(f"STRESS_BASELINE_{key.upper()}")
-        if env_val is not None:
-            defaults[key] = float(env_val)
-    return defaults
-
-
-BASELINES = _load_baselines()
+from _baselines import get_baselines
 
 # Clause keys that map 1:1 to a count field (used in _walk_query_clauses)
 _SINGLE_CLAUSE_KEYS = {
@@ -164,45 +148,45 @@ def evaluate_cost_indicators(counts: dict) -> tuple[dict[str, int], float]:
 # Stress formulas — one function per operation class
 # ---------------------------------------------------------------------------
 
-def _stress_query(ctx: StressContext) -> float:
+def _stress_query(ctx: StressContext, bl: dict) -> float:
     return (
-        0.55 * normalize(ctx.gateway_took_ms, BASELINES["took_ms"])
-        + 0.20 * normalize(ctx.shards_total, BASELINES["shards_total"])
-        + 0.15 * normalize(ctx.hits, BASELINES["hits"])
-        + 0.10 * normalize(ctx.size, BASELINES["size"])
+        0.55 * normalize(ctx.gateway_took_ms, bl["took_ms"])
+        + 0.20 * normalize(ctx.shards_total, bl["shards_total"])
+        + 0.15 * normalize(ctx.hits, bl["hits"])
+        + 0.10 * normalize(ctx.size, bl["size"])
     )
 
 
-def _stress_bulk(ctx: StressContext) -> float:
+def _stress_bulk(ctx: StressContext, bl: dict) -> float:
     return (
-        0.45 * normalize(ctx.gateway_took_ms, BASELINES["took_ms"])
-        + 0.55 * normalize(ctx.docs_affected, BASELINES["docs_affected"])
+        0.45 * normalize(ctx.gateway_took_ms, bl["took_ms"])
+        + 0.55 * normalize(ctx.docs_affected, bl["docs_affected"])
     )
 
 
-def _stress_by_query(ctx: StressContext) -> float:
+def _stress_by_query(ctx: StressContext, bl: dict) -> float:
     return (
-        0.40 * normalize(ctx.gateway_took_ms, BASELINES["took_ms"])
-        + 0.35 * normalize(ctx.docs_affected, BASELINES["docs_affected"])
-        + 0.25 * normalize(ctx.shards_total, BASELINES["shards_total"])
+        0.40 * normalize(ctx.gateway_took_ms, bl["took_ms"])
+        + 0.35 * normalize(ctx.docs_affected, bl["docs_affected"])
+        + 0.25 * normalize(ctx.shards_total, bl["shards_total"])
     )
 
 
-def _stress_update(ctx: StressContext) -> float:
+def _stress_update(ctx: StressContext, bl: dict) -> float:
     return (
-        0.60 * normalize(ctx.gateway_took_ms, BASELINES["took_ms"])
-        + 0.40 * normalize(ctx.shards_total, BASELINES["shards_total"])
+        0.60 * normalize(ctx.gateway_took_ms, bl["took_ms"])
+        + 0.40 * normalize(ctx.shards_total, bl["shards_total"])
     )
 
 
-def _stress_doc_write(ctx: StressContext) -> float:
+def _stress_doc_write(ctx: StressContext, bl: dict) -> float:
     return (
-        0.70 * normalize(ctx.gateway_took_ms, BASELINES["took_ms"])
-        + 0.30 * normalize(ctx.shards_total, BASELINES["shards_total"])
+        0.70 * normalize(ctx.gateway_took_ms, bl["took_ms"])
+        + 0.30 * normalize(ctx.shards_total, bl["shards_total"])
     )
 
 
-_STRESS_DISPATCH: dict[str, Callable[[StressContext], float]] = {
+_STRESS_DISPATCH: dict[str, Callable[[StressContext, dict], float]] = {
     "_search":          _stress_query,
     "_bulk":            _stress_bulk,
     "_update_by_query": _stress_by_query,
@@ -227,8 +211,9 @@ def calc_stress(
     stress_multiplier: float = 1.0,
     bool_clause_total: int = 0,
 ) -> float:
+    bl = get_baselines()
     formula = _STRESS_DISPATCH.get(operation, _stress_doc_write)
-    base = formula(ctx)
+    base = formula(ctx, bl)
     if operation in _NO_MULTIPLIER_OPS:
         return base
     if bool_clause_total > _CLAUSE_THRESHOLD:

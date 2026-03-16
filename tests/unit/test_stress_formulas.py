@@ -23,7 +23,7 @@ class TestNormalize:
 
 class TestCalcStress:
     def _ctx(self, **kw) -> StressContext:
-        defaults = dict(es_took_ms=100, gateway_took_ms=100, hits=10000, size=100, shards_total=5, docs_affected=500)
+        defaults = dict(es_took_ms=100, gateway_took_ms=100, hits=1000, size=100, shards_total=5, docs_affected=500)
         defaults.update(kw)
         return StressContext(**defaults)
 

@@ -34,6 +34,54 @@ spec:
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           env:
+            - name: ELASTICSEARCH_URL
+              value: {{ include "alo.elasticsearchUrl" . | quote }}
+            {{- if eq (include "alo.esAuthEnabled" .) "true" }}
+            - name: ES_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.esAuthSecretName" . }}
+                  key: username
+            - name: ES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.esAuthSecretName" . }}
+                  key: password
+            {{- end }}
+            {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
+            - name: ES_CA_CERT
+              value: /etc/ssl/es/ca.crt
+            {{- end }}
+            {{- if and .Values.elasticsearch.external.enabled .Values.elasticsearch.external.tls.insecureSkipVerify }}
+            - name: ES_INSECURE
+              value: "true"
+            {{- end }}
+            - name: BASELINE_CACHE_TTL
+              value: {{ .Values.analyzer.dynamicBaselines.cacheTTL | quote }}
+            - name: BASELINE_QUERY_WINDOW
+              value: {{ .Values.analyzer.dynamicBaselines.queryWindow | quote }}
+            {{- with .Values.analyzer.stressBaselines }}
+            {{- if .tookMs }}
+            - name: STRESS_BASELINE_TOOK_MS
+              value: {{ .tookMs | quote }}
+            {{- end }}
+            {{- if .hits }}
+            - name: STRESS_BASELINE_HITS
+              value: {{ .hits | quote }}
+            {{- end }}
+            {{- if .shardsTotal }}
+            - name: STRESS_BASELINE_SHARDS_TOTAL
+              value: {{ .shardsTotal | quote }}
+            {{- end }}
+            {{- if .size }}
+            - name: STRESS_BASELINE_SIZE
+              value: {{ .size | quote }}
+            {{- end }}
+            {{- if .docsAffected }}
+            - name: STRESS_BASELINE_DOCS_AFFECTED
+              value: {{ .docsAffected | quote }}
+            {{- end }}
+            {{- end }}
             {{- with .Values.analyzer.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -53,6 +101,18 @@ spec:
               port: http
             initialDelaySeconds: 10
             periodSeconds: 30
+          {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
+          volumeMounts:
+            - name: es-ca
+              mountPath: /etc/ssl/es
+              readOnly: true
+          {{- end }}
           resources:
             {{- toYaml .Values.analyzer.resources | nindent 12 }}
+      {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
+      volumes:
+        - name: es-ca
+          secret:
+            secretName: {{ include "alo.esCaSecretName" . }}
+      {{- end }}
       {{- include "alo.scheduling" .Values.analyzer | nindent 6 }}
