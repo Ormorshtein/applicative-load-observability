@@ -237,6 +237,27 @@
         "image": { "$ref": "#/$defs/image" },
         "replicas": { "$ref": "#/$defs/replicas" },
         "port": { "$ref": "#/$defs/port" },
+        "dynamicBaselines": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Dynamic baselines — P50 from recent search traffic, refreshed every cacheTTL.",
+          "properties": {
+            "cacheTTL": { "type": "string", "description": "Cache TTL in seconds." },
+            "queryWindow": { "type": "string", "description": "ES time window for P50 aggregation (e.g. 1h, 30m)." }
+          }
+        },
+        "stressBaselines": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Static baseline overrides. Empty string means use the code default (or dynamic value when available).",
+          "properties": {
+            "tookMs": { "type": "string" },
+            "hits": { "type": "string" },
+            "shardsTotal": { "type": "string" },
+            "size": { "type": "string" },
+            "docsAffected": { "type": "string" }
+          }
+        },
         "resources": { "$ref": "#/$defs/resources" },
         "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
         "tolerations": { "$ref": "#/$defs/tolerations" },
