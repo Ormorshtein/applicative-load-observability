@@ -58,6 +58,26 @@ def _parse_json_field(raw: str) -> dict:
         return {}
 
 
+def _parse_upstream_response_time(raw: str) -> float:
+    """Convert upstream_response_time (seconds string) to milliseconds."""
+    if not raw:
+        return 0.0
+    try:
+        return float(raw) * 1000
+    except (ValueError, TypeError):
+        return 0.0
+
+
+def _parse_content_length(raw: str) -> int:
+    """Convert content_length string to int bytes."""
+    if not raw:
+        return 0
+    try:
+        return int(raw)
+    except (ValueError, TypeError):
+        return 0
+
+
 def extract_raw_fields(payload: dict) -> RawFields:
     raw_body = payload.get("request_body", "")
     return RawFields(
@@ -68,8 +88,10 @@ def extract_raw_fields(payload: dict) -> RawFields:
         request_body_raw=    raw_body,
         response_body=       _parse_json_field(payload.get("response_body", "")),
         client_host=         payload.get("client_host", ""),
-        gateway_took_ms=     float(payload.get("gateway_took_ms", 0)),
-        request_size_bytes=  int(payload.get("request_size_bytes", 0)),
+        gateway_took_ms=     _parse_upstream_response_time(
+                                 payload.get("upstream_response_time", "")),
+        request_size_bytes=  _parse_content_length(
+                                 payload.get("content_length", "")),
         response_size_bytes= int(payload.get("response_size_bytes", 0)),
     )
 
@@ -172,7 +194,6 @@ def build_record(raw: RawFields) -> dict:
             "shards_total":  shards_total,
             "docs_affected": docs_affected,
             "size_bytes":    raw.response_size_bytes,
-            "body":          raw.response_body,
         },
         "clause_counts":    _output_clause_counts(clause_counts),
         "cost_indicators":  cost_indicators,

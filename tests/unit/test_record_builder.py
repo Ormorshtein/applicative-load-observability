@@ -12,6 +12,8 @@ from record_builder import (
     partial_error_record,
     RawFields,
     _parse_json_field,
+    _parse_upstream_response_time,
+    _parse_content_length,
 )
 
 
@@ -34,6 +36,45 @@ class TestParseJsonField:
 
 
 # ---------------------------------------------------------------------------
+# _parse_upstream_response_time
+# ---------------------------------------------------------------------------
+
+class TestParseUpstreamResponseTime:
+    def test_normal_seconds_to_ms(self):
+        assert _parse_upstream_response_time("0.067") == 67.0
+
+    def test_empty_string(self):
+        assert _parse_upstream_response_time("") == 0.0
+
+    def test_invalid_value(self):
+        assert _parse_upstream_response_time("abc") == 0.0
+
+    def test_zero(self):
+        assert _parse_upstream_response_time("0") == 0.0
+
+    def test_large_value(self):
+        assert _parse_upstream_response_time("1.5") == 1500.0
+
+
+# ---------------------------------------------------------------------------
+# _parse_content_length
+# ---------------------------------------------------------------------------
+
+class TestParseContentLength:
+    def test_normal_value(self):
+        assert _parse_content_length("284") == 284
+
+    def test_empty_string(self):
+        assert _parse_content_length("") == 0
+
+    def test_invalid_value(self):
+        assert _parse_content_length("abc") == 0
+
+    def test_zero(self):
+        assert _parse_content_length("0") == 0
+
+
+# ---------------------------------------------------------------------------
 # extract_raw_fields
 # ---------------------------------------------------------------------------
 
@@ -46,8 +87,8 @@ class TestExtractRawFields:
             "request_body": '{"query":{"match_all":{}}}',
             "response_body": '{"took":42,"hits":{"total":{"value":10},"hits":[]}}',
             "client_host": "10.0.0.5",
-            "gateway_took_ms": 67,
-            "request_size_bytes": 284,
+            "upstream_response_time": "0.067",
+            "content_length": "284",
             "response_size_bytes": 1920,
         }
         raw = extract_raw_fields(payload)
