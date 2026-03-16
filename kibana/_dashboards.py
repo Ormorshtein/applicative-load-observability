@@ -183,6 +183,7 @@ def do_rebuild(cfg: StackConfig) -> bool:
         "alo-table-top-templates", "Top 10 Templates by Stress Score",
         "request.template", "Template", [
             ("sum_stress",       "Sum Stress",              "stress.score",                "sum"),
+            ("avg_stress",       "Avg Stress",              "stress.score",                "average"),
             ("avg_es_latency",   "Avg ES Latency (ms)",     "response.es_took_ms",         "average"),
             ("avg_gw_latency",   "Avg Gateway Latency (ms)","response.gateway_took_ms",    "average"),
             ("cost_indicators",  "Avg Cost Indicators",     "stress.cost_indicator_count",  "average"),
