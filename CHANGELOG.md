@@ -1,5 +1,76 @@
 # Changelog
 
+## 1.11.0
+
+### Stress scoring overhaul
+
+- **Continuous bonuses for all clause types** — 9 clause types (bool, agg, wildcard, nested, fuzzy, geo, knn, script, terms_values) now add a logarithmic bonus to the base stress score when their count exceeds a threshold: `min(0.10 × ln(1 + excess), 0.50)`. Previously only bool clauses had a bonus; all other types were invisible below their cost indicator threshold.
+- **Switched latency metric from `gateway_took_ms` to `es_took_ms`** — `gateway_took_ms` inflates uniformly under cluster saturation (connection pool exhaustion, TCP queueing), drowning the signal from genuinely expensive queries. `es_took_ms` is pure ES processing time with better discrimination under load.
+- **`stress.bonuses` in ES record** — new dict field showing which bonuses fired and their values, for score debugging. Empty `{}` for normal queries.
+- **Fixed dynamic baseline bug** — `_baselines.py` was querying P50 of `response.gateway_took_ms` but formulas now use `es_took_ms`; corrected to query `response.es_took_ms`.
+- **`calc_stress` signature change** — takes full `clause_counts` dict instead of individual `bool_clause_total` param; returns `(score, bonuses)` tuple instead of float.
+
+### Documentation
+
+- Added latency metric rationale (why `es_took_ms`, not `gateway_took_ms`)
+- Added dynamic baselines section (P50 from recent traffic, cache TTL, query window, fallback behaviour)
+- Added continuous bonuses table with all 9 clause types, thresholds, and formula
+- Added `response_size_bytes` future consideration with specific cases and deferral reasoning
+- Updated record schema with `stress.bonuses` field
+
+---
+
+## 1.10.0
+
+### Dynamic baselines
+
+- Added `_baselines.py` — P50-based baselines from recent search traffic in ES, cached with configurable TTL (default 60s) and query window (default 1h)
+- Only `took_ms` and `shards_total` refresh dynamically; `hits`, `size`, `docs_affected` remain static
+- Falls back to static defaults when ES is unreachable or has no data
+- Static overrides via `STRESS_BASELINE_*` env vars always take precedence
+- Supports full ES connection config: `ELASTICSEARCH_URL`, `ES_USERNAME`, `ES_PASSWORD`, `ES_CA_CERT`, `ES_INSECURE`
+- Added `dynamicBaselines` and `stressBaselines` to Helm values schema
+
+### Analyzer changes
+
+- Moved raw field parsing from Logstash ruby filters into the Python analyzer (`record_builder.py`) — gateway now sends raw Nginx variables, analyzer handles all extraction
+- Removed `response.body` from ES index mapping (was stored but never queried, wasted storage)
+- Removed request body size limits, bumped gateway memory allocation
+
+### Dashboard
+
+- Added Avg Stress column to Top 10 Templates table
+
+---
+
+## 1.9.0
+
+### Gateway transparency
+
+- Removed error interception — ES error responses now pass through to clients transparently instead of being replaced with gateway error JSON
+- Synced Helm configmap with Docker template: removed body_filter cap divergence
+
+### Index mapping
+
+- Added `response.body` to index mapping as stored-only field (later removed in 1.10.0)
+
+---
+
+## 1.8.0
+
+### Gateway networking
+
+- Added HTTPS SNI support and `insecureSkipVerify` for gateway ES upstream
+- Renamed `gateway.auth.enabled` to `gateway.auth.injectAuth` for clarity (previous name was ambiguous — it controls whether the gateway overrides client auth, not whether auth exists)
+- Fixed `proxy_pass` to use upstream block for keepalive connection pooling
+- Fixed upstream disable and stale keepalive issues
+- Simplified pipeline POST: `cjson.encode(ctx)` instead of manually re-listing fields
+- Removed gateway health check and readiness/liveness probes (caused more problems than they solved in environments with intermittent ES connectivity)
+- Added health check error logging and configurable error log level
+- Synced `values.schema.json` with renamed fields
+
+---
+
 ## 1.7.0
 
 ### Gateway memory hardening
@@ -87,5 +158,72 @@
 ## 1.4.0
 
 - Initial Helm chart with gateway, logstash, analyzer, kibana, elasticsearch
-- Stress tool for benchmarking
+- Stress tool with rate limiting, latency percentiles, and 11 workload profiles
 - Cost indicators and stress scoring
+
+---
+
+## 1.3.0
+
+### Stress tool and deployment fixes
+
+- Added stress tool Docker image
+- Pinned Python dependencies
+- Added configurable gateway tunables (worker connections, pipeline timeout)
+- Fixed gateway Host header, added error visibility to stress tool and nginx
+- Added nginx env directives to preserve env vars for Lua workers
+- Removed invalid `xpack.monitoring.elasticsearch.ssl.enabled` setting
+
+---
+
+## 1.2.0
+
+### Multi-cluster and enterprise deployment
+
+- Added auth and TLS support to integration tests
+- Fixed logstash.yml mount path to config/ directory
+- Used FQDN for internal pipeline URLs (OpenResty DNS fix)
+- Added OpenShift Route support for all services
+- Added trivial challenge scenarios (overfetch, unfiltered aggs, broad match, volume flood, geo sweep, geo sort, micro bulk, mega bulk, forced refresh, terms lookup, hidden CPU)
+- Fixed gateway/logstash/metricbeat ES auth+TLS
+- Added values.schema.json
+- Made Helm chart airgap-ready: pinned NiFi, configurable test images
+- Added TLS and auth support to kibana setup for ECK clusters
+- Hardened gateway for OpenShift: non-root temp paths, DNS auto-detect, ES TLS CA
+
+---
+
+## 1.1.0
+
+### Data streams and multi-cluster
+
+- Converted ALO index to data streams (`logs-alo.<operation>-<namespace>`)
+- Added ILM per operation category with component template (search 90d, write 30d, default 60d, dead-letter 7d)
+- Added `cluster_name` constant_keyword for multi-cluster filtering
+- Replaced Cost Indicator pie with Overall Stress Trend on dashboard
+
+### Challenges
+
+- Added challenge v2 (ops) and v3 (stealth)
+- Added bool clause complexity bonus to stress score
+- Added gateway resilience tests
+
+---
+
+## 1.0.0
+
+### Initial release
+
+- Full observability pipeline: OpenResty gateway → Logstash → Python analyzer → Elasticsearch
+- Gateway: transparent proxy with fire-and-forget async notification, zero client impact
+- Analyzer: FastAPI service — parses requests/responses, counts clause types, calculates stress score
+- Stress scoring: per-operation weighted formulas (search, bulk, by_query, update, doc_write)
+- Cost indicators: 10 binary indicators (script, runtime mapping, wildcard, nested, fuzzy, geo, knn, excessive bool, large terms, deep aggs) with multiplicative stress multiplier
+- 16 clause type counts stored per record
+- Kibana dashboards with cheat sheet, stress trends, top templates, cost indicator breakdown
+- NiFi pipeline (later replaced by Logstash in 1.6.0)
+- Metricbeat for stack monitoring (toggleable)
+- Docker Compose for full-stack local deployment
+- Environment variable configuration throughout (12-factor)
+- Module split: `stress.py`, `parser.py`, `record_builder.py`, `main.py`
+- Comprehensive unit test suite
