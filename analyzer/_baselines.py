@@ -71,7 +71,7 @@ def _fetch_p50() -> dict[str, float]:
         ]}},
         "aggs": {
             "took_p50": {"percentiles": {
-                "field": "response.gateway_took_ms", "percents": [50],
+                "field": "response.es_took_ms", "percents": [50],
             }},
             "shards_p50": {"percentiles": {
                 "field": "response.shards_total", "percents": [50],

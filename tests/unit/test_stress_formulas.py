@@ -43,12 +43,12 @@ class TestCalcStress:
         assert score == pytest.approx(1.5)
 
     def test_search_double_took(self):
-        score, _ = calc_stress("_search", self._ctx(gateway_took_ms=200))
+        score, _ = calc_stress("_search", self._ctx(es_took_ms=200))
         expected = 0.55 * 2.0 + 0.20 * 1.0 + 0.15 * 1.0 + 0.10 * 1.0
         assert score == pytest.approx(expected)
 
     def test_search_zero_values(self):
-        score, _ = calc_stress("_search", self._ctx(gateway_took_ms=0, hits=0, size=0, shards_total=0))
+        score, _ = calc_stress("_search", self._ctx(es_took_ms=0, hits=0, size=0, shards_total=0))
         assert score == pytest.approx(0.0)
 
     def test_bulk_at_baseline(self):
@@ -129,13 +129,13 @@ class TestCalcStress:
 
     def test_stress_unbounded(self):
         """Score should exceed 1.0 for extreme values."""
-        ctx = self._ctx(gateway_took_ms=10000, hits=1000000, shards_total=100, size=10000)
+        ctx = self._ctx(es_took_ms=10000, hits=1000000, shards_total=100, size=10000)
         score, _ = calc_stress("_search", ctx)
         assert score > 10.0
 
     def test_search_high_multiplier(self):
         """Extreme multiplier compounds stress."""
-        ctx = self._ctx(gateway_took_ms=500)
+        ctx = self._ctx(es_took_ms=500)
         score, _ = calc_stress("_search", ctx, stress_multiplier=3.0)
         base = 0.55 * 5.0 + 0.20 * 1.0 + 0.15 * 1.0 + 0.10 * 1.0
         assert score == pytest.approx(base * 3.0)

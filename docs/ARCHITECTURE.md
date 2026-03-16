@@ -284,17 +284,44 @@ Why multiplicative: expensive features genuinely compound (wildcard inside neste
 
 Calculated by `stress.py`. All missing fields default to 0. No upper bound — extreme operations produce extreme scores intentionally.
 
-**Baselines:**
+#### Latency metric: `es_took_ms`
 
-| Input | Baseline | Rationale |
-|-------|----------|-----------|
-| `es_took_ms` | 100 ms | ES's own execution time — slow-log default starts at 500ms; healthy queries are <100ms |
-| `hits` | 10 000 docs | Reasonable result set; scoring + sorting scales with hits |
-| `shards_total` | 5 shards | Typical primary count; each shard is CPU + JVM overhead |
-| `size` | 100 docs | 10× ES default of 10; drives fetch-phase heap — `_search` formula only |
-| `docs_affected` | 500 docs | Bulk/update/delete volume |
+The formulas use `es_took_ms` (ES's self-reported execution time) rather than `gateway_took_ms` (full round-trip as measured by Nginx). Both are available in the observability record (`response.es_took_ms` and `response.gateway_took_ms`), but only `es_took_ms` feeds the score.
 
-**Normalisation:**
+**Why:** `gateway_took_ms` = es_took + HTTP serialization + network transfer. Under cluster saturation it inflates uniformly for *all* queries — connection pool exhaustion, TCP buffer pressure, and queueing are system-wide effects unrelated to any individual query's cost. Since the latency component is 40–70% of the score (depending on operation), this noise dominates and buries the signal from genuinely expensive queries. `es_took_ms` is pure ES processing time: less noisy, better relative discrimination between cheap and expensive queries under load.
+
+**Trade-off:** `es_took_ms` is blind to response transfer cost (a query returning 5 MB has the same `es_took` as one returning 5 KB if ES processes both equally fast). The `hits` and `size` factors partially compensate for this. See §8 (Future Ideas) for the `response_size_bytes` discussion.
+
+#### Baselines
+
+Each normalised input divides the observed value by a baseline. Baselines represent "normal" — a score of 1.0 means the query is at baseline across all dimensions.
+
+**Static defaults** (configurable via `STRESS_BASELINE_*` env vars):
+
+| Input | Default | Env var | Rationale |
+|-------|---------|---------|-----------|
+| `es_took_ms` | 100 ms | `STRESS_BASELINE_TOOK_MS` | Slow-log default starts at 500ms; healthy queries are <100ms |
+| `hits` | 1 000 docs | `STRESS_BASELINE_HITS` | Moderate result set; scoring + sorting scales with hits |
+| `shards_total` | 5 shards | `STRESS_BASELINE_SHARDS_TOTAL` | Typical primary count; each shard is CPU + JVM overhead |
+| `size` | 100 docs | `STRESS_BASELINE_SIZE` | 10× ES default of 10; drives fetch-phase heap — `_search` formula only |
+| `docs_affected` | 500 docs | `STRESS_BASELINE_DOCS_AFFECTED` | Bulk/update/delete volume |
+
+**Dynamic baselines** (`_baselines.py`):
+
+When `ELASTICSEARCH_URL` is set, the analyzer periodically queries the observability index (`logs-alo.search-*`) for P50 values from recent search traffic. This makes the score self-calibrating — as the cluster's "normal" shifts, so do the baselines.
+
+| Setting | Default | Env var |
+|---------|---------|---------|
+| Cache TTL | 60 seconds | `BASELINE_CACHE_TTL` |
+| Query window | 1 hour | `BASELINE_QUERY_WINDOW` |
+
+Only `took_ms` and `shards_total` are refreshed dynamically. `hits`, `size`, and `docs_affected` always use their static values because they reflect query structure rather than cluster state and don't drift meaningfully with load.
+
+**Fallback behaviour:** If ES is unreachable or returns no data, the previous cached values are kept. On first startup with no cache, static defaults apply. Static env var overrides (`STRESS_BASELINE_*`) always take precedence for the keys they set — dynamic refresh only fills in the rest.
+
+**ES connection config:** The dynamic baseline query supports the same connection settings as the rest of the stack: `ELASTICSEARCH_URL`, `ES_USERNAME`, `ES_PASSWORD`, `ES_CA_CERT`, `ES_INSECURE`.
+
+#### Normalisation
 
 ```
 norm(value, baseline) = value / baseline
@@ -302,9 +329,11 @@ norm(value, baseline) = value / baseline
 
 No clamping — values above 1.0 are valid and expected. A query at 2× the baseline contributes 2.0, not 1.0. The stress score has no upper bound by design: extreme operations should produce extreme scores.
 
-**Formulas:**
+#### Formulas
 
-Each formula computes a `base` score as a weighted sum of normalised inputs, then applies the `stress.multiplier` from cost indicators (see §2.3). The multiplier defaults to 1.0 when no indicators fire.
+Each formula computes a `base` score as a weighted sum of normalised inputs. For non-bulk operations, continuous bonuses and the cost indicator multiplier are then applied (see below). The multiplier defaults to 1.0 when no indicators fire.
+
+Operations fall into five formula classes. Unknown operations (not in the dispatch table) default to the `_create`/`index`/`delete` formula.
 
 *`_search`:*
 ```
@@ -312,7 +341,7 @@ base = 0.55·norm(es_took_ms, 100)
      + 0.20·norm(shards_total, 5)
      + 0.15·norm(hits, 10000)
      + 0.10·norm(size, 100)
-stress.score = base × stress.multiplier
+stress.score = (base + Σ bonuses) × stress.multiplier
 ```
 
 *`_bulk`:*
@@ -326,14 +355,14 @@ stress.score = 0.45·norm(es_took_ms, 100)
 base = 0.40·norm(es_took_ms, 100)
      + 0.35·norm(docs_affected, 500)
      + 0.25·norm(shards_total, 5)
-stress.score = base × stress.multiplier
+stress.score = (base + Σ bonuses) × stress.multiplier
 ```
 
 *`_update`:*
 ```
 base = 0.60·norm(es_took_ms, 100)
      + 0.40·norm(shards_total, 5)
-stress.score = base × stress.multiplier
+stress.score = (base + Σ bonuses) × stress.multiplier
 ```
 For partial-doc updates (no script), no indicators fire and `stress.multiplier` is 1.0, so the formula reduces to latency + shards.
 
@@ -342,7 +371,31 @@ For partial-doc updates (no script), no indicators fire and `stress.multiplier` 
 stress.score = 0.70·norm(es_took_ms, 100)
              + 0.30·norm(shards_total, 5)
 ```
-Single-document writes. No query body → no cost indicators → no multiplier. All three share this formula as a baseline; see Future Ideas for per-operation weight refinement.
+Single-document writes. No query body → no cost indicators → no multiplier → no bonuses. All three share this formula as a baseline; see Future Ideas for per-operation weight refinement.
+
+**Continuous bonuses:**
+
+For operations that apply the multiplier (everything except `_bulk`, `_create`, `index`, `delete`), each clause type contributes a logarithmic bonus when its count exceeds a threshold:
+
+```
+bonus = min(weight × ln(1 + count − threshold), cap)
+```
+
+All bonuses are additive to `base` before the multiplier is applied. When a bonus fires, it is recorded in `stress.bonuses` (see §3). When the count is at or below the threshold, the bonus is zero and omitted from the record.
+
+| Clause type | Threshold | Weight | Cap | Configurable |
+|-------------|-----------|--------|-----|--------------|
+| `bool_total` (must + should + filter + must_not) | 4 | 0.10 | 0.50 | `STRESS_CLAUSE_THRESHOLD/WEIGHT/CAP` |
+| `agg_clause_count` | 3 | 0.10 | 0.50 | `STRESS_AGG_THRESHOLD/WEIGHT/CAP` |
+| `wildcard_clause_count` | 1 | 0.10 | 0.50 | — |
+| `nested_clause_count` | 1 | 0.10 | 0.50 | — |
+| `fuzzy_clause_count` | 1 | 0.10 | 0.50 | — |
+| `geo_total` (distance + shape + bbox) | 1 | 0.10 | 0.50 | — |
+| `knn_clause_count` | 1 | 0.10 | 0.50 | — |
+| `script_clause_count` | 1 | 0.10 | 0.50 | — |
+| `terms_values_count` | 50 | 0.10 | 0.50 | — |
+
+**No double-counting with cost indicators:** bonuses are additive on `base` (continuous, low-count signal). Cost indicators are multiplicative on the final score (binary, high-count signal). At high counts both activate — correct, since e.g. 15 aggs deserve both the continuous bonus and the `deep_aggs` 1.3× multiplier.
 
 > All weights, indicator multipliers, and thresholds are best-effort initial values grounded in ES documentation
 > and benchmarks. They must be tuned with real production data over time.
@@ -398,13 +451,14 @@ The record uses a structured nested layout grouping related fields:
   "stress": {
     "score":                0.87,
     "multiplier":           1.0,
+    "bonuses":              {},
     "cost_indicator_count": 0,
     "cost_indicator_names": []
   }
 }
 ```
 
-**With cost indicators active:**
+**With cost indicators and bonuses active:**
 
 ```json
 {
@@ -415,6 +469,7 @@ The record uses a structured nested layout grouping related fields:
   "stress": {
     "score":                1.87,
     "multiplier":           1.95,
+    "bonuses":              {"bool_total": 0.1946, "script_clause_count": 0.1099},
     "cost_indicator_count": 2,
     "cost_indicator_names": ["has_script", "has_wildcard"]
   }
@@ -430,7 +485,7 @@ The record uses a structured nested layout grouping related fields:
 | `response.*` | es_took_ms, gateway_took_ms, hits, shards_total, docs_affected, size_bytes | What ES returned |
 | `clause_counts.*` | 16 clause type counts | Raw structural complexity |
 | `cost_indicators` | Dict of indicator name → triggering count | Which expensive patterns and how many |
-| `stress.*` | score, multiplier, cost_indicator_count, cost_indicator_names | Computed stress assessment |
+| `stress.*` | score, multiplier, bonuses, cost_indicator_count, cost_indicator_names | Computed stress assessment |
 
 ---
 
@@ -572,6 +627,7 @@ Override any of the environment variables below. Docker Compose defaults work ou
 
 ## 8. Future Implementation Ideas
 
+- `response_size_bytes` as a stress factor — the formulas use `es_took_ms` for latency (pure ES execution time, no network noise). This is blind to response transfer cost: a query with `es_took=30ms` returning 5 MB imposes real serialization load that the score ignores. The `hits` and `size` factors partially cover this (size penalises over-fetching, hits captures result-set magnitude), but they don't see the actual byte weight. Cases where `response_size_bytes` would add signal: **(1)** heavy documents — indexes with large `_source` where `size=100` produces megabytes vs kilobytes depending on schema; **(2)** missing source filtering — fetching full `_source` when only two fields are needed; **(3)** highlight / `script_fields` inflation — response includes generated content that doesn't correlate with doc count; **(4)** large aggregation payloads — deep cardinality aggs can produce heavy result buckets independent of hits or size. Deferred because it's partially redundant with hits + size within the same index, penalises queries against "fat" indexes regardless of query quality, has a skewed distribution that makes baseline selection difficult, and risks triple-penalising the same over-fetch behaviour. If undetected response-heavy patterns emerge in production (especially #2 and #3), add `response_size_bytes` to `StressContext` with a low weight (0.05–0.10) carved from the latency share.
 - Cost indicator threshold and multiplier tuning — current thresholds (`bool children >= 50`, `terms >= 500`, `aggs >= 10`) and multiplier values (1.2–1.5) are initial estimates. Once production data is available, analyse indicator firing rates and correlation with `response.es_took_ms` to validate and adjust these values.
 - `search_type` classification (`agg` / `knn` / `geo` / `text` / `simple`) — applies to `_search`, `_update_by_query`, and `_delete_by_query` (all carry a query body). Deferred because naive top-level detection (e.g. "body has `query.geo_*`") misclassifies queries where the expensive clause is nested inside a `bool`. Since cost indicators already capture these signals recursively and correctly, adding a shallow `search_type` label would produce inconsistent dashboard data. Requires recursive detection with a priority order (most expensive type wins).
 - Per-operation write weights — current formulas treat `_create`, `_doc` PUT, and `_doc` DELETE identically. In reality their read depth differs: `_doc` PUT (index) is a pure write with no prior read; `_doc` DELETE reads document metadata (version/seq_no) before writing a tombstone; `_update` reads the full `_source` for a read-modify-write cycle. Separate weight sets should be validated against real production latency distributions before applying.

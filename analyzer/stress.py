@@ -150,7 +150,7 @@ def evaluate_cost_indicators(counts: dict) -> tuple[dict[str, int], float]:
 
 def _stress_query(ctx: StressContext, bl: dict) -> float:
     return (
-        0.55 * normalize(ctx.gateway_took_ms, bl["took_ms"])
+        0.55 * normalize(ctx.es_took_ms, bl["took_ms"])
         + 0.20 * normalize(ctx.shards_total, bl["shards_total"])
         + 0.15 * normalize(ctx.hits, bl["hits"])
         + 0.10 * normalize(ctx.size, bl["size"])
@@ -159,14 +159,14 @@ def _stress_query(ctx: StressContext, bl: dict) -> float:
 
 def _stress_bulk(ctx: StressContext, bl: dict) -> float:
     return (
-        0.45 * normalize(ctx.gateway_took_ms, bl["took_ms"])
+        0.45 * normalize(ctx.es_took_ms, bl["took_ms"])
         + 0.55 * normalize(ctx.docs_affected, bl["docs_affected"])
     )
 
 
 def _stress_by_query(ctx: StressContext, bl: dict) -> float:
     return (
-        0.40 * normalize(ctx.gateway_took_ms, bl["took_ms"])
+        0.40 * normalize(ctx.es_took_ms, bl["took_ms"])
         + 0.35 * normalize(ctx.docs_affected, bl["docs_affected"])
         + 0.25 * normalize(ctx.shards_total, bl["shards_total"])
     )
@@ -174,14 +174,14 @@ def _stress_by_query(ctx: StressContext, bl: dict) -> float:
 
 def _stress_update(ctx: StressContext, bl: dict) -> float:
     return (
-        0.60 * normalize(ctx.gateway_took_ms, bl["took_ms"])
+        0.60 * normalize(ctx.es_took_ms, bl["took_ms"])
         + 0.40 * normalize(ctx.shards_total, bl["shards_total"])
     )
 
 
 def _stress_doc_write(ctx: StressContext, bl: dict) -> float:
     return (
-        0.70 * normalize(ctx.gateway_took_ms, bl["took_ms"])
+        0.70 * normalize(ctx.es_took_ms, bl["took_ms"])
         + 0.30 * normalize(ctx.shards_total, bl["shards_total"])
     )
 
