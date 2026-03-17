@@ -21,7 +21,7 @@ services:
       retries: 10
 
   logstash:
-    image: oracle1012/applicative-load-observability:logstash-1.11.0
+    image: oracle1012/applicative-load-observability:logstash-1.12.0
     ports:
       - "8080:8080"
       # - "9600:9600"  # Uncomment to expose Logstash monitoring API
@@ -47,7 +47,7 @@ services:
 
   analyzer:
     build: ./analyzer
-    image: oracle1012/applicative-load-observability:analyzer-1.11.0
+    image: oracle1012/applicative-load-observability:analyzer-1.12.0
     environment:
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       # Dynamic baselines — P50 from recent search traffic (requires ELASTICSEARCH_URL):
@@ -83,7 +83,7 @@ services:
         condition: service_healthy
 
   gateway:
-    image: oracle1012/applicative-load-observability:gateway-1.11.0
+    image: oracle1012/applicative-load-observability:gateway-1.12.0
     ports:
       - "${GATEWAY_PORT:-9200}:${GATEWAY_PORT:-9200}"
     environment:

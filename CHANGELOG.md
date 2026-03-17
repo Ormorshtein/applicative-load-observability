@@ -1,5 +1,43 @@
 # Changelog
 
+## 1.12.0
+
+### Analyzer
+
+- **ES 8.13–8.15 bulk `took` nanosecond workaround** — the `took` field in `_bulk` responses is sometimes reported in nanoseconds instead of milliseconds. The analyzer detects this by comparing `es_took_ms` against `gateway_took_ms`; if the ratio exceeds 1000× (impossible for legitimate values), the value is divided by 1,000,000. Only applies to `_bulk` operations.
+- Fixed `parse_hits` crash when `hits.total` is null (`track_total_hits: false`)
+- Fixed `normalize()` division by zero from misconfigured baselines
+- Fixed timestamp to include real milliseconds instead of hardcoded `.000`
+- Upgraded baseline refresh logging from DEBUG to WARNING with traceback
+- Added `stress.bonuses` to ES index mapping (prevents strict mapping rejection)
+
+### Dashboard
+
+- Added **Top 10 Cost Indicators by Stress Score** table below the templates table
+- Replaced Stress Trend line chart with **Flagged vs Unflagged** donut pie (new `mk_pie_filters` builder)
+
+### Helm
+
+- Added configurable **init container resource limits** (`initResources`) with minimal defaults (50m/32Mi request, 100m/64Mi limit) — fixes quota-based deployment failures
+- Updated `values.schema.json` with `initResources`
+
+### Infrastructure
+
+- **Dead letter converted to data stream** — `logs-alo.dead_letter-*` now uses data stream pattern with proper ILM, matching the rest of the pipeline
+- Fixed 401 errors in dashboard import/export by adding auth headers and SSL context to raw `urlopen` calls that bypassed `kibana_request`
+
+### Clean code
+
+- Split `run_challenge()` into setup, interactive loop, and command handlers
+- Added type hints across `_trivial_runner.py`
+- Removed stale 64KB body cap references from ARCHITECTURE.md
+
+### Documentation
+
+- Documented ES bulk `took` nanosecond workaround in ARCHITECTURE.md
+
+---
+
 ## 1.11.0
 
 ### Stress scoring overhaul
