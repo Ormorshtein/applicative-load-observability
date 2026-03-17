@@ -40,6 +40,8 @@ spec:
               RESOLVER=$(awk '/^nameserver/{print $2; exit}' /etc/resolv.conf)
               {{- end }}
               sed "s/__DNS_RESOLVER__/$RESOLVER/g" /config-template/nginx.conf > /config/nginx.conf
+          resources:
+            {{- toYaml .Values.gateway.initResources | nindent 12 }}
           volumeMounts:
             - name: nginx-config-template
               mountPath: /config-template

@@ -64,6 +64,13 @@ elasticsearch:
     limits:
       cpu: "2"
       memory: 2Gi
+  initResources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
   javaOpts: "-Xms512m -Xmx512m"
   persistence:
     enabled: true
@@ -265,6 +272,13 @@ gateway:
     limits:
       cpu: "1"
       memory: 1Gi
+  initResources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
   # Nginx error log level (debug, info, notice, warn, error, crit)
   errorLogLevel: warn
   # Workers and connections per OpenResty instance
