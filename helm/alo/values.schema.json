@@ -66,6 +66,7 @@
         "image": { "$ref": "#/$defs/image" },
         "replicas": { "$ref": "#/$defs/replicas" },
         "resources": { "$ref": "#/$defs/resources" },
+        "initResources": { "$ref": "#/$defs/resources", "description": "Resource requests/limits for the fix-permissions init container." },
         "javaOpts": { "type": "string" },
         "persistence": {
           "type": "object",
@@ -309,6 +310,7 @@
         "replicas": { "$ref": "#/$defs/replicas" },
         "port": { "$ref": "#/$defs/port" },
         "resources": { "$ref": "#/$defs/resources" },
+        "initResources": { "$ref": "#/$defs/resources", "description": "Resource requests/limits for the resolve-dns init container." },
         "errorLogLevel": {
           "type": "string",
           "enum": ["debug", "info", "notice", "warn", "error", "crit"],
