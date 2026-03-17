@@ -5,7 +5,7 @@ import os
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from _client import StackConfig, kibana_request, upsert
+from _client import StackConfig, _build_auth_header, _build_ssl_context, kibana_request, upsert
 from _visualizations import (
     CHEAT_SHEET_MARKDOWN,
     PANEL_DESCRIPTIONS,
@@ -57,9 +57,13 @@ def import_ndjson(cfg: StackConfig, path: str, label: str) -> bool:
     req = Request(url, data=body, method="POST")
     req.add_header("kbn-xsrf", "true")
     req.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
+    auth = _build_auth_header(cfg)
+    if auth:
+        req.add_header("Authorization", auth)
+    ssl_ctx = _build_ssl_context(cfg.kibana_ca_cert, cfg.kibana_insecure)
 
     try:
-        resp = urlopen(req, timeout=30)
+        resp = urlopen(req, timeout=30, context=ssl_ctx)
         result = json.loads(resp.read())
         count = result.get("successCount", 0)
         if result.get("success"):
@@ -87,9 +91,14 @@ def export_dashboard(cfg: StackConfig, dashboard_id: str,
     url = f"{cfg.kibana_url}/api/saved_objects/_export"
     body = json.dumps({"objects": [{"type": "dashboard", "id": dashboard_id}],
                        "includeReferencesDeep": True}).encode()
-    req = Request(url, data=body, headers={"kbn-xsrf": "true", "Content-Type": "application/json"}, method="POST")
+    headers = {"kbn-xsrf": "true", "Content-Type": "application/json"}
+    auth = _build_auth_header(cfg)
+    if auth:
+        headers["Authorization"] = auth
+    ssl_ctx = _build_ssl_context(cfg.kibana_ca_cert, cfg.kibana_insecure)
+    req = Request(url, data=body, headers=headers, method="POST")
     try:
-        resp = urlopen(req, timeout=30)
+        resp = urlopen(req, timeout=30, context=ssl_ctx)
         ndjson = resp.read().decode()
         with open(ndjson_path, "w", encoding="utf-8") as f:
             f.write(ndjson)

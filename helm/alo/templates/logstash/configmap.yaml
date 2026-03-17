@@ -89,7 +89,8 @@ data:
       if "_httprequestfailure" in [tags] {
         elasticsearch {
           hosts => ["{{ include "alo.elasticsearchUrl" . }}"]
-          index => "alo-dead-letter"
+          index => "logs-alo.dead_letter-{{ .Values.global.clusterName }}"
+          action => "create"
           {{- if eq (include "alo.esAuthEnabled" .) "true" }}
           user => "${ES_USERNAME}"
           password => "${ES_PASSWORD}"

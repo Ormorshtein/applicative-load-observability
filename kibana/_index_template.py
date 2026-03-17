@@ -186,14 +186,18 @@ INDEX_TEMPLATES: dict[str, dict] = {
         },
     },
     "alo-dead-letter": {
-        "index_patterns": ["alo-dead-letter*"],
+        "index_patterns": ["logs-alo.dead_letter-*"],
+        "data_stream": {},
         "priority": 100,
         "template": {
             "settings": {
                 "index.lifecycle.name": "alo-dead-letter-lifecycle",
                 "number_of_shards": 1,
                 "number_of_replicas": 0,
-            }
+            },
+            "mappings": {
+                "dynamic": True,
+            },
         },
     },
 }
