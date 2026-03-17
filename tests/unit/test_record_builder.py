@@ -207,8 +207,8 @@ class TestBuildRecord:
     def test_timestamp_format(self):
         rec = build_record(_make_raw())
         ts = rec["@timestamp"]
-        # Should parse as valid datetime
-        datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S.000Z")
+        # Should parse as valid ISO-8601 with milliseconds
+        datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S.%fZ")
 
     def test_clause_counts_present(self):
         rec = build_record(_make_raw())
@@ -350,6 +350,51 @@ class TestBuildRecord:
         simple_score = build_record(simple_raw)["stress"]["score"]
         complex_score = build_record(complex_raw)["stress"]["score"]
         assert complex_score > simple_score
+
+    def test_bulk_nanosecond_took_normalized(self):
+        """ES 8.13-8.15 bug: bulk took in nanoseconds is converted to ms."""
+        raw = _make_raw(
+            method="POST",
+            path="/_bulk",
+            request_body={},
+            request_body_raw='{"index":{"_index":"idx"}}\n{"title":"a"}\n',
+            response_body={
+                "took": 24_124_260_718,  # nanoseconds (~24 seconds)
+                "items": [{"index": {"_index": "idx", "_shards": {"total": 2}}}],
+            },
+            gateway_took_ms=24_200.0,  # ~24 seconds round-trip
+        )
+        rec = build_record(raw)
+        assert rec["response"]["es_took_ms"] == pytest.approx(24_124.26, rel=1e-3)
+
+    def test_bulk_normal_took_not_normalized(self):
+        """Normal bulk took values are not affected by the nanosecond guard."""
+        raw = _make_raw(
+            method="POST",
+            path="/_bulk",
+            request_body={},
+            request_body_raw='{"index":{"_index":"idx"}}\n{"title":"a"}\n',
+            response_body={
+                "took": 150,
+                "items": [{"index": {"_index": "idx", "_shards": {"total": 2}}}],
+            },
+            gateway_took_ms=200.0,
+        )
+        rec = build_record(raw)
+        assert rec["response"]["es_took_ms"] == 150.0
+
+    def test_search_high_took_not_normalized(self):
+        """Non-bulk operations are never affected by the nanosecond guard."""
+        raw = _make_raw(
+            response_body={
+                "took": 5_000_000,
+                "hits": {"total": {"value": 0}, "hits": []},
+                "_shards": {"total": 1},
+            },
+            gateway_took_ms=200.0,
+        )
+        rec = build_record(raw)
+        assert rec["response"]["es_took_ms"] == 5_000_000.0
 
     def test_es_took_fallback_to_gateway(self):
         """When es_took_ms is 0, stress uses gateway_took_ms."""

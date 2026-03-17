@@ -101,8 +101,11 @@ class HealthMonitor:
 # Worker
 # ---------------------------------------------------------------------------
 
-def _run_worker(ops, weights, think_ms, gw, tracker, stats,
-                stop, monitor):
+def _run_worker(
+    ops: list, weights: list[float], think_ms: int,
+    gw: str, tracker: DocIdTracker, stats: Stats,
+    stop: threading.Event, monitor: HealthMonitor,
+) -> None:
     while not stop.is_set():
         if monitor.throttle.is_set():
             time.sleep(0.5)
@@ -124,7 +127,10 @@ def _run_worker(ops, weights, think_ms, gw, tracker, stats,
 # Setup helpers
 # ---------------------------------------------------------------------------
 
-def _seed_data(gateway, index, tracker, count, doc_fn=None):
+def _seed_data(
+    gateway: str, index: str, tracker: DocIdTracker,
+    count: int, doc_fn: callable = None,
+) -> None:
     doc_fn = doc_fn or rand_doc
     print(f"  Seeding {count} documents ...", flush=True)
     for start in range(0, count, 500):
@@ -144,7 +150,7 @@ def _seed_data(gateway, index, tracker, count, doc_fn=None):
     print("  Seeding complete.")
 
 
-def _warmup_scripts(gateway, script_builders):
+def _warmup_scripts(gateway: str, script_builders: list | None) -> None:
     if not script_builders:
         return
     print("  Warming up Painless scripts ...", end=" ", flush=True)
@@ -154,7 +160,7 @@ def _warmup_scripts(gateway, script_builders):
     print("done.")
 
 
-def _stdin_ready():
+def _stdin_ready() -> bool:
     if sys.platform == "win32":
         import msvcrt
         return msvcrt.kbhit()
@@ -165,18 +171,16 @@ def _stdin_ready():
 # Interactive challenge
 # ---------------------------------------------------------------------------
 
-def run_challenge(gateway, seed_count, max_docs, config, scale=1):
-    """Run the interactive challenge loop.
+def _setup_challenge(
+    gateway: str, seed_count: int, max_docs: int, config, scale: int,
+) -> tuple[DocIdTracker, HealthMonitor, list[str], dict[str, Stats],
+           dict[str, threading.Event], dict[str, list[threading.Thread]]]:
+    """Create index, seed data, and build worker threads.
 
-    *config* is a module exposing: INDEX, APP_NAME, CULPRIT, TASK_CONFIGS,
-    SCRIPT_BUILDERS, DESCRIPTION, HINT, CULPRIT_EXPLANATION, MISS_EXPLANATION.
-    Optional: MAPPING (overrides LOADTEST_MAPPING), SEED_DOC_FN (overrides rand_doc),
-    MAX_DOCS (overrides CLI --max-docs).
+    Returns tracker, monitor, task_names, stats, stops, threads.
     """
     index = config.INDEX
-    culprit = config.CULPRIT
     task_configs = config.TASK_CONFIGS
-
     max_docs = getattr(config, "MAX_DOCS", None) or max_docs
     tracker = DocIdTracker(max_docs=max_docs)
     monitor = HealthMonitor(gateway)
@@ -201,7 +205,6 @@ def run_challenge(gateway, seed_count, max_docs, config, scale=1):
     stats = {n: Stats() for n in task_names}
     stops = {n: threading.Event() for n in task_names}
     threads: dict[str, list[threading.Thread]] = {}
-    n_tasks = len(task_configs)
 
     total_w = 0
     for name, workers, think_ms, op_defs in task_configs:
@@ -215,13 +218,26 @@ def run_challenge(gateway, seed_count, max_docs, config, scale=1):
         threads[name] = ts
         total_w += scaled_workers
 
-    print(f"\n  Starting {n_tasks} services ({total_w} workers) "
+    print(f"\n  Starting {len(task_configs)} services ({total_w} workers) "
           f"under app '{config.APP_NAME}' ...")
     for name, workers, _, _ in task_configs:
         print(f"    {name:<25} {workers * scale} workers")
+
+    return tracker, monitor, task_names, stats, stops, threads
+
+
+def _run_interactive_loop(
+    task_names: list[str], stats: dict[str, Stats],
+    stops: dict[str, threading.Event],
+    threads: dict[str, list[threading.Thread]],
+    tracker: DocIdTracker, monitor: HealthMonitor, culprit: str,
+    hint: str | None,
+) -> tuple[set[str], list[str], bool, float]:
+    """Run the interactive input loop. Returns stopped, guesses, found, start_time."""
+    n_tasks = len(task_names)
     print(f"\n  Something is killing your cluster. Find the bad service.")
-    if config.HINT:
-        print(f"  {config.HINT}")
+    if hint:
+        print(f"  {hint}")
     print(f"  Commands: <service-name> to stop | status | quit")
     print(f"  Runs until you type 'quit' or press Ctrl+C\n")
 
@@ -234,6 +250,7 @@ def run_challenge(gateway, seed_count, max_docs, config, scale=1):
     guesses: list[str] = []
     found = False
     start_time = time.time()
+    task_name_set = set(task_names)
 
     try:
         while True:
@@ -259,34 +276,68 @@ def run_challenge(gateway, seed_count, max_docs, config, scale=1):
                 print("\n  Quitting...")
                 break
             elif line == "status":
-                print()
-                for name in task_names:
-                    state = "STOPPED" if name in stopped else "running"
-                    print(f"    {name:<25} [{state}]")
-                print(f"  ES cpu: {monitor.cpu_pct}%  "
-                      f"heap: {monitor.heap_pct}%")
-                print()
-            elif line in set(task_names):
-                if line in stopped:
-                    print(f"\n  '{line}' already stopped.\n")
-                else:
-                    stops[line].set()
-                    for t in threads[line]:
-                        t.join(timeout=5)
-                    stopped.add(line)
-                    if line == culprit:
-                        found = True
-                        print(f"\n  Stopped '{line}'. "
-                              f"Watch the CPU — did it drop?\n")
-                    else:
-                        guesses.append(line)
-                        print(f"\n  Stopped '{line}'. "
-                              f"CPU unchanged? Try another.\n")
+                _print_status(task_names, stopped, monitor)
+            elif line in task_name_set:
+                found = _handle_stop_command(
+                    line, culprit, stops, threads, stopped, guesses, found)
             elif line:
                 print(f"\n  Unknown: '{line}'.")
                 print(f"  Services: {', '.join(task_names)}\n")
     except KeyboardInterrupt:
         print("\n\n  Interrupted.")
+
+    return stopped, guesses, found, start_time
+
+
+def _print_status(
+    task_names: list[str], stopped: set[str], monitor: HealthMonitor,
+) -> None:
+    print()
+    for name in task_names:
+        state = "STOPPED" if name in stopped else "running"
+        print(f"    {name:<25} [{state}]")
+    print(f"  ES cpu: {monitor.cpu_pct}%  heap: {monitor.heap_pct}%")
+    print()
+
+
+def _handle_stop_command(
+    name: str, culprit: str,
+    stops: dict[str, threading.Event],
+    threads: dict[str, list[threading.Thread]],
+    stopped: set[str], guesses: list[str], found: bool,
+) -> bool:
+    """Stop a service and check if it's the culprit. Returns updated `found`."""
+    if name in stopped:
+        print(f"\n  '{name}' already stopped.\n")
+        return found
+    stops[name].set()
+    for t in threads[name]:
+        t.join(timeout=5)
+    stopped.add(name)
+    if name == culprit:
+        print(f"\n  Stopped '{name}'. Watch the CPU — did it drop?\n")
+        return True
+    guesses.append(name)
+    print(f"\n  Stopped '{name}'. CPU unchanged? Try another.\n")
+    return found
+
+
+def run_challenge(
+    gateway: str, seed_count: int, max_docs: int, config, scale: int = 1,
+) -> None:
+    """Run the interactive challenge loop.
+
+    *config* is a module exposing: INDEX, APP_NAME, CULPRIT, TASK_CONFIGS,
+    SCRIPT_BUILDERS, DESCRIPTION, HINT, CULPRIT_EXPLANATION, MISS_EXPLANATION.
+    Optional: MAPPING (overrides LOADTEST_MAPPING), SEED_DOC_FN (overrides rand_doc),
+    MAX_DOCS (overrides CLI --max-docs).
+    """
+    tracker, monitor, task_names, stats, stops, threads = _setup_challenge(
+        gateway, seed_count, max_docs, config, scale)
+
+    stopped, guesses, found, start_time = _run_interactive_loop(
+        task_names, stats, stops, threads, tracker, monitor,
+        config.CULPRIT, config.HINT)
 
     monitor.stop()
     for e in stops.values():
@@ -296,17 +347,20 @@ def run_challenge(gateway, seed_count, max_docs, config, scale=1):
             t.join(timeout=5)
 
     _print_summary(task_names, stats, stopped, guesses, found,
-                   start_time, culprit,
+                   start_time, config.CULPRIT,
                    config.CULPRIT_EXPLANATION, config.MISS_EXPLANATION)
 
-    print(f"\n  Cleaning up '{index}' ...", end=" ", flush=True)
-    s, _ = http_request(gateway, "DELETE", f"/{index}")
+    print(f"\n  Cleaning up '{config.INDEX}' ...", end=" ", flush=True)
+    s, _ = http_request(gateway, "DELETE", f"/{config.INDEX}")
     print(f"done ({s})\n")
 
 
-def _print_summary(task_names, stats, stopped, guesses, found,
-                   start_time, culprit, culprit_explanation,
-                   miss_explanation):
+def _print_summary(
+    task_names: list[str], stats: dict[str, Stats],
+    stopped: set[str], guesses: list[str], found: bool,
+    start_time: float, culprit: str,
+    culprit_explanation: str, miss_explanation: str,
+) -> None:
     print(f"\n{'='*60}\n  Challenge Results\n{'='*60}")
     for name in task_names:
         st = stats[name]
@@ -335,7 +389,7 @@ def _print_summary(task_names, stats, stopped, guesses, found,
 # CLI entry point
 # ---------------------------------------------------------------------------
 
-def main_cli(config):
+def main_cli(config) -> None:
     """Standard CLI for a trivial load challenge."""
     parser = argparse.ArgumentParser(description=config.DESCRIPTION)
     parser.add_argument("--gateway", default=_DEFAULT_GATEWAY,

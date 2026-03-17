@@ -51,8 +51,8 @@ This system wraps any Elasticsearch deployment with a transparent observability 
 All extraction, parsing, and analysis happens downstream in Python.
 
 **How the async notification works:**
-- `body_filter_by_lua_block` accumulates response chunks using `table.insert` + `table.concat` (O(n) instead of O(n²) string concatenation) into `ngx.ctx.resp_body`, **capped at 64KB** — once accumulated size reaches 64KB, further chunks are counted but not stored. True `response_size_bytes` is tracked via a separate counter so the metric remains accurate regardless of the cap.
-- `log_by_lua_block` fires `ngx.timer.at(0, notify_pipeline, ctx)` — this runs after the response is already sent to the client. Request bodies are also capped at 64KB before being passed to the timer. Context references (`resp_chunks`, `resp_body`) are explicitly nilled to free memory immediately rather than waiting for request GC.
+- `body_filter_by_lua_block` accumulates response chunks using `table.insert` + `table.concat` (O(n) instead of O(n²) string concatenation) into `ngx.ctx.resp_body`. True `response_size_bytes` is tracked via a separate counter (`ngx.ctx.resp_size`) so the metric is always accurate.
+- `log_by_lua_block` fires `ngx.timer.at(0, notify_pipeline, ctx)` — this runs after the response is already sent to the client. Context references (`resp_chunks`, `resp_body`) are explicitly nilled to free memory immediately rather than waiting for request GC.
 - `notify_pipeline` uses `lua-resty-http` to POST JSON to the pipeline (URL configured via `PIPELINE_URL` env var)
 - The entire call is wrapped in `pcall` — any error is silently dropped
 - `resty.http` and `cjson` modules are loaded lazily inside the timer callback (cosocket API is unavailable in `init_worker_by_lua_block`)
@@ -102,11 +102,11 @@ All extraction, parsing, and analysis happens downstream in Python.
 | `path` | `ngx.var.uri` |
 | `headers` | `ngx.req.get_headers()` serialized as-is |
 | `request_body` | `ngx.req.get_body_data()` |
-| `response_body` | accumulated in `body_filter_by_lua_block` (capped at 64KB) |
+| `response_body` | accumulated in `body_filter_by_lua_block` |
 | `response_status` | `ngx.status` |
 | `gateway_took_ms` | `upstream_response_time * 1000` — full round-trip as measured by Nginx (network + ES queue + execution) |
 | `request_size_bytes` | `$content_length` |
-| `response_size_bytes` | `ngx.ctx.resp_size` (true byte count, unaffected by 64KB body cap) |
+| `response_size_bytes` | `ngx.ctx.resp_size` (true byte count) |
 | `client_host` | `ngx.var.remote_addr` |
 
 **Drop behavior:**
@@ -273,7 +273,7 @@ Why multiplicative: expensive features genuinely compound (wildcard inside neste
 
 | Field | Logic |
 |-------|-------|
-| `response.es_took_ms` | `response_body.took` — ES's own cluster-side execution time in ms (0 if absent) |
+| `response.es_took_ms` | `response_body.took` — ES's own cluster-side execution time in ms (0 if absent). **Nanosecond workaround (ES 8.13–8.15):** a known Elasticsearch bug causes the `took` field in `_bulk` responses to sometimes be reported in nanoseconds instead of milliseconds. The analyzer detects this by comparing `es_took_ms` against `gateway_took_ms` — if the ratio exceeds 1000× (impossible for legitimate values since ES time is a strict subset of gateway round-trip), the value is divided by 1,000,000 to convert back to milliseconds. This guard only applies to `_bulk` operations. |
 | `response.hits` | `response_body.hits.total.value` (0 if absent) |
 | `response.shards_total` | `response_body._shards.total` (0 if absent) |
 | `response.docs_affected` | bulk: `len(items)` / update_by_query: `updated` / delete_by_query: `deleted` / else: 0 |

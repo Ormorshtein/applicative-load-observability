@@ -30,7 +30,9 @@ from stress import (
     evaluate_cost_indicators,
 )
 
-_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%S.000Z"
+def _utc_timestamp() -> str:
+    now = datetime.now(timezone.utc)
+    return now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"
 _STRESS_PRECISION = 4
 
 
@@ -145,6 +147,14 @@ def build_record(raw: RawFields) -> dict:
     size                 = parse_size(raw.request_body)
     es_took_ms           = parse_es_took_ms(raw.response_body)
 
+    # ES 8.13–8.15 bulk bug: took sometimes reported in nanoseconds.
+    # es_took can never exceed gateway_took, so if it's 1000x+ larger
+    # the value is in the wrong unit and needs conversion.
+    if (operation == "_bulk"
+            and es_took_ms > raw.gateway_took_ms > 0
+            and es_took_ms / raw.gateway_took_ms > 1000):
+        es_took_ms /= 1_000_000
+
     if operation in _QUERY_OPS:
         clause_counts = count_clauses(raw.request_body)
         cost_indicators, stress_multiplier = evaluate_cost_indicators(clause_counts)
@@ -175,7 +185,7 @@ def build_record(raw: RawFields) -> dict:
         request["size"] = size
 
     return {
-        "@timestamp": datetime.now(timezone.utc).strftime(_TIMESTAMP_FORMAT),
+        "@timestamp": _utc_timestamp(),
         "identity": {
             "username":             username,
             "applicative_provider": applicative_provider,
@@ -205,7 +215,7 @@ def build_record(raw: RawFields) -> dict:
 
 def partial_error_record(payload: dict, exc: Exception) -> dict:
     return {
-        "@timestamp": datetime.now(timezone.utc).strftime(_TIMESTAMP_FORMAT),
+        "@timestamp": _utc_timestamp(),
         "error":     str(exc),
         "path":      payload.get("path", ""),
         "method":    payload.get("method", ""),

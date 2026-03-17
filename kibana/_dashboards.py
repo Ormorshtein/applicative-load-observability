@@ -1,7 +1,7 @@
 """Dashboard assembly: import, rebuild, and export Kibana dashboards."""
 
 import json
-import os
+from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -18,6 +18,7 @@ from _visualizations import (
     mk_markdown,
     mk_metric,
     mk_pie,
+    mk_pie_filters,
     mk_ts,
     mk_ts_multi,
     mk_ts_response,
@@ -27,9 +28,9 @@ INDEX_PATTERN = "logs-alo.*-*"
 DATA_VIEW_ID = "alo-data-view"
 DASHBOARD_ID = "alo-dashboard"
 CI_DASHBOARD_ID = "alo-ci-dashboard"
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-NDJSON_PATH = os.path.join(SCRIPT_DIR, "dashboard.ndjson")
-CI_NDJSON_PATH = os.path.join(SCRIPT_DIR, "dashboard-cost-indicators.ndjson")
+_SCRIPT_DIR = Path(__file__).resolve().parent
+NDJSON_PATH = str(_SCRIPT_DIR / "dashboard.ndjson")
+CI_NDJSON_PATH = str(_SCRIPT_DIR / "dashboard-cost-indicators.ndjson")
 
 DV_REF = [{"type": "index-pattern", "id": DATA_VIEW_ID,
            "name": "indexpattern-datasource-layer-layer1"}]
@@ -38,14 +39,13 @@ DV_REF = [{"type": "index-pattern", "id": DATA_VIEW_ID,
 # ── import mode ──────────────────────────────────────────────────────────────
 
 def import_ndjson(cfg: StackConfig, path: str, label: str) -> bool:
-    if not os.path.exists(path):
+    ndjson_file = Path(path)
+    if not ndjson_file.exists():
         print(f"  ERROR: {path} not found. Run with --rebuild first.")
         return False
 
-    with open(path, "rb") as f:
-        ndjson_data = f.read()
-
-    filename = os.path.basename(path)
+    ndjson_data = ndjson_file.read_bytes()
+    filename = ndjson_file.name
     boundary = "----KibanaDashboardImport"
     body = (
         f"--{boundary}\r\n"
@@ -131,8 +131,7 @@ def build_dashboard(cfg: StackConfig, dashboard_id: str, title: str,
 
 # ── rebuild mode ─────────────────────────────────────────────────────────────
 
-def do_rebuild(cfg: StackConfig) -> bool:
-    # Data view
+def _create_data_view(cfg: StackConfig) -> None:
     kibana_request(cfg, "DELETE", f"/api/data_views/data_view/{DATA_VIEW_ID}")
     s, _ = kibana_request(cfg, "POST", "/api/data_views/data_view", {
         "data_view": {"id": DATA_VIEW_ID, "title": INDEX_PATTERN,
@@ -141,54 +140,66 @@ def do_rebuild(cfg: StackConfig) -> bool:
     })
     print(f"  {'OK' if s in (200,201) else 'FAIL'}: Data view")
 
-    # ── Main dashboard visualizations ──
-    all_vis = []
 
-    # --- Index 0: Cheat sheet markdown panel (item 4) ---
-    all_vis.append(mk_markdown(
+def _upsert_visualizations(
+    cfg: StackConfig,
+    vis_specs: list[tuple[str, dict]],
+    all_lens: bool = True,
+) -> list[str]:
+    vis_ids = []
+    for vid, attrs in vis_specs:
+        if all_lens:
+            obj_type, ref = "lens", DV_REF
+        else:
+            is_markdown = "visState" in attrs
+            obj_type = "visualization" if is_markdown else "lens"
+            ref = [] if is_markdown else DV_REF
+        ok = upsert(cfg, obj_type, vid, attrs, ref)
+        print(f"  {'OK' if ok else 'FAIL'}: {attrs['title']}")
+        vis_ids.append(vid)
+    return vis_ids
+
+
+def _build_main_visualizations() -> list[tuple[str, dict]]:
+    vis: list[tuple[str, dict]] = []
+
+    vis.append(mk_markdown(
         "alo-cheat-sheet", "Dashboard Guide",
         CHEAT_SHEET_MARKDOWN,
         description="Quick reference guide for examining this dashboard."))
 
-    # --- Index 1: Total current stress score (item 5) ---
-    all_vis.append(mk_metric(
+    vis.append(mk_metric(
         "alo-total-stress", "Total Stress Score",
         "stress.score", "sum",
         description="Sum of all stress scores in the selected time period."))
 
-    # --- Pie charts (indices 2-6): stress share by each dimension ---
-    # Item 2: pie charts include request count in tooltip via extra metric
-    # Item 3: each panel has a hover description
     for field, label in SECTIONS:
         if label == "Cost Indicator":
-            # Overall stress trend replaces the Cost Indicator pie
-            # (CI breakdown is covered by the dedicated CI dashboard)
-            all_vis.append(mk_ts_multi(
-                "alo-stress-trend-overall", "Stress Trend (Overall)", [
-                    ("avg_stress", "Avg Stress", "stress.score", "average"),
-                    ("count", "Requests", "", "count"),
-                ], "line"))
+            vis.append(mk_pie_filters(
+                "alo-pie-flagged-ratio", "Flagged vs Unflagged Requests", [
+                    ("Flagged",   "stress.cost_indicator_count >= 1"),
+                    ("Unflagged", "stress.cost_indicator_count < 1"),
+                ],
+                description="Proportion of requests with at least one cost indicator vs none."))
             continue
         size = 10 if field == "request.template" else 8
         slug = label.lower().replace(" ", "-")
-        all_vis.append(mk_pie(
+        vis.append(mk_pie(
             f"alo-pie-{slug}",
             f"Stress by {label} (Selected Period)",
             field, size=size,
             description=PANEL_DESCRIPTIONS["pie"][label]))
 
-    # --- Time series (indices 7-11): stress over time, same dimension order ---
     for field, label in SECTIONS:
         size = 10 if field == "request.template" else 5
         slug = label.lower().replace(" ", "-")
-        all_vis.append(mk_ts(
+        vis.append(mk_ts(
             f"alo-ts-{slug}",
             f"Stress Over Time by {label}",
             field, size=size,
             description=PANEL_DESCRIPTIONS["ts"][label]))
 
-    # --- Table (index 12): top 10 templates by stress score ---
-    all_vis.append(mk_datatable(
+    vis.append(mk_datatable(
         "alo-table-top-templates", "Top 10 Templates by Stress Score",
         "request.template", "Template", [
             ("sum_stress",       "Sum Stress",              "stress.score",                "sum"),
@@ -199,7 +210,16 @@ def do_rebuild(cfg: StackConfig) -> bool:
             ("requests",         "Requests",                None,                           "count"),
         ], size=10))
 
-    # --- Response time panels (indices 13-18) ---
+    vis.append(mk_datatable(
+        "alo-table-top-indicators", "Top 10 Cost Indicators by Stress Score",
+        "stress.cost_indicator_names", "Cost Indicator", [
+            ("sum_stress",       "Sum Stress",              "stress.score",                "sum"),
+            ("avg_stress",       "Avg Stress",              "stress.score",                "average"),
+            ("avg_es_latency",   "Avg ES Latency (ms)",     "response.es_took_ms",         "average"),
+            ("avg_gw_latency",   "Avg Gateway Latency (ms)","response.gateway_took_ms",    "average"),
+            ("requests",         "Requests",                None,                           "count"),
+        ], size=10))
+
     response_breakdowns = [
         ("stress.cost_indicator_names", "Cost Indicator"),
         ("request.operation",           "Operation"),
@@ -207,7 +227,7 @@ def do_rebuild(cfg: StackConfig) -> bool:
     ]
     for bd_field, bd_label in response_breakdowns:
         slug = bd_label.lower().replace(" ", "-")
-        all_vis.append(mk_ts_response(
+        vis.append(mk_ts_response(
             f"alo-resp-es-{slug}",
             f"Avg ES Response Time by {bd_label}",
             bd_field, "response.es_took_ms", "Avg ES Latency (ms)",
@@ -215,42 +235,30 @@ def do_rebuild(cfg: StackConfig) -> bool:
 
     for bd_field, bd_label in response_breakdowns:
         slug = bd_label.lower().replace(" ", "-")
-        all_vis.append(mk_ts_response(
+        vis.append(mk_ts_response(
             f"alo-resp-gw-{slug}",
             f"Avg Gateway Response Time by {bd_label}",
             bd_field, "response.gateway_took_ms", "Avg Gateway Latency (ms)",
             description=PANEL_DESCRIPTIONS["resp_gw"][bd_label]))
 
-    # --- Sanity check tables (indices 19-20) ---
-    all_vis.append(mk_datatable(
+    vis.append(mk_datatable(
         "alo-sanity-recurring", "Top 10 Most Recurring Templates",
         "request.template", "Template", [
             ("requests", "Requests", None, "count"),
         ], size=10))
 
-    all_vis.append(mk_datatable(
+    vis.append(mk_datatable(
         "alo-sanity-cost-indicators", "Top 10 Templates with Most Cost Indicators",
         "request.template", "Template", [
             ("avg_ci",   "Avg Cost Indicators", "stress.cost_indicator_count", "average"),
             ("requests", "Requests",            None,                          "count"),
         ], size=10))
 
-    vis_ids = []
-    for vid, attrs in all_vis:
-        is_markdown = "visState" in attrs
-        obj_type = "visualization" if is_markdown else "lens"
-        ref = [] if is_markdown else DV_REF
-        ok = upsert(cfg, obj_type, vid, attrs, ref)
-        print(f"  {'OK' if ok else 'FAIL'}: {attrs['title']}")
-        vis_ids.append(vid)
+    return vis
 
-    ok1 = build_dashboard(cfg, DASHBOARD_ID, "Applicative Load Observability",
-                          "Stress analysis by application, target, operation, and template, with overall trend.",
-                          vis_ids, layout_main)
 
-    # ── Cost indicators dashboard visualizations ──
-    print()
-    ci_vis = [
+def _build_ci_visualizations() -> list[tuple[str, dict]]:
+    return [
         mk_ci_metric("alo-ci-kpi-flagged",   "Flagged Requests",      "stress.cost_indicator_count", "count",
                       "stress.cost_indicator_count >= 1"),
         mk_ci_metric("alo-ci-kpi-avg-flags",  "Avg Indicator Count",  "stress.cost_indicator_count", "average"),
@@ -289,17 +297,23 @@ def do_rebuild(cfg: StackConfig) -> bool:
                           "Avg Indicator Count", 8),
     ]
 
-    ci_ids = []
-    for vid, attrs in ci_vis:
-        ok = upsert(cfg, "lens", vid, attrs, DV_REF)
-        print(f"  {'OK' if ok else 'FAIL'}: {attrs['title']}")
-        ci_ids.append(vid)
 
+def do_rebuild(cfg: StackConfig) -> bool:
+    _create_data_view(cfg)
+
+    main_vis = _build_main_visualizations()
+    vis_ids = _upsert_visualizations(cfg, main_vis, all_lens=False)
+    ok1 = build_dashboard(cfg, DASHBOARD_ID, "Applicative Load Observability",
+                          "Stress analysis by application, target, operation, and template, with overall trend.",
+                          vis_ids, layout_main)
+
+    print()
+    ci_vis = _build_ci_visualizations()
+    ci_ids = _upsert_visualizations(cfg, ci_vis)
     ok2 = build_dashboard(cfg, CI_DASHBOARD_ID, "Cost Indicators & Query Patterns",
                           "Cost indicators, clause counts, and query pattern analysis.",
                           ci_ids, layout_cost_indicators)
 
-    # Export both dashboards
     print()
     export_dashboard(cfg, DASHBOARD_ID, NDJSON_PATH)
     export_dashboard(cfg, CI_DASHBOARD_ID, CI_NDJSON_PATH)

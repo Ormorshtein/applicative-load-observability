@@ -76,7 +76,7 @@ class TestAnalyzeHappyPath:
         for f in ["es_took_ms", "gateway_took_ms", "hits", "shards_total", "docs_affected", "size_bytes"]:
             assert f in rec["response"], f"Missing response.{f}"
         # Nested stress
-        for f in ["score", "multiplier", "cost_indicator_count", "cost_indicator_names"]:
+        for f in ["score", "multiplier", "cost_indicator_count", "cost_indicator_names", "bonuses"]:
             assert f in rec["stress"], f"Missing stress.{f}"
 
     def test_search_record_values(self):

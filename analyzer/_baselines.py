@@ -11,10 +11,10 @@ ELASTICSEARCH_URL, ES_USERNAME, ES_PASSWORD, ES_CA_CERT, ES_INSECURE.
 
 import json
 import logging
+import math
 import os
 import ssl
 import time
-import urllib.error
 import urllib.request
 from base64 import b64encode
 
@@ -89,7 +89,7 @@ def _fetch_p50() -> dict[str, float]:
     result: dict[str, float] = {}
     for key, agg_name in (("took_ms", "took_p50"), ("shards_total", "shards_p50")):
         val = aggs.get(agg_name, {}).get("values", {}).get("50.0")
-        if val is not None and val == val and val > 0:
+        if val is not None and not math.isnan(val) and val > 0:
             result[key] = val
     return result
 
@@ -111,7 +111,7 @@ def _refresh() -> None:
                 {k: _cache[k] for k in _DYNAMIC_KEYS},
             )
         except Exception:
-            logger.debug("ES unreachable for dynamic baselines, keeping current values")
+            logger.warning("ES unreachable for dynamic baselines, keeping current values", exc_info=True)
 
     _cache_ts = now
 

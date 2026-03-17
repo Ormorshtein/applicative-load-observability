@@ -147,7 +147,10 @@ def scrub_bulk_template(raw_body: str) -> tuple[str, str]:
 # ---------------------------------------------------------------------------
 
 def parse_hits(response_body: dict) -> int:
-    return response_body.get("hits", {}).get("total", {}).get("value", 0)
+    total = (response_body.get("hits") or {}).get("total")
+    if isinstance(total, dict):
+        return total.get("value", 0) or 0
+    return 0
 
 
 def parse_shards_total(response_body: dict) -> int:

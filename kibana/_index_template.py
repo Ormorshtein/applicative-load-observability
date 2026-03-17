@@ -89,6 +89,7 @@ COMPONENT_TEMPLATE: dict = {
                         "multiplier":           {"type": "float"},
                         "cost_indicator_count": {"type": "integer"},
                         "cost_indicator_names": {"type": "keyword"},
+                        "bonuses":              {"type": "object", "enabled": False},
                     }
                 },
                 # Infrastructure

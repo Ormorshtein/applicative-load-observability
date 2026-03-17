@@ -157,6 +157,63 @@ def mk_pie(vis_id: str, title: str, field: str,
     return vis_id, attrs
 
 
+def mk_pie_filters(
+    vis_id: str, title: str,
+    filters: list[tuple[str, str]],
+    description: str = "",
+) -> tuple[str, dict]:
+    """Pie chart with explicit KQL filters as slices.
+
+    *filters* is a list of (label, kql_query) tuples — one slice per filter.
+    Metric is sum of stress.score.
+    """
+    columns = {}
+    column_order = []
+    for i, (label, kql) in enumerate(filters):
+        col_id = f"filter_{i}"
+        columns[col_id] = {
+            "label": label, "dataType": "string",
+            "operationType": "filters", "isBucketed": True,
+            "params": {"filters": [{"label": label, "input": {"query": kql, "language": "kuery"}}]},
+        } if i == 0 else None
+
+    # Lens filters column: single column with all filters
+    filter_params = [{"label": label, "input": {"query": kql, "language": "kuery"}}
+                     for label, kql in filters]
+    columns = {
+        "breakdown": {
+            "label": "Segment", "dataType": "string",
+            "operationType": "filters", "isBucketed": True,
+            "params": {"filters": filter_params},
+        },
+        "metric": {
+            "label": "Total Stress", "dataType": "number",
+            "operationType": "sum", "sourceField": "stress.score", "isBucketed": False,
+        },
+    }
+    attrs = {
+        "title": title, "visualizationType": "lnsPie",
+        "state": {
+            "visualization": {
+                "shape": "donut",
+                "layers": [{"layerId": "layer1", "layerType": "data",
+                            "primaryGroups": ["breakdown"],
+                            "metrics": ["metric"],
+                            "numberDisplay": "percent", "categoryDisplay": "default",
+                            "legendDisplay": "default", "legendPosition": "right"}],
+            },
+            "datasourceStates": {"formBased": {"layers": {"layer1": {
+                "columns": columns,
+                "columnOrder": ["breakdown", "metric"], "incompleteColumns": {},
+            }}}},
+            "query": {"query": "", "language": "kuery"}, "filters": [],
+        },
+    }
+    if description:
+        attrs["description"] = description
+    return vis_id, attrs
+
+
 def mk_ts(vis_id: str, title: str, field: str,
            metric_field: str = "stress.score", metric_label: str = "Avg Stress Score",
            metric_op: str = "average", size: int = 5,
@@ -369,8 +426,9 @@ def layout_main(vis_ids: list[str], panels: list[dict],
     Row 1 (y=10, h=10):  5 pie charts — Application, Target, Operation, Cost Indicator, Template
     Row 2-6 (h=12 each): 5 stress-over-time charts, same order as pies
     Row 7 (h=14):         Top 10 Templates by Stress Score table
-    Row 8-9 (h=12 each): Avg ES/Gateway Response Time — by Cost Indicator, Operation, Template
-    Row 10 (h=12):        Sanity check tables — most recurring templates, most cost indicators
+    Row 8 (h=14):         Top 10 Cost Indicators by Stress Score table
+    Row 9-10 (h=12 each): Avg ES/Gateway Response Time — by Cost Indicator, Operation, Template
+    Row 11 (h=12):        Sanity check tables — most recurring templates, most cost indicators
     """
     y = 0
 
@@ -396,15 +454,19 @@ def layout_main(vis_ids: list[str], panels: list[dict],
     _add_panel(panels, refs, vis_ids[12], 0, y, 48, 14)
     y += 14
 
-    # --- Rows 8-9: Response time panels (indices 13-18), 3 per row ---
-    for row_start in (13, 16):
+    # --- Row 8: Top Cost Indicators by Stress Score table (index 13) ---
+    _add_panel(panels, refs, vis_ids[13], 0, y, 48, 14)
+    y += 14
+
+    # --- Rows 9-10: Response time panels (indices 14-19), 3 per row ---
+    for row_start in (14, 17):
         for j in range(3):
             _add_panel(panels, refs, vis_ids[row_start + j], j * 16, y, 16, 12)
         y += 12
 
-    # --- Row 10: 2 sanity check tables (indices 19-20) ---
+    # --- Row 11: 2 sanity check tables (indices 20-21) ---
     for j in range(2):
-        _add_panel(panels, refs, vis_ids[19 + j], j * 24, y, 24, 12)
+        _add_panel(panels, refs, vis_ids[20 + j], j * 24, y, 24, 12)
 
 
 def layout_cost_indicators(vis_ids: list[str], panels: list[dict],
