@@ -164,6 +164,17 @@ Kibana URL for dashboard setup job.
 {{- end }}
 
 {{/*
+Grafana URL — either external or internal service.
+*/}}
+{{- define "alo.grafanaUrl" -}}
+{{- if .Values.grafana.external.enabled }}
+{{- required "grafana.external.url is required when grafana.external.enabled=true" .Values.grafana.external.url }}
+{{- else }}
+{{- printf "http://%s-grafana:%d" (include "alo.fullname" .) (.Values.grafana.service.port | int) }}
+{{- end }}
+{{- end }}
+
+{{/*
 Logstash URL — either external or internal service.
 */}}
 {{- define "alo.logstashUrl" -}}

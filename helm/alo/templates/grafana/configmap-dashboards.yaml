@@ -1,0 +1,12 @@
+{{- if and .Values.grafana.enabled (not .Values.grafana.external.enabled) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "alo.fullname" . }}-grafana-dashboards
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "grafana") | nindent 4 }}
+binaryData:
+  alo-main.json: {{ .Files.Get "files/grafana-alo-main.json" | b64enc }}
+  alo-cost-indicators.json: {{ .Files.Get "files/grafana-alo-cost-indicators.json" | b64enc }}
+{{- end }}

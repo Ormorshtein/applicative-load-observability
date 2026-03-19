@@ -1,0 +1,28 @@
+{{- if and .Values.grafana.enabled (not .Values.grafana.external.enabled) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "alo.fullname" . }}-grafana-datasource
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "grafana") | nindent 4 }}
+data:
+  elasticsearch.yml: |
+    apiVersion: 1
+    datasources:
+      - name: Elasticsearch (ALO)
+        type: elasticsearch
+        uid: alo-elasticsearch
+        access: proxy
+        url: {{ include "alo.elasticsearchUrl" . }}
+        database: "logs-alo.*-*"
+        isDefault: true
+        jsonData:
+          esVersion: "8.0.0"
+          timeField: "@timestamp"
+          logMessageField: ""
+          logLevelField: ""
+          maxConcurrentShardRequests: 5
+          interval: ""
+        editable: true
+{{- end }}

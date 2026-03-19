@@ -310,6 +310,49 @@ kibana:
   podAnnotations: {}
   extraEnv: []
 
+# ── Grafana ────────────────────────────────────────────────────────────────
+grafana:
+  enabled: false
+  # Set external.enabled=true to push dashboards to an existing Grafana via API
+  # (no Grafana pod deployed, only setup job runs).
+  external:
+    enabled: false
+    url: ""
+    auth:
+      username: admin
+      password: admin
+      existingSecret: ""
+
+  image:
+    repository: grafana/grafana
+    tag: "11.0.0"
+    pullPolicy: IfNotPresent
+  replicas: 1
+  adminPassword: admin
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  service:
+    type: ClusterIP
+    port: 3000
+  # Setup job — pushes datasource + dashboards via Grafana API.
+  # Runs automatically for external Grafana; also runs for internal Grafana
+  # as a post-install hook to ensure dashboards are imported via API too.
+  setup:
+    enabled: true
+    image:
+      repository: oracle1012/applicative-load-observability
+      tag: grafana-setup-1.12-arm
+      pullPolicy: IfNotPresent
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+
 # ── Ingress (Kubernetes) ────────────────────────────────────────────────────
 ingress:
   enabled: false
