@@ -155,6 +155,88 @@ python grafana/setup.py
 # Both can be run independently or together
 ```
 
+## Using an Existing Grafana Instance
+
+If you already have a Grafana instance running, you can import the ALO dashboards into it without deploying a new Grafana. There are two approaches depending on whether you also want ALO to create its own datasource or you want to reuse an existing one.
+
+### Option A: Push dashboards + datasource via the setup script
+
+The setup script can push both the datasource and dashboards to your existing Grafana via the HTTP API:
+
+```bash
+python grafana/setup.py \
+  --mode api \
+  --grafana http://your-grafana:3000 \
+  --elasticsearch http://your-elasticsearch:9200 \
+  --username admin \
+  --password <your-grafana-admin-password>
+```
+
+This creates a datasource named **"Elasticsearch (ALO)"** (UID: `alo-elasticsearch`) pointing at the provided Elasticsearch URL with the index pattern `logs-alo.*-*`, then imports both dashboards.
+
+### Option B: Use your own existing datasource
+
+If you already have an Elasticsearch datasource configured in Grafana and want the ALO dashboards to use it instead of creating a new one, you need to update the datasource reference in the dashboard JSON files before importing.
+
+Every panel in the dashboards references the datasource by UID:
+
+```json
+"datasource": { "type": "elasticsearch", "uid": "alo-elasticsearch" }
+```
+
+To point the dashboards at your own datasource:
+
+1. **Find your datasource UID** — go to Grafana > Connections > Data sources, click your Elasticsearch datasource, and copy the UID from the URL or the JSON model (e.g. `my-es-datasource`).
+
+2. **Update the dashboard JSON files** — replace the datasource UID in both files:
+
+   ```bash
+   # Replace the datasource UID in the provisioning JSON files
+   sed -i 's/alo-elasticsearch/YOUR_DATASOURCE_UID/g' \
+     grafana/provisioning/dashboards/alo-main.json \
+     grafana/provisioning/dashboards/alo-cost-indicators.json
+   ```
+
+3. **Update the index pattern** — if your existing datasource uses a different index pattern than `logs-alo.*-*`, no changes are needed in the dashboards themselves (the index pattern is configured on the datasource, not in the panels).
+
+4. **Import the dashboards** — either:
+   - **Via Grafana UI**: Go to Dashboards > Import, paste the JSON content from each file.
+   - **Via the API** (skip datasource creation):
+     ```bash
+     # Import main dashboard
+     curl -X POST http://your-grafana:3000/api/dashboards/db \
+       -H "Content-Type: application/json" \
+       -u admin:<password> \
+       -d "{\"dashboard\": $(cat grafana/provisioning/dashboards/alo-main.json), \"overwrite\": true}"
+
+     # Import cost indicators dashboard
+     curl -X POST http://your-grafana:3000/api/dashboards/db \
+       -H "Content-Type: application/json" \
+       -u admin:<password> \
+       -d "{\"dashboard\": $(cat grafana/provisioning/dashboards/alo-cost-indicators.json), \"overwrite\": true}"
+     ```
+
+### Helm: Existing Grafana
+
+When deploying via Helm, set `grafana.external.enabled=true` to skip deploying a Grafana pod and only run the setup job that pushes dashboards to your existing instance:
+
+```yaml
+grafana:
+  enabled: true
+  external:
+    enabled: true
+    url: "http://your-grafana.namespace.svc:3000"
+    auth:
+      username: admin
+      password: <your-password>
+      # Or reference an existing secret:
+      # existingSecret: grafana-admin-credentials
+```
+
+The setup job will create the `alo-elasticsearch` datasource and import both dashboards via the Grafana API.
+
+> **Note:** If you want the dashboards to use a datasource that already exists in your Grafana, you'll need to build a custom setup image with the updated datasource UID, or manually import the dashboards after editing the JSON files as described in Option B above.
+
 ## Provider Choice
 
 Users choose their dashboard provider by:
