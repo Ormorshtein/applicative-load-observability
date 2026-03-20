@@ -667,15 +667,8 @@
               }
             },
             {
-              "type": "count",
-              "id": "2",
-              "settings": {
-                "alias": "Requests"
-              }
-            },
-            {
               "type": "avg",
-              "id": "3",
+              "id": "2",
               "field": "stress.multiplier",
               "settings": {
                 "alias": "Avg Multiplier"
@@ -683,11 +676,38 @@
             },
             {
               "type": "avg",
-              "id": "4",
+              "id": "3",
               "field": "stress.score",
               "settings": {
                 "alias": "Avg Stress"
               }
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.template",
+              "id": "99",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "B",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
             }
           ],
           "bucketAggs": [

@@ -842,13 +842,33 @@
               "settings": {
                 "alias": "Avg Cost Indicators"
               }
-            },
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.template",
+              "id": "99",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "B",
+          "metrics": [
             {
               "type": "count",
-              "id": "5",
-              "settings": {
-                "alias": "Requests"
-              }
+              "id": "1"
             }
           ],
           "bucketAggs": [
@@ -1625,10 +1645,7 @@
           "metrics": [
             {
               "type": "count",
-              "id": "1",
-              "settings": {
-                "alias": "Requests"
-              }
+              "id": "1"
             }
           ],
           "bucketAggs": [
@@ -1690,13 +1707,33 @@
               "settings": {
                 "alias": "Avg Cost Indicators"
               }
-            },
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.template",
+              "id": "99",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "B",
+          "metrics": [
             {
               "type": "count",
-              "id": "2",
-              "settings": {
-                "alias": "Requests"
-              }
+              "id": "1"
             }
           ],
           "bucketAggs": [
