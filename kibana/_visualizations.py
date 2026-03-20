@@ -454,17 +454,21 @@ def layout_main(vis_ids: list[str], panels: list[dict],
     _add_panel(panels, refs, vis_ids[12], 0, y, 48, 14)
     y += 14
 
-    # --- Row 8: Top Cost Indicators by Stress Score table (index 13) ---
+    # --- Row 8: Sample Request Bodies drilldown (index 22) ---
+    _add_panel(panels, refs, vis_ids[22], 0, y, 48, 16, panel_type="search")
+    y += 16
+
+    # --- Row 9: Top Cost Indicators by Stress Score table (index 13) ---
     _add_panel(panels, refs, vis_ids[13], 0, y, 48, 14)
     y += 14
 
-    # --- Rows 9-10: Response time panels (indices 14-19), 3 per row ---
+    # --- Rows 10-11: Response time panels (indices 14-19), 3 per row ---
     for row_start in (14, 17):
         for j in range(3):
             _add_panel(panels, refs, vis_ids[row_start + j], j * 16, y, 16, 12)
         y += 12
 
-    # --- Row 11: 2 sanity check tables (indices 20-21) ---
+    # --- Row 12: 2 sanity check tables (indices 20-21) ---
     for j in range(2):
         _add_panel(panels, refs, vis_ids[20 + j], j * 24, y, 24, 12)
 

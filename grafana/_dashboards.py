@@ -84,9 +84,11 @@ def _base_panel(title, panel_type, gridpos, targets=None, options=None,
 
 
 def _es_target(query="", metrics=None, bucket_aggs=None, ref_id="A"):
+    var_filter = _build_var_query()
+    full_query = f"{var_filter} AND {query}" if query else var_filter
     target = {
         "datasource": DATASOURCE,
-        "query": query,
+        "query": full_query,
         "refId": ref_id,
         "metrics": metrics or [],
         "bucketAggs": bucket_aggs or [],
@@ -141,14 +143,18 @@ def mk_text(title, content, gridpos):
     return panel
 
 
+_STAT_CALC = {"sum": "sum", "count": "sum", "avg": "mean", "max": "max"}
+
+
 def mk_stat(title, field, operation, gridpos, query=""):
     target = _es_target(
         query=query,
         metrics=[_metric(operation, field)],
-        bucket_aggs=[],
+        bucket_aggs=[_date_histogram(agg_id="2")],
     )
+    calc = _STAT_CALC.get(operation, "lastNotNull")
     return _base_panel(title, "stat", gridpos, targets=[target], options={
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": False},
+        "reduceOptions": {"calcs": [calc], "fields": "", "values": False},
         "colorMode": "value",
         "graphMode": "none",
         "textMode": "auto",
@@ -161,9 +167,29 @@ def mk_pie(title, field, gridpos, size=8):
         bucket_aggs=[_terms_agg(field, size=size)],
     )
     return _base_panel(title, "piechart", gridpos, targets=[target], options={
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": False},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": True},
         "pieType": "donut",
-        "legend": {"displayMode": "list", "placement": "right"},
+        "legend": {"displayMode": "list", "placement": "bottom"},
+        "tooltip": {"mode": "multi"},
+    })
+
+
+def mk_pie_filters(title, filters, gridpos):
+    """Pie chart with Lucene query-filtered slices (one target per slice)."""
+    targets = []
+    for i, (label, query) in enumerate(filters):
+        target = _es_target(
+            query=query,
+            metrics=[_metric("sum", "stress.score")],
+            bucket_aggs=[_date_histogram(agg_id="2")],
+            ref_id=chr(65 + i),
+        )
+        target["alias"] = label
+        targets.append(target)
+    return _base_panel(title, "piechart", gridpos, targets=targets, options={
+        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": False},
+        "pieType": "donut",
+        "legend": {"displayMode": "list", "placement": "bottom"},
         "tooltip": {"mode": "multi"},
     })
 
@@ -179,8 +205,6 @@ def mk_timeseries(title, field, gridpos, metric_field="stress.score",
         ],
     )
     custom = {"drawStyle": series_type, "fillOpacity": fill_opacity}
-    if series_type == "line":
-        custom["fillOpacity"] = 0
     return _base_panel(title, "timeseries", gridpos, targets=[target],
                        options={
                            "legend": {"displayMode": "list", "placement": "right"},
@@ -267,38 +291,54 @@ def mk_bar(title, field, metric_field, metric_op, metric_label, gridpos,
     })
 
 
+def mk_logs(title, gridpos, size=5):
+    """Panel showing raw ES documents (request bodies) as expandable logs."""
+    target = _es_target(
+        metrics=[_metric("logs", metric_id="1",
+                         settings={"limit": str(size)})],
+        bucket_aggs=[],
+    )
+    return _base_panel(title, "logs", gridpos, targets=[target], options={
+        "showTime": True,
+        "showLabels": False,
+        "showCommonLabels": False,
+        "wrapLogMessage": True,
+        "prettifyLogMessage": True,
+        "enableLogDetails": True,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none",
+    })
+
+
 def mk_table(title, bucket_field, bucket_label, metrics_spec, gridpos,
              size=10):
-    field_metrics = [(label, field, op)
-                     for label, field, op in metrics_spec if op != "count"]
-    has_count = any(op == "count" for _, _, op in metrics_spec)
-
     metrics = []
-    for i, (label, field, op) in enumerate(field_metrics):
-        m = _metric(op, field, metric_id=str(i + 1))
-        m["settings"] = {"alias": label}
-        metrics.append(m)
-
-    targets = []
-    if metrics:
-        targets.append(_es_target(
-            metrics=metrics,
-            bucket_aggs=[_terms_agg(bucket_field, agg_id="99", size=size,
-                                    order_by="1")],
-            ref_id="A",
-        ))
-    if has_count:
-        targets.append(_es_target(
-            metrics=[_metric("count", metric_id="1")],
-            bucket_aggs=[_terms_agg(bucket_field, agg_id="99", size=size,
-                                    order_by="1")],
-            ref_id="B" if metrics else "A",
-        ))
-
-    return _base_panel(title, "table", gridpos, targets=targets, options={
-        "showHeader": True,
-        "sortBy": [{"displayName": metrics_spec[0][0], "desc": True}],
-    })
+    overrides = []
+    for i, (label, field, op) in enumerate(metrics_spec):
+        metrics.append(_metric(op, field, metric_id=str(i + 1)))
+    target = _es_target(
+        metrics=metrics,
+        bucket_aggs=[_terms_agg(bucket_field, agg_id="99", size=size,
+                                order_by="1")],
+    )
+    # Build field overrides to rename columns (settings.alias causes 400
+    # on Grafana 11's ES plugin).
+    _GRAFANA_DEFAULT_NAMES = {"sum": "Sum", "avg": "Average", "count": "Count"}
+    for i, (label, field, op) in enumerate(metrics_spec):
+        default = _GRAFANA_DEFAULT_NAMES.get(op, op)
+        if field:
+            default = f"{default} {field}"
+        overrides.append({
+            "matcher": {"id": "byName", "options": default},
+            "properties": [{"id": "displayName", "value": label}],
+        })
+    return _base_panel(title, "table", gridpos, targets=[target],
+                       options={
+                           "showHeader": True,
+                           "sortBy": [{"displayName": metrics_spec[0][0],
+                                       "desc": True}],
+                       },
+                       field_config={"defaults": {}, "overrides": overrides})
 
 
 # ---------------------------------------------------------------------------
@@ -317,23 +357,25 @@ def build_main_dashboard():
                           {"x": 18, "y": y, "w": 6, "h": 8}))
     y += 8
 
-    # Row 1: Pie charts (4 dimensions + overall trend)
-    pie_w = 5
-    for i, (field, label) in enumerate(SECTIONS):
-        if label == "Cost Indicator":
-            panels.append(mk_timeseries_multi(
-                "Stress Trend (Overall)", [
-                    ("Avg Stress", "stress.score", "avg", ""),
-                    ("Requests", None, "count", ""),
-                ], {"x": i * pie_w, "y": y, "w": pie_w, "h": 8},
-                series_type="line"))
-            continue
-        size = 10 if field == "request.template" else 8
-        panels.append(mk_pie(f"Stress by {label}", field,
-                             {"x": i * pie_w, "y": y,
-                              "w": pie_w if i < 4 else 24 - pie_w * 4,
-                              "h": 8}, size=size))
-    y += 8
+    # Row 1: 5 pie charts — 3 on first row, 2 on second row
+    pie_h = 10
+    # First row: Application, Target, Operation
+    for i, (field, label) in enumerate(SECTIONS[:3]):
+        size = 8
+        panels.append(mk_pie(f"Stress by {label} (Selected Period)", field,
+                             {"x": i * 8, "y": y, "w": 8, "h": pie_h},
+                             size=size))
+    y += pie_h
+    # Second row: Flagged/Unflagged + Template
+    panels.append(mk_pie_filters(
+        "Flagged vs Unflagged Requests", [
+            ("Flagged", "stress.cost_indicator_count:[1 TO *]"),
+            ("Unflagged", "NOT stress.cost_indicator_count:[1 TO *]"),
+        ], {"x": 0, "y": y, "w": 12, "h": pie_h}))
+    panels.append(mk_pie("Stress by Template (Selected Period)",
+                         "request.template",
+                         {"x": 12, "y": y, "w": 12, "h": pie_h}, size=10))
+    y += pie_h
 
     # Rows 2-6: Stress over time per dimension
     for field, label in SECTIONS:
@@ -344,10 +386,19 @@ def build_main_dashboard():
             size=size, series_type="line", fill_opacity=20))
         y += 8
 
-    # Row 7: Top 10 Templates table
+    # Row 7: Request volume over time by template (count, no scoring)
+    panels.append(mk_timeseries(
+        "Request Volume Over Time by Template", "request.template",
+        {"x": 0, "y": y, "w": 24, "h": 8},
+        metric_field=None, metric_op="count", size=10,
+        series_type="line", fill_opacity=20))
+    y += 8
+
+    # Row 8: Top 10 Templates table
     panels.append(mk_table(
         "Top 10 Templates by Stress Score", "request.template", "Template", [
             ("Sum Stress", "stress.score", "sum"),
+            ("Avg Stress", "stress.score", "avg"),
             ("Avg ES Latency (ms)", "response.es_took_ms", "avg"),
             ("Avg Gateway Latency (ms)", "response.gateway_took_ms", "avg"),
             ("Avg Cost Indicators", "stress.cost_indicator_count", "avg"),
@@ -355,7 +406,25 @@ def build_main_dashboard():
         ], {"x": 0, "y": y, "w": 24, "h": 8}, size=10))
     y += 8
 
-    # Rows 8-9: Response time panels (3 per row)
+    # Row 8: Sample request bodies (drilldown — select a Template variable above)
+    panels.append(mk_logs(
+        "Sample Request Bodies (select a Template above to drilldown)",
+        {"x": 0, "y": y, "w": 24, "h": 10}, size=10))
+    y += 10
+
+    # Row 9: Top 10 Cost Indicators table
+    panels.append(mk_table(
+        "Top 10 Cost Indicators by Stress Score",
+        "stress.cost_indicator_names", "Cost Indicator", [
+            ("Sum Stress", "stress.score", "sum"),
+            ("Avg Stress", "stress.score", "avg"),
+            ("Avg ES Latency (ms)", "response.es_took_ms", "avg"),
+            ("Avg Gateway Latency (ms)", "response.gateway_took_ms", "avg"),
+            ("Requests", None, "count"),
+        ], {"x": 0, "y": y, "w": 24, "h": 8}, size=10))
+    y += 8
+
+    # Rows 9-10: Response time panels (3 per row)
     response_breakdowns = [
         ("stress.cost_indicator_names", "Cost Indicator"),
         ("request.operation", "Operation"),
@@ -472,7 +541,47 @@ def build_cost_indicators_dashboard():
     )
 
 
+_VARIABLES = [
+    ("application", "Application", "identity.applicative_provider"),
+    ("target", "Target", "request.target"),
+    ("operation", "Operation", "request.operation"),
+    ("username", "Username", "identity.username"),
+    ("cost_indicator", "Cost Indicator", "stress.cost_indicator_names"),
+    ("client_host", "Client Host", "identity.client_host"),
+    ("template", "Template", "request.template"),
+]
+
+
+def _make_query_var(name, label, field):
+    return {
+        "type": "query",
+        "name": name,
+        "label": label,
+        "datasource": DATASOURCE,
+        "query": json.dumps({"find": "terms", "field": field}),
+        "includeAll": True,
+        "allValue": "",
+        "multi": True,
+        "sort": 1,
+        "refresh": 2,
+    }
+
+
+def _build_var_query():
+    """Build a Lucene filter string from the dashboard variables."""
+    parts = []
+    for name, _, field in _VARIABLES:
+        parts.append(f'{field}:${{{name}}}')
+    return " AND ".join(parts)
+
+
 def _wrap_dashboard(uid, title, description, panels):
+    template_vars = [_make_query_var(n, l, f) for n, l, f in _VARIABLES]
+    template_vars.append({
+        "type": "adhoc",
+        "name": "Filters",
+        "datasource": DATASOURCE,
+    })
     return {
         "uid": uid,
         "title": title,
@@ -484,7 +593,7 @@ def _wrap_dashboard(uid, title, description, panels):
         "refresh": "30s",
         "time": {"from": "now-24h", "to": "now"},
         "panels": panels,
-        "templating": {"list": []},
+        "templating": {"list": template_vars},
         "annotations": {"list": []},
         "editable": True,
     }

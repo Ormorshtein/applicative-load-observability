@@ -298,11 +298,41 @@ def _build_ci_visualizations() -> list[tuple[str, dict]]:
     ]
 
 
+DRILLDOWN_SEARCH_ID = "alo-template-drilldown"
+
+_DRILLDOWN_COLUMNS = [
+    "request.template", "request.path", "request.operation",
+    "identity.applicative_provider", "request.body", "stress.score",
+]
+
+
+def _create_drilldown_search(cfg: StackConfig) -> None:
+    attrs = {
+        "title": "Sample Request Bodies",
+        "description": "Sample request bodies for template drilldown",
+        "columns": _DRILLDOWN_COLUMNS,
+        "sort": [["@timestamp", "desc"]],
+        "kibanaSavedObjectMeta": {
+            "searchSourceJSON": json.dumps({
+                "query": {"query": "", "language": "kuery"},
+                "filter": [],
+                "index": DATA_VIEW_ID,
+            }),
+        },
+    }
+    refs = [{"type": "index-pattern", "id": DATA_VIEW_ID,
+             "name": "kibanaSavedObjectMeta.searchSourceJSON.index"}]
+    ok = upsert(cfg, "search", DRILLDOWN_SEARCH_ID, attrs, refs)
+    print(f"  {'OK' if ok else 'FAIL'}: Template Drilldown (Saved Search)")
+
+
 def do_rebuild(cfg: StackConfig) -> bool:
     _create_data_view(cfg)
+    _create_drilldown_search(cfg)
 
     main_vis = _build_main_visualizations()
     vis_ids = _upsert_visualizations(cfg, main_vis, all_lens=False)
+    vis_ids.append(DRILLDOWN_SEARCH_ID)
     ok1 = build_dashboard(cfg, DASHBOARD_ID, "Applicative Load Observability",
                           "Stress analysis by application, target, operation, and template, with overall trend.",
                           vis_ids, layout_main)

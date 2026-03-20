@@ -35,7 +35,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "stress.cost_indicator_count:[1 TO *]",
+          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template} AND stress.cost_indicator_count:[1 TO *]",
           "refId": "A",
           "metrics": [
             {
@@ -44,13 +44,22 @@
               "field": "stress.cost_indicator_count"
             }
           ],
-          "bucketAggs": []
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
         }
       ],
       "options": {
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "sum"
           ],
           "fields": "",
           "values": false
@@ -84,7 +93,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "",
+          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "A",
           "metrics": [
             {
@@ -93,13 +102,22 @@
               "field": "stress.cost_indicator_count"
             }
           ],
-          "bucketAggs": []
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
         }
       ],
       "options": {
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "mean"
           ],
           "fields": "",
           "values": false
@@ -133,7 +151,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "",
+          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "A",
           "metrics": [
             {
@@ -142,13 +160,22 @@
               "field": "stress.multiplier"
             }
           ],
-          "bucketAggs": []
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
         }
       ],
       "options": {
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "mean"
           ],
           "fields": "",
           "values": false
@@ -182,7 +209,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "",
+          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "A",
           "metrics": [
             {
@@ -191,13 +218,22 @@
               "field": "stress.multiplier"
             }
           ],
-          "bucketAggs": []
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
         }
       ],
       "options": {
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "max"
           ],
           "fields": "",
           "values": false
@@ -231,7 +267,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "",
+          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "A",
           "metrics": [
             {
@@ -289,7 +325,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "stress.cost_indicator_count:[1 TO *]",
+          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template} AND stress.cost_indicator_count:[1 TO *]",
           "refId": "A",
           "metrics": [
             {
@@ -314,7 +350,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "",
+          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "B",
           "metrics": [
             {
@@ -374,7 +410,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "",
+          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "A",
           "metrics": [
             {
@@ -400,7 +436,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "",
+          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "B",
           "metrics": [
             {
@@ -426,7 +462,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "",
+          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "C",
           "metrics": [
             {
@@ -452,7 +488,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "",
+          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "D",
           "metrics": [
             {
@@ -513,7 +549,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "",
+          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "A",
           "metrics": [
             {
@@ -539,7 +575,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "",
+          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "B",
           "metrics": [
             {
@@ -565,7 +601,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "",
+          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "C",
           "metrics": [
             {
@@ -591,7 +627,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "",
+          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "D",
           "metrics": [
             {
@@ -655,59 +691,27 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "",
+          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "A",
           "metrics": [
             {
               "type": "avg",
               "id": "1",
-              "field": "stress.cost_indicator_count",
-              "settings": {
-                "alias": "Avg Indicators"
-              }
+              "field": "stress.cost_indicator_count"
             },
             {
-              "type": "avg",
-              "id": "2",
-              "field": "stress.multiplier",
-              "settings": {
-                "alias": "Avg Multiplier"
-              }
+              "type": "count",
+              "id": "2"
             },
             {
               "type": "avg",
               "id": "3",
-              "field": "stress.score",
-              "settings": {
-                "alias": "Avg Stress"
-              }
-            }
-          ],
-          "bucketAggs": [
+              "field": "stress.multiplier"
+            },
             {
-              "type": "terms",
-              "field": "request.template",
-              "id": "99",
-              "settings": {
-                "size": "10",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            }
-          ]
-        },
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "",
-          "refId": "B",
-          "metrics": [
-            {
-              "type": "count",
-              "id": "1"
+              "type": "avg",
+              "id": "4",
+              "field": "stress.score"
             }
           ],
           "bucketAggs": [
@@ -736,7 +740,56 @@
       },
       "fieldConfig": {
         "defaults": {},
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average stress.cost_indicator_count"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Avg Indicators"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Count"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Requests"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average stress.multiplier"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Avg Multiplier"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average stress.score"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Avg Stress"
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -759,7 +812,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "",
+          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "A",
           "metrics": [
             {
@@ -818,7 +871,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "",
+          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "A",
           "metrics": [
             {
@@ -859,7 +912,121 @@
     }
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "type": "query",
+        "name": "application",
+        "label": "Application",
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "alo-elasticsearch"
+        },
+        "query": "{\"find\": \"terms\", \"field\": \"identity.applicative_provider\"}",
+        "includeAll": true,
+        "allValue": "",
+        "multi": true,
+        "sort": 1,
+        "refresh": 2
+      },
+      {
+        "type": "query",
+        "name": "target",
+        "label": "Target",
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "alo-elasticsearch"
+        },
+        "query": "{\"find\": \"terms\", \"field\": \"request.target\"}",
+        "includeAll": true,
+        "allValue": "",
+        "multi": true,
+        "sort": 1,
+        "refresh": 2
+      },
+      {
+        "type": "query",
+        "name": "operation",
+        "label": "Operation",
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "alo-elasticsearch"
+        },
+        "query": "{\"find\": \"terms\", \"field\": \"request.operation\"}",
+        "includeAll": true,
+        "allValue": "",
+        "multi": true,
+        "sort": 1,
+        "refresh": 2
+      },
+      {
+        "type": "query",
+        "name": "username",
+        "label": "Username",
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "alo-elasticsearch"
+        },
+        "query": "{\"find\": \"terms\", \"field\": \"identity.username\"}",
+        "includeAll": true,
+        "allValue": "",
+        "multi": true,
+        "sort": 1,
+        "refresh": 2
+      },
+      {
+        "type": "query",
+        "name": "cost_indicator",
+        "label": "Cost Indicator",
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "alo-elasticsearch"
+        },
+        "query": "{\"find\": \"terms\", \"field\": \"stress.cost_indicator_names\"}",
+        "includeAll": true,
+        "allValue": "",
+        "multi": true,
+        "sort": 1,
+        "refresh": 2
+      },
+      {
+        "type": "query",
+        "name": "client_host",
+        "label": "Client Host",
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "alo-elasticsearch"
+        },
+        "query": "{\"find\": \"terms\", \"field\": \"identity.client_host\"}",
+        "includeAll": true,
+        "allValue": "",
+        "multi": true,
+        "sort": 1,
+        "refresh": 2
+      },
+      {
+        "type": "query",
+        "name": "template",
+        "label": "Template",
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "alo-elasticsearch"
+        },
+        "query": "{\"find\": \"terms\", \"field\": \"request.template\"}",
+        "includeAll": true,
+        "allValue": "",
+        "multi": true,
+        "sort": 1,
+        "refresh": 2
+      },
+      {
+        "type": "adhoc",
+        "name": "Filters",
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "alo-elasticsearch"
+        }
+      }
+    ]
   },
   "annotations": {
     "list": []
