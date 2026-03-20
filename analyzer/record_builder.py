@@ -12,6 +12,7 @@ from parser import (
     parse_docs_affected,
     parse_es_took_ms,
     parse_hits,
+    parse_labels,
     parse_operation,
     parse_shards_total,
     parse_shards_total_bulk,
@@ -137,6 +138,7 @@ def build_record(raw: RawFields) -> dict:
     username             = parse_username(raw.headers)
     applicative_provider = parse_applicative_provider(raw.headers)
     user_agent           = parse_user_agent(raw.headers)
+    labels               = parse_labels(raw.headers)
 
     hits                 = parse_hits(raw.response_body)
     if operation == "_bulk":
@@ -191,6 +193,7 @@ def build_record(raw: RawFields) -> dict:
             "applicative_provider": applicative_provider,
             "user_agent":           user_agent,
             "client_host":          raw.client_host,
+            "labels":              labels,
         },
         "request":  request,
         "response": {

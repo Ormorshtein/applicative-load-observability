@@ -8,6 +8,7 @@ from parser import (
     parse_username,
     parse_applicative_provider,
     parse_user_agent,
+    parse_labels,
     parse_target,
     parse_operation,
     parse_size,
@@ -102,6 +103,39 @@ class TestParseUserAgent:
 
     def test_missing(self):
         assert parse_user_agent({}) == ""
+
+
+# ---------------------------------------------------------------------------
+# Header extraction: parse_labels
+# ---------------------------------------------------------------------------
+
+class TestParseLabels:
+    def test_single_label(self):
+        assert parse_labels({"x-alo-team": "payments"}) == {"team": "payments"}
+
+    def test_multiple_labels(self):
+        headers = {"x-alo-team": "payments", "x-alo-env": "staging"}
+        assert parse_labels(headers) == {"team": "payments", "env": "staging"}
+
+    def test_ignores_non_alo_headers(self):
+        headers = {"x-alo-team": "payments", "user-agent": "curl/7", "authorization": "Basic abc"}
+        assert parse_labels(headers) == {"team": "payments"}
+
+    def test_no_alo_headers(self):
+        assert parse_labels({"user-agent": "curl/7"}) == {}
+
+    def test_empty_headers(self):
+        assert parse_labels({}) == {}
+
+    def test_bare_prefix_ignored(self):
+        assert parse_labels({"x-alo-": "empty-key"}) == {}
+
+    def test_value_coerced_to_string(self):
+        assert parse_labels({"x-alo-count": 42}) == {"count": "42"}
+
+    def test_mixed_with_similar_prefixes(self):
+        headers = {"x-alo-team": "a", "x-aloo-team": "b", "x-al-team": "c"}
+        assert parse_labels(headers) == {"team": "a"}
 
 
 # ---------------------------------------------------------------------------

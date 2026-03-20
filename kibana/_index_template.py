@@ -25,6 +25,7 @@ COMPONENT_TEMPLATE: dict = {
                         "applicative_provider": {"type": "keyword"},
                         "user_agent":           {"type": "keyword"},
                         "client_host":          {"type": "keyword"},
+                        "labels":               {"type": "flattened"},
                     }
                 },
                 "request": {

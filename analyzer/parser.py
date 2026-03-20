@@ -54,6 +54,18 @@ def parse_user_agent(headers: dict) -> str:
     return headers.get("user-agent", "")
 
 
+_LABEL_PREFIX = "x-alo-"
+
+
+def parse_labels(headers: dict) -> dict[str, str]:
+    """Extract custom user labels from x-alo-* headers."""
+    prefix_len = len(_LABEL_PREFIX)
+    return {
+        key[prefix_len:]: str(value)
+        for key, value in headers.items()
+        if key.startswith(_LABEL_PREFIX) and len(key) > prefix_len
+    }
+
 
 # ---------------------------------------------------------------------------
 # Path / URL extraction

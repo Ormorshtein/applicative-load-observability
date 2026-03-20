@@ -159,6 +159,18 @@ class TestBuildRecord:
         assert rec["identity"]["applicative_provider"] == "search-api"
         assert rec["identity"]["user_agent"] == "elasticsearch-py/8.13.0"
         assert rec["identity"]["client_host"] == "10.0.0.5"
+        assert rec["identity"]["labels"] == {}
+
+    def test_custom_labels_from_alo_headers(self):
+        headers = {
+            "authorization": f"Basic {base64.b64encode(b'alice:pass').decode()}",
+            "x-opaque-id": "search-api",
+            "user-agent": "elasticsearch-py/8.13.0",
+            "x-alo-team": "payments",
+            "x-alo-env": "staging",
+        }
+        rec = build_record(_make_raw(headers=headers))
+        assert rec["identity"]["labels"] == {"team": "payments", "env": "staging"}
 
     def test_search_record_request(self):
         rec = build_record(_make_raw())
