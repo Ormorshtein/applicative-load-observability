@@ -269,19 +269,33 @@ def mk_bar(title, field, metric_field, metric_op, metric_label, gridpos,
 
 def mk_table(title, bucket_field, bucket_label, metrics_spec, gridpos,
              size=10):
+    field_metrics = [(label, field, op)
+                     for label, field, op in metrics_spec if op != "count"]
+    has_count = any(op == "count" for _, _, op in metrics_spec)
+
     metrics = []
-    for i, (label, field, op) in enumerate(metrics_spec):
+    for i, (label, field, op) in enumerate(field_metrics):
         m = _metric(op, field, metric_id=str(i + 1))
-        m["settings"] = {"alias": label} if op != "count" else {}
-        if op == "count":
-            m["settings"] = {"alias": label}
+        m["settings"] = {"alias": label}
         metrics.append(m)
-    target = _es_target(
-        metrics=metrics,
-        bucket_aggs=[_terms_agg(bucket_field, agg_id="99", size=size,
-                                order_by="1")],
-    )
-    return _base_panel(title, "table", gridpos, targets=[target], options={
+
+    targets = []
+    if metrics:
+        targets.append(_es_target(
+            metrics=metrics,
+            bucket_aggs=[_terms_agg(bucket_field, agg_id="99", size=size,
+                                    order_by="1")],
+            ref_id="A",
+        ))
+    if has_count:
+        targets.append(_es_target(
+            metrics=[_metric("count", metric_id="1")],
+            bucket_aggs=[_terms_agg(bucket_field, agg_id="99", size=size,
+                                    order_by="1")],
+            ref_id="B" if metrics else "A",
+        ))
+
+    return _base_panel(title, "table", gridpos, targets=targets, options={
         "showHeader": True,
         "sortBy": [{"displayName": metrics_spec[0][0], "desc": True}],
     })
