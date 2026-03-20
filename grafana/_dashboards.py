@@ -62,7 +62,7 @@ def _reset_ids():
 
 
 def _base_panel(title, panel_type, gridpos, targets=None, options=None,
-                field_config=None):
+                field_config=None, transformations=None):
     panel = {
         "id": _next_id(),
         "title": title,
@@ -80,6 +80,8 @@ def _base_panel(title, panel_type, gridpos, targets=None, options=None,
         panel["fieldConfig"] = {
             "defaults": {}, "overrides": [],
         }
+    if transformations:
+        panel["transformations"] = transformations
     return panel
 
 
@@ -291,23 +293,37 @@ def mk_bar(title, field, metric_field, metric_op, metric_label, gridpos,
     })
 
 
-def mk_logs(title, gridpos, size=5):
-    """Panel showing raw ES documents (request bodies) as expandable logs."""
+def mk_raw_table(title, gridpos, size=10):
+    """Table showing raw ES documents — only the fields that matter."""
     target = _es_target(
-        metrics=[_metric("logs", metric_id="1",
-                         settings={"limit": str(size)})],
+        metrics=[_metric("raw_document", metric_id="1",
+                         settings={"size": str(size)})],
         bucket_aggs=[],
     )
-    return _base_panel(title, "logs", gridpos, targets=[target], options={
-        "showTime": True,
-        "showLabels": False,
-        "showCommonLabels": False,
-        "wrapLogMessage": True,
-        "prettifyLogMessage": True,
-        "enableLogDetails": True,
-        "sortOrder": "Descending",
-        "dedupStrategy": "none",
-    })
+    keep = ["@timestamp", "identity.applicative_provider", "request.path",
+            "request.operation", "request.body", "stress.score"]
+    overrides = [
+        {"matcher": {"id": "byName", "options": "@timestamp"},
+         "properties": [{"id": "displayName", "value": "Timestamp"}]},
+        {"matcher": {"id": "byName", "options": "identity.applicative_provider"},
+         "properties": [{"id": "displayName", "value": "Application"}]},
+        {"matcher": {"id": "byName", "options": "request.path"},
+         "properties": [{"id": "displayName", "value": "Path"}]},
+        {"matcher": {"id": "byName", "options": "request.operation"},
+         "properties": [{"id": "displayName", "value": "Operation"}]},
+        {"matcher": {"id": "byName", "options": "request.body"},
+         "properties": [{"id": "displayName", "value": "Request Body"},
+                        {"id": "custom.inspect", "value": True}]},
+        {"matcher": {"id": "byName", "options": "stress.score"},
+         "properties": [{"id": "displayName", "value": "Stress"}]},
+    ]
+    return _base_panel(title, "table", gridpos, targets=[target],
+                       options={"showHeader": True},
+                       field_config={"defaults": {}, "overrides": overrides},
+                       transformations=[{
+                           "id": "filterFieldsByName",
+                           "options": {"include": {"names": keep}},
+                       }])
 
 
 def mk_table(title, bucket_field, bucket_label, metrics_spec, gridpos,
@@ -407,7 +423,7 @@ def build_main_dashboard():
     y += 8
 
     # Row 8: Sample request bodies (drilldown — select a Template variable above)
-    panels.append(mk_logs(
+    panels.append(mk_raw_table(
         "Sample Request Bodies (select a Template above to drilldown)",
         {"x": 0, "y": y, "w": 24, "h": 10}, size=10))
     y += 10

@@ -1029,7 +1029,7 @@
     {
       "id": 15,
       "title": "Sample Request Bodies (select a Template above to drilldown)",
-      "type": "logs",
+      "type": "table",
       "datasource": {
         "type": "elasticsearch",
         "uid": "alo-elasticsearch"
@@ -1050,10 +1050,10 @@
           "refId": "A",
           "metrics": [
             {
-              "type": "logs",
+              "type": "raw_document",
               "id": "1",
               "settings": {
-                "limit": "10"
+                "size": "10"
               }
             }
           ],
@@ -1061,19 +1061,106 @@
         }
       ],
       "options": {
-        "showTime": true,
-        "showLabels": false,
-        "showCommonLabels": false,
-        "wrapLogMessage": true,
-        "prettifyLogMessage": true,
-        "enableLogDetails": true,
-        "sortOrder": "Descending",
-        "dedupStrategy": "none"
+        "showHeader": true
       },
       "fieldConfig": {
         "defaults": {},
-        "overrides": []
-      }
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "@timestamp"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Timestamp"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "identity.applicative_provider"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Application"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "request.path"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Path"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "request.operation"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Operation"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "request.body"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Request Body"
+              },
+              {
+                "id": "custom.inspect",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "stress.score"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Stress"
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "@timestamp",
+                "identity.applicative_provider",
+                "request.path",
+                "request.operation",
+                "request.body",
+                "stress.score"
+              ]
+            }
+          }
+        }
+      ]
     },
     {
       "id": 16,
