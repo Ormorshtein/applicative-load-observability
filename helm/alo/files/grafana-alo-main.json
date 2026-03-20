@@ -1,0 +1,1739 @@
+{
+  "uid": "alo-main",
+  "title": "ALO \u2014 Stress Analysis",
+  "description": "Stress analysis by application, target, operation, and template, with overall trend.",
+  "tags": [
+    "alo",
+    "observability"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Dashboard Guide",
+      "type": "text",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 18,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "## Dashboard Cheat Sheet\n\n**How to examine this dashboard:**\n\n1. **Start with the top row** \u2014 pie charts show which application, target, operation, or template contributes the most stress; the overall trend shows whether stress is rising or falling.\n2. **Check the time series** \u2014 look for spikes or trends in stress over time. Correlate with deployments or traffic changes.\n3. **Review the Top 10 Templates table** \u2014 focus on templates with the highest sum stress and cost indicator counts.\n4. **Examine response times** \u2014 high ES or gateway latency alongside high stress may indicate query optimization opportunities.\n5. **Sanity check tables** \u2014 verify if the most recurring templates are also the most stressful; templates with many cost indicators need attention.\n\n**What to focus on:**\n- **High stress slices** in pie charts \u2014 these are your optimization targets\n- **Upward trends** in time series \u2014 indicates growing load or degrading patterns\n- **Templates with many cost indicators** \u2014 likely candidates for query optimization\n- **Latency spikes** correlating with specific operations or templates\n"
+      }
+    },
+    {
+      "id": 2,
+      "title": "Total Stress Score",
+      "type": "stat",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "sum",
+              "id": "1",
+              "field": "stress.score"
+            }
+          ],
+          "bucketAggs": []
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "title": "Stress by Application",
+      "type": "piechart",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 5,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "sum",
+              "id": "1",
+              "field": "stress.score"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "identity.applicative_provider",
+              "id": "2",
+              "settings": {
+                "size": "8",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "pieType": "donut",
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "title": "Stress by Target",
+      "type": "piechart",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 5,
+        "y": 8,
+        "w": 5,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "sum",
+              "id": "1",
+              "field": "stress.score"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.target",
+              "id": "2",
+              "settings": {
+                "size": "8",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "pieType": "donut",
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "title": "Stress by Operation",
+      "type": "piechart",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 10,
+        "y": 8,
+        "w": 5,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "sum",
+              "id": "1",
+              "field": "stress.score"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.operation",
+              "id": "2",
+              "settings": {
+                "size": "8",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "pieType": "donut",
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "title": "Stress Trend (Overall)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 15,
+        "y": 8,
+        "w": 5,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "stress.score"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ],
+          "alias": "Avg Stress"
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "B",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ],
+          "alias": "Requests"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "title": "Stress by Template",
+      "type": "piechart",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 8,
+        "w": 4,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "sum",
+              "id": "1",
+              "field": "stress.score"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.template",
+              "id": "2",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "pieType": "donut",
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "title": "Stress Over Time by Application",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "stress.score"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "identity.applicative_provider",
+              "id": "2",
+              "settings": {
+                "size": "5",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "title": "Stress Over Time by Target",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "stress.score"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.target",
+              "id": "2",
+              "settings": {
+                "size": "5",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "title": "Stress Over Time by Operation",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "stress.score"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.operation",
+              "id": "2",
+              "settings": {
+                "size": "5",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "title": "Stress Over Time by Cost Indicator",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "stress.score"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "stress.cost_indicator_names",
+              "id": "2",
+              "settings": {
+                "size": "5",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 12,
+      "title": "Stress Over Time by Template",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "stress.score"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.template",
+              "id": "2",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 13,
+      "title": "Top 10 Templates by Stress Score",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 56,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "sum",
+              "id": "1",
+              "field": "stress.score",
+              "settings": {
+                "alias": "Sum Stress"
+              }
+            },
+            {
+              "type": "avg",
+              "id": "2",
+              "field": "response.es_took_ms",
+              "settings": {
+                "alias": "Avg ES Latency (ms)"
+              }
+            },
+            {
+              "type": "avg",
+              "id": "3",
+              "field": "response.gateway_took_ms",
+              "settings": {
+                "alias": "Avg Gateway Latency (ms)"
+              }
+            },
+            {
+              "type": "avg",
+              "id": "4",
+              "field": "stress.cost_indicator_count",
+              "settings": {
+                "alias": "Avg Cost Indicators"
+              }
+            },
+            {
+              "type": "count",
+              "id": "5",
+              "settings": {
+                "alias": "Requests"
+              }
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.template",
+              "id": "99",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Sum Stress",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 14,
+      "title": "Avg ES Response Time by Cost Indicator",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 64,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "response.es_took_ms"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "stress.cost_indicator_names",
+              "id": "2",
+              "settings": {
+                "size": "5",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "B",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "bars"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 20
+              },
+              {
+                "id": "displayName",
+                "value": "Requests"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 15,
+      "title": "Avg ES Response Time by Operation",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 64,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "response.es_took_ms"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.operation",
+              "id": "2",
+              "settings": {
+                "size": "5",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "B",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "bars"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 20
+              },
+              {
+                "id": "displayName",
+                "value": "Requests"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 16,
+      "title": "Avg ES Response Time by Template",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 64,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "response.es_took_ms"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.template",
+              "id": "2",
+              "settings": {
+                "size": "5",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "B",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "bars"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 20
+              },
+              {
+                "id": "displayName",
+                "value": "Requests"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 17,
+      "title": "Avg Gateway Response Time by Cost Indicator",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 72,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "response.gateway_took_ms"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "stress.cost_indicator_names",
+              "id": "2",
+              "settings": {
+                "size": "5",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "B",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "bars"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 20
+              },
+              {
+                "id": "displayName",
+                "value": "Requests"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 18,
+      "title": "Avg Gateway Response Time by Operation",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 72,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "response.gateway_took_ms"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.operation",
+              "id": "2",
+              "settings": {
+                "size": "5",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "B",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "bars"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 20
+              },
+              {
+                "id": "displayName",
+                "value": "Requests"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 19,
+      "title": "Avg Gateway Response Time by Template",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 72,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "response.gateway_took_ms"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.template",
+              "id": "2",
+              "settings": {
+                "size": "5",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "B",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "bars"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 20
+              },
+              {
+                "id": "displayName",
+                "value": "Requests"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 20,
+      "title": "Top 10 Most Recurring Templates",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 80,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1",
+              "settings": {
+                "alias": "Requests"
+              }
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.template",
+              "id": "99",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Requests",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 21,
+      "title": "Top 10 Templates with Most Cost Indicators",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 80,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "stress.cost_indicator_count",
+              "settings": {
+                "alias": "Avg Cost Indicators"
+              }
+            },
+            {
+              "type": "count",
+              "id": "2",
+              "settings": {
+                "alias": "Requests"
+              }
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.template",
+              "id": "99",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Avg Cost Indicators",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "editable": true
+}

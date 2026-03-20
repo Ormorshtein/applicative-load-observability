@@ -344,6 +344,54 @@
         "extraEnv": { "$ref": "#/$defs/extraEnv" }
       }
     },
+    "grafana": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "external": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "url": { "type": "string" },
+            "auth": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "username": { "type": "string" },
+                "password": { "type": "string" },
+                "existingSecret": { "type": "string" }
+              }
+            }
+          }
+        },
+        "image": { "$ref": "#/$defs/image" },
+        "replicas": { "$ref": "#/$defs/replicas" },
+        "adminPassword": { "type": "string" },
+        "resources": { "$ref": "#/$defs/resources" },
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"] },
+            "port": { "$ref": "#/$defs/port" }
+          }
+        },
+        "setup": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "image": { "$ref": "#/$defs/image" }
+          }
+        },
+        "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
+        "tolerations": { "$ref": "#/$defs/tolerations" },
+        "affinity": { "$ref": "#/$defs/affinity" },
+        "podAnnotations": { "$ref": "#/$defs/podAnnotations" }
+      }
+    },
     "kibana": {
       "type": "object",
       "additionalProperties": false,

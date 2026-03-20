@@ -1,0 +1,67 @@
+{{- if and .Values.grafana.enabled .Values.grafana.setup.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "alo.fullname" . }}-grafana-setup
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "grafana-setup") | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  activeDeadlineSeconds: 300
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "alo.labels" . | nindent 8 }}
+        {{- include "alo.selectorLabels" (dict "ctx" . "component" "grafana-setup") | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "alo.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- include "alo.imagePullSecrets" $ | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      restartPolicy: OnFailure
+      containers:
+        - name: setup
+          image: "{{ .Values.grafana.setup.image.repository }}:{{ .Values.grafana.setup.image.tag }}"
+          imagePullPolicy: {{ .Values.grafana.setup.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          command: ["python", "/app/setup.py", "--mode", "api"]
+          env:
+            - name: GRAFANA_URL
+              value: {{ include "alo.grafanaUrl" . | quote }}
+            - name: ELASTICSEARCH_URL
+              value: {{ include "alo.elasticsearchUrl" . | quote }}
+            {{- if .Values.grafana.external.enabled }}
+            {{- if .Values.grafana.external.auth.existingSecret }}
+            - name: GRAFANA_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.grafana.external.auth.existingSecret }}
+                  key: username
+            - name: GRAFANA_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.grafana.external.auth.existingSecret }}
+                  key: password
+            {{- else }}
+            - name: GRAFANA_USERNAME
+              value: {{ .Values.grafana.external.auth.username | quote }}
+            - name: GRAFANA_ADMIN_PASSWORD
+              value: {{ .Values.grafana.external.auth.password | quote }}
+            {{- end }}
+            {{- else }}
+            - name: GRAFANA_USERNAME
+              value: "admin"
+            - name: GRAFANA_ADMIN_PASSWORD
+              value: {{ .Values.grafana.adminPassword | quote }}
+            {{- end }}
+      {{- include "alo.scheduling" .Values.grafana | nindent 6 }}
+{{- end }}

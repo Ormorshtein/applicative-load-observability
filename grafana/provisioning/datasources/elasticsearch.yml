@@ -1,0 +1,18 @@
+apiVersion: 1
+
+datasources:
+  - name: Elasticsearch (ALO)
+    type: elasticsearch
+    uid: alo-elasticsearch
+    access: proxy
+    url: ${ELASTICSEARCH_URL:-http://elasticsearch:9200}
+    database: "logs-alo.*-*"
+    isDefault: true
+    jsonData:
+      esVersion: "8.0.0"
+      timeField: "@timestamp"
+      logMessageField: ""
+      logLevelField: ""
+      maxConcurrentShardRequests: 5
+      interval: ""
+    editable: true

@@ -82,6 +82,21 @@ services:
       elasticsearch:
         condition: service_healthy
 
+  grafana:
+    image: grafana/grafana:11.0.0
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - grafana-data:/var/lib/grafana
+    networks:
+      - obs-net
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
   gateway:
     image: oracle1012/applicative-load-observability:gateway-1.12.0
     ports:
@@ -118,6 +133,7 @@ services:
 
 volumes:
   es-data:
+  grafana-data:
 
 networks:
   obs-net:
