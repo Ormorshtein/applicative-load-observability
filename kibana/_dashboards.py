@@ -199,6 +199,14 @@ def _build_main_visualizations() -> list[tuple[str, dict]]:
             field, size=size,
             description=PANEL_DESCRIPTIONS["ts"][label]))
 
+    vis.append(mk_ts(
+        "alo-ts-volume-template",
+        "Request Volume Over Time by Template",
+        "request.template",
+        metric_field="___records___", metric_label="Requests",
+        metric_op="count", size=10,
+        description="Request count over time by template — shows ingestion/query rate trends."))
+
     vis.append(mk_datatable(
         "alo-table-top-templates", "Top 10 Templates by Stress Score",
         "request.template", "Template", [
