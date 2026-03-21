@@ -82,6 +82,22 @@ Outcomes:
 
 ---
 
+### 2.4 Custom Labels (`x-alo-*` Headers)
+
+You can attach **custom labels** to any request by setting HTTP headers prefixed with `x-alo-`. The gateway forwards these to the analyzer, which strips the prefix and stores them under `labels.*` in the observability record.
+
+| Header sent | Field stored |
+|-------------|-------------|
+| `x-alo-team` | `labels.team` |
+| `x-alo-env` | `labels.env` |
+| `x-alo-feature-name` | `labels.feature-name` |
+
+This lets you slice dashboards by any dimension meaningful to your organization — team, environment, feature, tenant, etc.
+
+**Important:** Use **hyphens** (`-`), not underscores (`_`), in header names. The gateway runs on Nginx/OpenResty, which drops headers containing underscores by default.
+
+---
+
 ## 3. Dashboard: Applicative Load Observability
 
 All panels live in a **single dashboard**.
