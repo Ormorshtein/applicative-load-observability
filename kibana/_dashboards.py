@@ -307,19 +307,28 @@ def _build_ci_visualizations() -> list[tuple[str, dict]]:
 
 
 DRILLDOWN_SEARCH_ID = "alo-template-drilldown"
+HEAVIEST_OPS_SEARCH_ID = "alo-heaviest-ops"
 
 _DRILLDOWN_COLUMNS = [
-    "request.template", "request.path", "request.operation",
-    "identity.applicative_provider", "request.body", "stress.score",
+    "stress.score", "request.template", "request.path", "request.operation",
+    "identity.applicative_provider", "request.body",
+]
+
+_HEAVIEST_OPS_COLUMNS = [
+    "identity.applicative_provider", "request.operation", "request.target",
+    "request.path", "stress.score", "response.es_took_ms",
+    "stress.cost_indicator_names", "request.body",
 ]
 
 
-def _create_drilldown_search(cfg: StackConfig) -> None:
+def _create_saved_search(cfg: StackConfig, search_id: str, title: str,
+                         description: str, columns: list[str],
+                         sort_field: str, sort_order: str = "desc") -> None:
     attrs = {
-        "title": "Sample Request Bodies",
-        "description": "Sample request bodies for template drilldown",
-        "columns": _DRILLDOWN_COLUMNS,
-        "sort": [["@timestamp", "desc"]],
+        "title": title,
+        "description": description,
+        "columns": columns,
+        "sort": [[sort_field, sort_order]],
         "kibanaSavedObjectMeta": {
             "searchSourceJSON": json.dumps({
                 "query": {"query": "", "language": "kuery"},
@@ -330,17 +339,25 @@ def _create_drilldown_search(cfg: StackConfig) -> None:
     }
     refs = [{"type": "index-pattern", "id": DATA_VIEW_ID,
              "name": "kibanaSavedObjectMeta.searchSourceJSON.index"}]
-    ok = upsert(cfg, "search", DRILLDOWN_SEARCH_ID, attrs, refs)
-    print(f"  {'OK' if ok else 'FAIL'}: Template Drilldown (Saved Search)")
+    ok = upsert(cfg, "search", search_id, attrs, refs)
+    print(f"  {'OK' if ok else 'FAIL'}: {title} (Saved Search)")
 
 
 def do_rebuild(cfg: StackConfig) -> bool:
     _create_data_view(cfg)
-    _create_drilldown_search(cfg)
+    _create_saved_search(
+        cfg, DRILLDOWN_SEARCH_ID, "Sample Request Bodies",
+        "Sample request bodies for template drilldown",
+        _DRILLDOWN_COLUMNS, sort_field="@timestamp")
+    _create_saved_search(
+        cfg, HEAVIEST_OPS_SEARCH_ID, "Top 10 Heaviest Operations",
+        "Individual requests with highest stress scores",
+        _HEAVIEST_OPS_COLUMNS, sort_field="stress.score")
 
     main_vis = _build_main_visualizations()
     vis_ids = _upsert_visualizations(cfg, main_vis, all_lens=False)
     vis_ids.append(DRILLDOWN_SEARCH_ID)
+    vis_ids.append(HEAVIEST_OPS_SEARCH_ID)
     ok1 = build_dashboard(cfg, DASHBOARD_ID, "Applicative Load Observability",
                           "Stress analysis by application, target, operation, and template, with overall trend.",
                           vis_ids, layout_main)

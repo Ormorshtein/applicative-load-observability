@@ -31,7 +31,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "## Dashboard Cheat Sheet\n\n**How to examine this dashboard:**\n\n1. **Start with the top row** \u2014 pie charts show which application, target, operation, or template contributes the most stress; the overall trend shows whether stress is rising or falling.\n2. **Check the time series** \u2014 look for spikes or trends in stress over time. Correlate with deployments or traffic changes.\n3. **Review the Top 10 Templates table** \u2014 focus on templates with the highest sum stress and cost indicator counts.\n4. **Examine response times** \u2014 high ES or gateway latency alongside high stress may indicate query optimization opportunities.\n5. **Sanity check tables** \u2014 verify if the most recurring templates are also the most stressful; templates with many cost indicators need attention.\n\n**What to focus on:**\n- **High stress slices** in pie charts \u2014 these are your optimization targets\n- **Upward trends** in time series \u2014 indicates growing load or degrading patterns\n- **Templates with many cost indicators** \u2014 likely candidates for query optimization\n- **Latency spikes** correlating with specific operations or templates\n"
+        "content": "## Dashboard Cheat Sheet\n\n**How to examine this dashboard:**\n\n1. **Start with the top row** \u2014 pie charts show which application, target, operation, or template contributes the most stress; the overall trend shows whether stress is rising or falling.\n2. **Check the time series** \u2014 look for spikes or trends in stress over time. Correlate with deployments or traffic changes.\n3. **Review the Top 10 Templates table** \u2014 focus on templates with the highest sum stress and cost indicator counts.\n4. **Inspect the Top 10 Heaviest Operations** \u2014 use filters to narrow down, then examine the actual request bodies of the most resource-intensive individual requests.\n5. **Examine response times** \u2014 high ES or gateway latency alongside high stress may indicate query optimization opportunities.\n6. **Sanity check tables** \u2014 verify if the most recurring templates are also the most stressful; templates with many cost indicators need attention.\n\n**What to focus on:**\n- **High stress slices** in pie charts \u2014 these are your optimization targets\n- **Upward trends** in time series \u2014 indicates growing load or degrading patterns\n- **Templates with many cost indicators** \u2014 likely candidates for query optimization\n- **Latency spikes** correlating with specific operations or templates\n"
       }
     },
     {
@@ -1151,13 +1151,206 @@
             "include": {
               "names": [
                 "@timestamp",
+                "stress.score",
                 "identity.applicative_provider",
                 "request.path",
                 "request.operation",
-                "request.body",
-                "stress.score"
+                "request.body"
               ]
             }
+          }
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "title": "Top 10 Heaviest Operations",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 94,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "raw_document",
+              "id": "1",
+              "settings": {
+                "size": "500"
+              }
+            }
+          ],
+          "bucketAggs": []
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "@timestamp"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Timestamp"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "identity.applicative_provider"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Application"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "request.operation"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Operation"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "request.target"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Target"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "request.path"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Path"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "stress.score"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Stress Score"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "response.es_took_ms"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "ES Latency (ms)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "stress.cost_indicator_names"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Cost Indicators"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "request.body"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Request Body"
+              },
+              {
+                "id": "custom.inspect",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "@timestamp",
+                "identity.applicative_provider",
+                "request.operation",
+                "request.target",
+                "request.path",
+                "stress.score",
+                "response.es_took_ms",
+                "stress.cost_indicator_names",
+                "request.body"
+              ]
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "stress.score",
+                "desc": true
+              }
+            ]
+          }
+        },
+        {
+          "id": "limit",
+          "options": {
+            "maxRows": 10
           }
         }
       ]
@@ -1172,7 +1365,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 94,
+        "y": 104,
         "w": 24,
         "h": 8
       },
@@ -1310,7 +1503,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 102,
+        "y": 112,
         "w": 8,
         "h": 8
       },
@@ -1430,7 +1623,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 102,
+        "y": 112,
         "w": 8,
         "h": 8
       },
@@ -1550,7 +1743,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 102,
+        "y": 112,
         "w": 8,
         "h": 8
       },
@@ -1670,7 +1863,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 110,
+        "y": 120,
         "w": 8,
         "h": 8
       },
@@ -1790,7 +1983,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 110,
+        "y": 120,
         "w": 8,
         "h": 8
       },
@@ -1910,7 +2103,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 110,
+        "y": 120,
         "w": 8,
         "h": 8
       },
@@ -2030,7 +2223,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 118,
+        "y": 128,
         "w": 12,
         "h": 8
       },
@@ -2100,7 +2293,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 118,
+        "y": 128,
         "w": 12,
         "h": 8
       },

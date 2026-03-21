@@ -35,7 +35,7 @@ COMPONENT_TEMPLATE: dict = {
                         "operation":  {"type": "keyword"},
                         "target":     {"type": "keyword"},
                         "template":   {"type": "keyword"},
-                        "body":       {"type": "object", "enabled": False},
+                        "body":       {"type": "keyword", "doc_values": False},
                         "size_bytes": {"type": "integer"},
                         "size":       {"type": "integer"},
                     }

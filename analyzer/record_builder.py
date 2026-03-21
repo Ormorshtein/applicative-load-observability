@@ -180,7 +180,7 @@ def build_record(raw: RawFields) -> dict:
         "operation":  operation,
         "target":     target,
         "template":   template,
-        "body":       raw.request_body,
+        "body":       raw.request_body_raw,
         "size_bytes": raw.request_size_bytes,
     }
     if operation == "_search":

@@ -59,9 +59,11 @@ whether stress is rising or falling.
 Correlate with deployments or traffic changes.
 3. **Review the Top 10 Templates table** — focus on templates with the highest \
 sum stress and cost indicator counts.
-4. **Examine response times** — high ES or gateway latency alongside high stress \
+4. **Inspect the Top 10 Heaviest Operations** — use filters to narrow down, then \
+examine the actual request bodies of the most resource-intensive individual requests.
+5. **Examine response times** — high ES or gateway latency alongside high stress \
 may indicate query optimization opportunities.
-5. **Sanity check tables** — verify if the most recurring templates are also the \
+6. **Sanity check tables** — verify if the most recurring templates are also the \
 most stressful; templates with many cost indicators need attention.
 
 **What to focus on:**
@@ -426,9 +428,11 @@ def layout_main(vis_ids: list[str], panels: list[dict],
     Row 1 (y=10, h=10):  5 pie charts — Application, Target, Operation, Cost Indicator, Template
     Row 2-6 (h=12 each): 5 stress-over-time charts, same order as pies
     Row 7 (h=14):         Top 10 Templates by Stress Score table
-    Row 8 (h=14):         Top 10 Cost Indicators by Stress Score table
-    Row 9-10 (h=12 each): Avg ES/Gateway Response Time — by Cost Indicator, Operation, Template
-    Row 11 (h=12):        Sanity check tables — most recurring templates, most cost indicators
+    Row 8 (h=16):         Sample Request Bodies drilldown (saved search)
+    Row 9 (h=16):         Top 10 Heaviest Operations (saved search, sorted by stress.score)
+    Row 10 (h=14):        Top 10 Cost Indicators by Stress Score table
+    Row 11-12 (h=12 each): Avg ES/Gateway Response Time — by Cost Indicator, Operation, Template
+    Row 13 (h=12):        Sanity check tables — most recurring templates, most cost indicators
     """
     y = 0
 
@@ -462,17 +466,21 @@ def layout_main(vis_ids: list[str], panels: list[dict],
     _add_panel(panels, refs, vis_ids[23], 0, y, 48, 16, panel_type="search")
     y += 16
 
-    # --- Row 10: Top Cost Indicators by Stress Score table (index 14) ---
+    # --- Row 10: Top 10 Heaviest Operations (index 24) ---
+    _add_panel(panels, refs, vis_ids[24], 0, y, 48, 16, panel_type="search")
+    y += 16
+
+    # --- Row 11: Top Cost Indicators by Stress Score table (index 14) ---
     _add_panel(panels, refs, vis_ids[14], 0, y, 48, 14)
     y += 14
 
-    # --- Rows 11-12: Response time panels (indices 15-20), 3 per row ---
+    # --- Rows 12-13: Response time panels (indices 15-20), 3 per row ---
     for row_start in (15, 18):
         for j in range(3):
             _add_panel(panels, refs, vis_ids[row_start + j], j * 16, y, 16, 12)
         y += 12
 
-    # --- Row 13: 2 sanity check tables (indices 21-22) ---
+    # --- Row 14: 2 sanity check tables (indices 21-22) ---
     for j in range(2):
         _add_panel(panels, refs, vis_ids[21 + j], j * 24, y, 24, 12)
 

@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.13.0
+
+### Analyzer
+
+- **`request.body` stored as raw JSON string** instead of parsed object — Kibana no longer flattens the body into unreadable dot-notation arrays (`request.body.query.bool.filter.term.category`). Now displays as a clean JSON string.
+- ES index template mapping changed from `object (disabled)` to `keyword (no doc_values)` for `request.body`.
+
+### Dashboard
+
+- **New "Top 10 Heaviest Operations" panel** — shows the individual requests with highest stress scores, with their full request bodies. Works with all dashboard variable filters (application, template, cost indicator, etc.). Added to both Grafana and Kibana dashboards.
+- Moved stress score column to the left in the "Sample Request Bodies" drilldown panel for faster scanning.
+- Updated Dashboard Guide cheat sheet with new panel reference.
+
+### Helm
+
+- Synced Grafana dashboard JSON files with Docker Compose source (picks up all recent fixes: template variables, split count queries for Grafana 11.6, pie chart fixes, drilldown row, raw_document table).
+- Bumped all image tags to 1.13.0.
+
+### Kibana setup
+
+- Refactored `_create_drilldown_search` into generic `_create_saved_search` function reused by both the sample bodies and heaviest operations panels.
+
+---
+
 ## 1.12.0
 
 ### Analyzer
