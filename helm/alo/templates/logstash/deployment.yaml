@@ -101,6 +101,7 @@ spec:
           resources:
             {{- toYaml .Values.logstash.exporter.resources | nindent 12 }}
         {{- end }}
+      volumes:
         - name: config
           configMap:
             name: {{ include "alo.fullname" . }}-logstash
