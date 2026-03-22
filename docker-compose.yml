@@ -100,6 +100,8 @@ services:
 
   gateway:
     image: oracle1012/applicative-load-observability:gateway-1.13.0
+    volumes:
+      - ./gateway/nginx.conf.template:/etc/nginx/nginx.conf.template:ro
     ports:
       - "${GATEWAY_PORT:-9200}:${GATEWAY_PORT:-9200}"
     environment:
@@ -132,9 +134,42 @@ services:
       elasticsearch:
         condition: service_healthy
 
+  # ── Prometheus monitoring stack (activate with: docker compose --profile prometheus up) ──
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    profiles: ["prometheus"]
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - obs-net
+
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.4.0
+    profiles: ["prometheus"]
+    command: ["--nginx.scrape-uri=http://gateway:9145/stub_status"]
+    networks:
+      - obs-net
+    depends_on:
+      - gateway
+
+  logstash-exporter:
+    image: kuskoman/logstash-exporter:v1.9.1
+    profiles: ["prometheus"]
+    environment:
+      - LOGSTASH_URL=http://logstash:9600
+    networks:
+      - obs-net
+    depends_on:
+      - logstash
+
 volumes:
   es-data:
   grafana-data:
+  prometheus-data:
 
 networks:
   obs-net:

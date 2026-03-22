@@ -1,4 +1,4 @@
-{{- if and .Values.ingress.enabled .Values.kibana.enabled .Values.ingress.kibana.host }}
+{{- if and .Values.ingress.enabled (eq (include "alo.kibanaEffective" .) "true") .Values.ingress.kibana.host }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

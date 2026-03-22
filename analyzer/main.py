@@ -9,10 +9,20 @@ import json
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from record_builder import build_record, extract_raw_fields, partial_error_record
 
 app = FastAPI()
+
+Instrumentator(
+    should_group_status_codes=True,
+    should_ignore_untemplated=True,
+    should_instrument_requests_inprogress=True,
+    inprogress_name="http_requests_inprogress",
+    inprogress_labels=True,
+    excluded_handlers=["/health", "/metrics"],
+).instrument(app).expose(app)
 
 
 @app.post("/analyze")

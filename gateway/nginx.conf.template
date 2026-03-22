@@ -112,4 +112,15 @@ http {
 
         }
     }
+
+    # Internal stub_status for Prometheus nginx-exporter (port not mapped by default)
+    server {
+        listen 9145;
+        location /stub_status {
+            stub_status;
+        }
+        location / {
+            return 404;
+        }
+    }
 }

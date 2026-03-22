@@ -114,6 +114,19 @@ spec:
             {{- end }}
           resources:
             {{- toYaml .Values.gateway.resources | nindent 12 }}
+        {{- if or .Values.gateway.exporter.enabled (eq (include "alo.exportersEffective" .) "true") }}
+        - name: nginx-exporter
+          image: "{{ .Values.gateway.exporter.image.repository }}:{{ .Values.gateway.exporter.image.tag }}"
+          imagePullPolicy: {{ .Values.gateway.exporter.image.pullPolicy }}
+          args:
+            - --nginx.scrape-uri=http://localhost:{{ .Values.gateway.exporter.stubStatusPort }}/stub_status
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.gateway.exporter.port }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.gateway.exporter.resources | nindent 12 }}
+        {{- end }}
       volumes:
         - name: nginx-config-template
           configMap:

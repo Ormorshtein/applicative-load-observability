@@ -1,4 +1,4 @@
-{{- if .Values.metricbeat.enabled }}
+{{- if eq (include "alo.metricbeatEffective" .) "true" }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -35,7 +35,7 @@ data:
         hosts: ["{{ include "alo.logstashMonitoringUrl" . }}"]
       {{- end }}
 
-      {{- if and .Values.kibana.enabled (not .Values.kibana.external.enabled) }}
+      {{- if and (eq (include "alo.kibanaEffective" .) "true") (not .Values.kibana.external.enabled) }}
       - module: kibana
         xpack.enabled: true
         period: 10s
@@ -58,7 +58,7 @@ data:
       ssl.verification_mode: none
       {{- end }}
 
-    {{- if and .Values.kibana.enabled (not .Values.kibana.external.enabled) }}
+    {{- if and (eq (include "alo.kibanaEffective" .) "true") (not .Values.kibana.external.enabled) }}
     setup.kibana:
       host: "{{ include "alo.kibanaUrl" . }}"
     {{- end }}

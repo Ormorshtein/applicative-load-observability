@@ -1,4 +1,4 @@
-{{- if and .Values.grafana.enabled .Values.grafana.setup.enabled }}
+{{- if and (eq (include "alo.grafanaEffective" .) "true") .Values.grafana.setup.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:

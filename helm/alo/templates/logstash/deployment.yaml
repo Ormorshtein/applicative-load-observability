@@ -87,7 +87,20 @@ spec:
             periodSeconds: 30
           resources:
             {{- toYaml .Values.logstash.resources | nindent 12 }}
-      volumes:
+        {{- if or .Values.logstash.exporter.enabled (eq (include "alo.exportersEffective" .) "true") }}
+        - name: logstash-exporter
+          image: "{{ .Values.logstash.exporter.image.repository }}:{{ .Values.logstash.exporter.image.tag }}"
+          imagePullPolicy: {{ .Values.logstash.exporter.image.pullPolicy }}
+          env:
+            - name: LOGSTASH_URL
+              value: "http://localhost:{{ .Values.logstash.service.monitoringPort }}"
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.logstash.exporter.port }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.logstash.exporter.resources | nindent 12 }}
+        {{- end }}
         - name: config
           configMap:
             name: {{ include "alo.fullname" . }}-logstash

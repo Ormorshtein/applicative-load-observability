@@ -4,6 +4,22 @@
 # When "nifi":     deploys NiFi, skips Logstash.
 pipelineMode: logstash
 
+# ── Dashboard UI ──────────────────────────────────────────────────────────
+# Which dashboard UI to deploy: "kibana", "grafana", or "none".
+#   kibana  → deploys Kibana + ALO dashboard setup job (default)
+#   grafana → deploys Grafana + ALO dashboard setup job
+#   none    → no dashboard UI deployed
+# For external instances, set this to the matching value and configure
+# the external section under kibana or grafana below.
+dashboardUI: kibana
+
+# ── Monitoring ─────────────────────────────────────────────────────────────
+# How to monitor ALO stack components: "metricbeat", "prometheus", or "none".
+#   metricbeat  → deploys Metricbeat for Elastic Stack Monitoring
+#   prometheus  → adds exporter sidecars to gateway + logstash
+#   none        → no stack monitoring (default)
+monitoring: none
+
 # ── Global ──────────────────────────────────────────────────────────────────
 global:
   # Name of the monitored Elasticsearch cluster (used as data stream namespace)
@@ -177,6 +193,22 @@ logstash:
   queue:
     type: memory
     maxBytes: 256mb
+  # Prometheus exporter sidecar (kuskoman/logstash-exporter).
+  # Enabled automatically when monitoring=prometheus; can also be set manually.
+  exporter:
+    enabled: false
+    image:
+      repository: kuskoman/logstash-exporter
+      tag: "v1.9.1"
+      pullPolicy: IfNotPresent
+    port: 9198
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
   nodeSelector: {}
   tolerations: []
   affinity: {}
@@ -294,6 +326,24 @@ gateway:
   nodeSelector: {}
   tolerations: []
   affinity: {}
+  # Prometheus exporter sidecar (nginx-prometheus-exporter).
+  # Enabled automatically when monitoring=prometheus; can also be set manually.
+  exporter:
+    enabled: false
+    image:
+      repository: nginx/nginx-prometheus-exporter
+      tag: "1.4.0"
+      pullPolicy: IfNotPresent
+    port: 9113
+    # Internal port for stub_status (not exposed on the Service)
+    stubStatusPort: 9145
+    resources:
+      requests:
+        cpu: 50m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
   podAnnotations: {}
   extraEnv: []
 
@@ -449,6 +499,16 @@ securityContext: {}
 testImage:
   repository: busybox
   tag: "1.36"
+
+# ── Prometheus ServiceMonitors ────────────────────────────────────────────
+# Deploy ServiceMonitor CRDs for Prometheus Operator autodiscovery.
+# Only relevant when monitoring=prometheus (requires at least one exporter).
+serviceMonitors:
+  enabled: false
+  # Extra labels for ServiceMonitor resources (e.g. { release: prometheus })
+  labels: {}
+  # Scrape interval
+  interval: "15s"
 
 # ── Image pull secrets (shared across all deployments) ──────────────────────
 imagePullSecrets: []

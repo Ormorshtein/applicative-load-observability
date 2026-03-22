@@ -12,5 +12,11 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    {{- if or .Values.gateway.exporter.enabled (eq (include "alo.exportersEffective" .) "true") }}
+    - port: {{ .Values.gateway.exporter.port }}
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+    {{- end }}
   selector:
     {{- include "alo.selectorLabels" (dict "ctx" . "component" "gateway") | nindent 4 }}

@@ -1,4 +1,4 @@
-{{- if and .Values.grafana.enabled (not .Values.grafana.external.enabled) }}
+{{- if and (eq (include "alo.grafanaEffective" .) "true") (not .Values.grafana.external.enabled) }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:

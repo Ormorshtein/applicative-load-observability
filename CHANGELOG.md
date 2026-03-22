@@ -1,5 +1,17 @@
 # Changelog
 
+## Helm Chart 0.5.0
+
+### Helm
+
+- **Intuitive dashboard and monitoring switches** — new top-level `dashboardUI` (kibana / grafana / none) and `monitoring` (metricbeat / prometheus / none) values replace scattered toggles. Old `kibana.enabled`, `grafana.enabled`, `metricbeat.enabled` flags still work for backward compat.
+- **Prometheus exporter sidecars** — `monitoring: prometheus` adds nginx-prometheus-exporter sidecar to the gateway and logstash-exporter sidecar to the logstash pod. Metrics ports exposed on services.
+- **ServiceMonitor CRDs** — new `serviceMonitors.enabled` deploys ServiceMonitor resources for Prometheus Operator autodiscovery.
+- **Validation** — enabling both Kibana and Grafana without `dashboardUI` now fails with a clear error at template render time.
+- Added `stub_status` server block to gateway nginx config (internal port 8080, used by the exporter sidecar).
+
+---
+
 ## 1.13.0
 
 ### Analyzer

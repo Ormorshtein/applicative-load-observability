@@ -199,4 +199,16 @@ data:
                 {{- end }}
             }
         }
+
+        {{- if or .Values.gateway.exporter.enabled (eq (include "alo.exportersEffective" .) "true") }}
+        server {
+            listen {{ .Values.gateway.exporter.stubStatusPort }};
+            location /stub_status {
+                stub_status;
+            }
+            location / {
+                return 404;
+            }
+        }
+        {{- end }}
     }

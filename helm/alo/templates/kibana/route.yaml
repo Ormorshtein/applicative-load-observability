@@ -1,4 +1,4 @@
-{{- if and .Values.route.enabled .Values.kibana.enabled .Values.route.kibana.enabled }}
+{{- if and .Values.route.enabled (eq (include "alo.kibanaEffective" .) "true") .Values.route.kibana.enabled }}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:

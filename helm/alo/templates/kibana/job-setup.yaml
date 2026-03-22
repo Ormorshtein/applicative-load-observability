@@ -1,4 +1,4 @@
-{{- if .Values.kibana.setup.enabled }}
+{{- if and (eq (include "alo.kibanaEffective" .) "true") .Values.kibana.setup.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:

@@ -8,6 +8,16 @@
       "enum": ["logstash", "nifi"],
       "description": "Pipeline processor to deploy: logstash or nifi."
     },
+    "dashboardUI": {
+      "type": "string",
+      "enum": ["kibana", "grafana", "none"],
+      "description": "Dashboard UI to deploy: kibana, grafana, or none."
+    },
+    "monitoring": {
+      "type": "string",
+      "enum": ["metricbeat", "prometheus", "none"],
+      "description": "Stack monitoring: metricbeat (Elastic), prometheus (exporters), or none."
+    },
     "global": {
       "type": "object",
       "additionalProperties": false,
@@ -211,6 +221,17 @@
             "maxBytes": { "type": "string" }
           }
         },
+        "exporter": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Prometheus logstash-exporter sidecar.",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "image": { "$ref": "#/$defs/image" },
+            "port": { "$ref": "#/$defs/port" },
+            "resources": { "$ref": "#/$defs/resources" }
+          }
+        },
         "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
         "tolerations": { "$ref": "#/$defs/tolerations" },
         "affinity": { "$ref": "#/$defs/affinity" },
@@ -335,6 +356,18 @@
           "properties": {
             "type": { "type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"] },
             "port": { "$ref": "#/$defs/port" }
+          }
+        },
+        "exporter": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Prometheus nginx-exporter sidecar.",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "image": { "$ref": "#/$defs/image" },
+            "port": { "$ref": "#/$defs/port" },
+            "stubStatusPort": { "$ref": "#/$defs/port" },
+            "resources": { "$ref": "#/$defs/resources" }
           }
         },
         "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
@@ -505,6 +538,16 @@
         "tag": { "type": "string" }
       },
       "required": ["repository", "tag"]
+    },
+    "serviceMonitors": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Prometheus ServiceMonitor CRDs for operator autodiscovery.",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "labels": { "type": "object", "additionalProperties": { "type": "string" } },
+        "interval": { "type": "string", "pattern": "^[0-9]+(s|m)$" }
+      }
     },
     "imagePullSecrets": {
       "type": "array",

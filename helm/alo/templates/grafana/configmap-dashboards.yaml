@@ -1,4 +1,4 @@
-{{- if and .Values.grafana.enabled (not .Values.grafana.external.enabled) }}
+{{- if and (eq (include "alo.grafanaEffective" .) "true") (not .Values.grafana.external.enabled) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -9,4 +9,7 @@ metadata:
 binaryData:
   alo-main.json: {{ .Files.Get "files/grafana-alo-main.json" | b64enc }}
   alo-cost-indicators.json: {{ .Files.Get "files/grafana-alo-cost-indicators.json" | b64enc }}
+  {{- if or (eq (include "alo.exportersEffective" .) "true") .Values.gateway.exporter.enabled .Values.logstash.exporter.enabled }}
+  alo-health.json: {{ .Files.Get "files/grafana-alo-health.json" | b64enc }}
+  {{- end }}
 {{- end }}

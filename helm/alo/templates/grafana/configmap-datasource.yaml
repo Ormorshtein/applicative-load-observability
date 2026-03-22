@@ -1,4 +1,4 @@
-{{- if and .Values.grafana.enabled (not .Values.grafana.external.enabled) }}
+{{- if and (eq (include "alo.grafanaEffective" .) "true") (not .Values.grafana.external.enabled) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -25,4 +25,19 @@ data:
           maxConcurrentShardRequests: 5
           interval: ""
         editable: true
+  {{- if or (eq (include "alo.exportersEffective" .) "true") .Values.gateway.exporter.enabled .Values.logstash.exporter.enabled }}
+  prometheus.yml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus (ALO)
+        type: prometheus
+        uid: alo-prometheus
+        access: proxy
+        url: http://{{ include "alo.fullname" . }}-prometheus:9090
+        isDefault: false
+        jsonData:
+          httpMethod: POST
+          timeInterval: "15s"
+        editable: true
+  {{- end }}
 {{- end }}

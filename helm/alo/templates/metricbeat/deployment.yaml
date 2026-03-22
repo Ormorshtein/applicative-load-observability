@@ -1,4 +1,4 @@
-{{- if .Values.metricbeat.enabled }}
+{{- if eq (include "alo.metricbeatEffective" .) "true" }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:

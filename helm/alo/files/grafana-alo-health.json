@@ -1,0 +1,326 @@
+{
+  "uid": "alo-health",
+  "title": "ALO — Stack Health",
+  "description": "Operational health of the ALO pipeline: gateway, analyzer, and logstash.",
+  "tags": ["alo", "health", "prometheus"],
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "15s",
+  "schemaVersion": 39,
+  "time": { "from": "now-30m", "to": "now" },
+  "timezone": "browser",
+  "templating": {
+    "list": [
+      {
+        "name": "gateway_instance",
+        "label": "Gateway",
+        "type": "query",
+        "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
+        "definition": "label_values(nginx_up, instance)",
+        "query": "label_values(nginx_up, instance)",
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "refresh": 2
+      },
+      {
+        "name": "analyzer_instance",
+        "label": "Analyzer",
+        "type": "query",
+        "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
+        "definition": "label_values(http_requests_total{job=\"analyzer\"}, instance)",
+        "query": "label_values(http_requests_total{job=\"analyzer\"}, instance)",
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "refresh": 2
+      },
+      {
+        "name": "logstash_instance",
+        "label": "Logstash",
+        "type": "query",
+        "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
+        "definition": "label_values(logstash_info_up, instance)",
+        "query": "label_values(logstash_info_up, instance)",
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "refresh": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Gateway (Nginx)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "title": "Gateways UP",
+      "description": "Number of healthy gateway instances over time. A drop means instances went down.",
+      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": { "fillOpacity": 20, "lineWidth": 2, "spanNulls": false },
+          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }] }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "total" },
+            "properties": [{ "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } }, { "id": "color", "value": { "fixedColor": "white", "mode": "fixed" } }]
+          }
+        ]
+      },
+      "targets": [
+        { "expr": "count(nginx_up{instance=~\"$gateway_instance\"} == 1)", "legendFormat": "up", "refId": "A" },
+        { "expr": "count(nginx_up{instance=~\"$gateway_instance\"})", "legendFormat": "total", "refId": "B" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Request Rate",
+      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "fillOpacity": 15, "lineWidth": 2, "spanNulls": false }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "sum(rate(nginx_http_requests_total{instance=~\"$gateway_instance\"}[$__rate_interval]))", "legendFormat": "total req/s", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Connection States",
+      "description": "Aggregated across selected instances. High 'reading' may indicate slow clients; high 'writing' may indicate slow upstream.",
+      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "fillOpacity": 30, "lineWidth": 1, "stacking": { "mode": "normal" }, "spanNulls": false }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "sum(nginx_connections_reading{instance=~\"$gateway_instance\"})", "legendFormat": "reading", "refId": "A" },
+        { "expr": "sum(nginx_connections_writing{instance=~\"$gateway_instance\"})", "legendFormat": "writing", "refId": "B" },
+        { "expr": "sum(nginx_connections_waiting{instance=~\"$gateway_instance\"})", "legendFormat": "waiting", "refId": "C" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Dropped Connections",
+      "description": "Sum of (accepted - handled) across all instances. Should always be zero. Non-zero means worker_connections limit was hit on one or more instances.",
+      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "fillOpacity": 10, "lineWidth": 2, "spanNulls": false, "thresholdsStyle": { "mode": "line" } },
+          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }, { "value": 1, "color": "red" }] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "sum(rate(nginx_connections_accepted{instance=~\"$gateway_instance\"}[$__rate_interval]) - rate(nginx_connections_handled{instance=~\"$gateway_instance\"}[$__rate_interval]))", "legendFormat": "dropped/s", "refId": "A" }
+      ]
+    },
+
+    {
+      "type": "row",
+      "title": "Analyzer (FastAPI)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "title": "Request Rate",
+      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 10 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "fillOpacity": 15, "lineWidth": 2, "spanNulls": false }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "sum(rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\"}[$__rate_interval]))", "legendFormat": "analyze req/s", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Error Rate",
+      "description": "Percentage of non-2xx responses on /analyze. The analyzer is designed to always return 200 — any errors here indicate a real issue.",
+      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 10 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "custom": { "fillOpacity": 10, "lineWidth": 2, "spanNulls": false, "thresholdsStyle": { "mode": "line" } },
+          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }, { "value": 0.01, "color": "red" }] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\",status=~\"4xx\"}[$__rate_interval])) / sum(rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\"}[$__rate_interval]))",
+          "legendFormat": "4xx %",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\",status=~\"5xx\"}[$__rate_interval])) / sum(rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\"}[$__rate_interval]))",
+          "legendFormat": "5xx %",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Latency (P50 / P95 / P99)",
+      "description": "Request duration percentiles aggregated across selected instances.",
+      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 10 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "fillOpacity": 0, "lineWidth": 2, "spanNulls": false }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_highr_seconds_bucket{instance=~\"$analyzer_instance\"}[$__rate_interval])) by (le))", "legendFormat": "p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_highr_seconds_bucket{instance=~\"$analyzer_instance\"}[$__rate_interval])) by (le))", "legendFormat": "p95", "refId": "B" },
+        { "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_highr_seconds_bucket{instance=~\"$analyzer_instance\"}[$__rate_interval])) by (le))", "legendFormat": "p99", "refId": "C" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Process Resources",
+      "description": "Aggregated analyzer memory (RSS) and average CPU usage across selected instances.",
+      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 10 },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "memory" },
+            "properties": [{ "id": "unit", "value": "bytes" }, { "id": "custom.axisPlacement", "value": "left" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "avg cpu %" },
+            "properties": [{ "id": "unit", "value": "percent" }, { "id": "custom.axisPlacement", "value": "right" }]
+          }
+        ]
+      },
+      "targets": [
+        { "expr": "sum(process_resident_memory_bytes{job=\"analyzer\",instance=~\"$analyzer_instance\"})", "legendFormat": "memory", "refId": "A" },
+        { "expr": "avg(rate(process_cpu_seconds_total{job=\"analyzer\",instance=~\"$analyzer_instance\"}[$__rate_interval]) * 100)", "legendFormat": "avg cpu %", "refId": "B" }
+      ]
+    },
+
+    {
+      "type": "row",
+      "title": "Logstash Pipeline",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "title": "Events In / Out Rate",
+      "description": "Aggregated throughput. Output should track input; a growing gap means events are backing up.",
+      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 19 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "fillOpacity": 15, "lineWidth": 2, "spanNulls": false }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "sum(logstash_stats_flow_input_current{instance=~\"$logstash_instance\"})", "legendFormat": "events in/s", "refId": "A" },
+        { "expr": "sum(logstash_stats_flow_output_current{instance=~\"$logstash_instance\"})", "legendFormat": "events out/s", "refId": "B" }
+      ]
+    },
+    {
+      "type": "gauge",
+      "title": "Avg Worker Utilization",
+      "description": "Average worker utilization across selected instances. Near 100% = saturated.",
+      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
+      "gridPos": { "h": 8, "w": 4, "x": 8, "y": 19 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }, { "value": 70, "color": "yellow" }, { "value": 90, "color": "red" }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
+      "targets": [
+        { "expr": "avg(logstash_stats_pipeline_flow_worker_utilization_current{instance=~\"$logstash_instance\"})", "legendFormat": "", "refId": "A" }
+      ]
+    },
+    {
+      "type": "gauge",
+      "title": "Max JVM Heap Used",
+      "description": "Worst-case JVM heap across selected instances. Alert at >85%.",
+      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
+      "gridPos": { "h": 8, "w": 4, "x": 12, "y": 19 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }, { "value": 70, "color": "yellow" }, { "value": 85, "color": "red" }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
+      "targets": [
+        { "expr": "max(logstash_stats_jvm_mem_heap_used_percent{instance=~\"$logstash_instance\"})", "legendFormat": "", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU & Queue Backpressure",
+      "description": "Average CPU and sum of queue backpressure across selected instances.",
+      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 19 },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "avg cpu %" },
+            "properties": [{ "id": "unit", "value": "percent" }, { "id": "custom.axisPlacement", "value": "left" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "backpressure" },
+            "properties": [{ "id": "unit", "value": "short" }, { "id": "custom.axisPlacement", "value": "right" }, { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } }]
+          }
+        ]
+      },
+      "targets": [
+        { "expr": "avg(logstash_stats_process_cpu_percent{instance=~\"$logstash_instance\"})", "legendFormat": "avg cpu %", "refId": "A" },
+        { "expr": "sum(logstash_stats_flow_queue_backpressure_current{instance=~\"$logstash_instance\"})", "legendFormat": "backpressure", "refId": "B" }
+      ]
+    }
+  ],
+  "annotations": { "list": [] },
+  "links": []
+}
