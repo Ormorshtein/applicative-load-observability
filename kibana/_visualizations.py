@@ -428,11 +428,10 @@ def layout_main(vis_ids: list[str], panels: list[dict],
     Row 1 (y=10, h=10):  5 pie charts — Application, Target, Operation, Cost Indicator, Template
     Row 2-6 (h=12 each): 5 stress-over-time charts, same order as pies
     Row 7 (h=14):         Top 10 Templates by Stress Score table
-    Row 8 (h=16):         Sample Request Bodies drilldown (saved search)
-    Row 9 (h=16):         Top 10 Heaviest Operations (saved search, sorted by stress.score)
-    Row 10 (h=14):        Top 10 Cost Indicators by Stress Score table
-    Row 11-12 (h=12 each): Avg ES/Gateway Response Time — by Cost Indicator, Operation, Template
-    Row 13 (h=12):        Sanity check tables — most recurring templates, most cost indicators
+    Row 8 (h=16):         Top 10 Heaviest Operations (saved search, sorted by stress.score)
+    Row 9 (h=14):         Top 10 Cost Indicators by Stress Score table
+    Row 10-11 (h=12 each): Avg ES/Gateway Response Time — by Cost Indicator, Operation, Template
+    Row 12 (h=12):        Sanity check tables — most recurring templates, most cost indicators
     """
     y = 0
 
@@ -462,25 +461,21 @@ def layout_main(vis_ids: list[str], panels: list[dict],
     _add_panel(panels, refs, vis_ids[13], 0, y, 48, 14)
     y += 14
 
-    # --- Row 9: Sample Request Bodies drilldown (index 23) ---
+    # --- Row 9: Top 10 Heaviest Operations (index 23) ---
     _add_panel(panels, refs, vis_ids[23], 0, y, 48, 16, panel_type="search")
     y += 16
 
-    # --- Row 10: Top 10 Heaviest Operations (index 24) ---
-    _add_panel(panels, refs, vis_ids[24], 0, y, 48, 16, panel_type="search")
-    y += 16
-
-    # --- Row 11: Top Cost Indicators by Stress Score table (index 14) ---
+    # --- Row 9: Top Cost Indicators by Stress Score table (index 14) ---
     _add_panel(panels, refs, vis_ids[14], 0, y, 48, 14)
     y += 14
 
-    # --- Rows 12-13: Response time panels (indices 15-20), 3 per row ---
+    # --- Rows 10-11: Response time panels (indices 15-20), 3 per row ---
     for row_start in (15, 18):
         for j in range(3):
             _add_panel(panels, refs, vis_ids[row_start + j], j * 16, y, 16, 12)
         y += 12
 
-    # --- Row 14: 2 sanity check tables (indices 21-22) ---
+    # --- Row 12: 2 sanity check tables (indices 21-22) ---
     for j in range(2):
         _add_panel(panels, refs, vis_ids[21 + j], j * 24, y, 24, 12)
 

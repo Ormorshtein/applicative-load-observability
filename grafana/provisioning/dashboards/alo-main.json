@@ -1027,142 +1027,6 @@
       }
     },
     {
-      "id": 15,
-      "title": "Sample Request Bodies (select a Template above to drilldown)",
-      "type": "table",
-      "datasource": {
-        "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 84,
-        "w": 24,
-        "h": 10
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
-          "refId": "A",
-          "metrics": [
-            {
-              "type": "raw_document",
-              "id": "1",
-              "settings": {
-                "size": "10"
-              }
-            }
-          ],
-          "bucketAggs": []
-        }
-      ],
-      "options": {
-        "showHeader": true
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "@timestamp"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Timestamp"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "identity.applicative_provider"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Application"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "request.path"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Path"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "request.operation"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Operation"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "request.body"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Request Body"
-              },
-              {
-                "id": "custom.inspect",
-                "value": true
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "stress.score"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Stress"
-              }
-            ]
-          }
-        ]
-      },
-      "transformations": [
-        {
-          "id": "filterFieldsByName",
-          "options": {
-            "include": {
-              "names": [
-                "@timestamp",
-                "stress.score",
-                "identity.applicative_provider",
-                "request.path",
-                "request.operation",
-                "request.body"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
       "id": 25,
       "title": "Top 10 Heaviest Operations",
       "type": "table",
@@ -1172,7 +1036,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 94,
+        "y": 84,
         "w": 24,
         "h": 10
       },
@@ -1313,6 +1177,18 @@
                 "value": true
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_id"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Doc ID"
+              }
+            ]
           }
         ]
       },
@@ -1323,6 +1199,7 @@
             "include": {
               "names": [
                 "@timestamp",
+                "request.body",
                 "identity.applicative_provider",
                 "request.operation",
                 "request.target",
@@ -1330,7 +1207,7 @@
                 "stress.score",
                 "response.es_took_ms",
                 "stress.cost_indicator_names",
-                "request.body"
+                "_id"
               ]
             }
           }
@@ -1365,7 +1242,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 104,
+        "y": 94,
         "w": 24,
         "h": 8
       },
@@ -1503,7 +1380,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 112,
+        "y": 102,
         "w": 8,
         "h": 8
       },
@@ -1623,7 +1500,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 112,
+        "y": 102,
         "w": 8,
         "h": 8
       },
@@ -1743,7 +1620,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 112,
+        "y": 102,
         "w": 8,
         "h": 8
       },
@@ -1863,7 +1740,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 120,
+        "y": 110,
         "w": 8,
         "h": 8
       },
@@ -1983,7 +1860,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 120,
+        "y": 110,
         "w": 8,
         "h": 8
       },
@@ -2103,7 +1980,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 120,
+        "y": 110,
         "w": 8,
         "h": 8
       },
@@ -2223,7 +2100,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 128,
+        "y": 118,
         "w": 12,
         "h": 8
       },
@@ -2293,7 +2170,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 128,
+        "y": 118,
         "w": 12,
         "h": 8
       },

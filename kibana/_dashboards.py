@@ -306,18 +306,12 @@ def _build_ci_visualizations() -> list[tuple[str, dict]]:
     ]
 
 
-DRILLDOWN_SEARCH_ID = "alo-template-drilldown"
 HEAVIEST_OPS_SEARCH_ID = "alo-heaviest-ops"
 
-_DRILLDOWN_COLUMNS = [
-    "stress.score", "request.template", "request.path", "request.operation",
-    "identity.applicative_provider", "request.body",
-]
-
 _HEAVIEST_OPS_COLUMNS = [
-    "identity.applicative_provider", "request.operation", "request.target",
-    "request.path", "stress.score", "response.es_took_ms",
-    "stress.cost_indicator_names", "request.body",
+    "request.body", "identity.applicative_provider", "request.operation",
+    "request.target", "request.path", "stress.score", "response.es_took_ms",
+    "stress.cost_indicator_names", "_id",
 ]
 
 
@@ -346,17 +340,12 @@ def _create_saved_search(cfg: StackConfig, search_id: str, title: str,
 def do_rebuild(cfg: StackConfig) -> bool:
     _create_data_view(cfg)
     _create_saved_search(
-        cfg, DRILLDOWN_SEARCH_ID, "Sample Request Bodies",
-        "Sample request bodies for template drilldown",
-        _DRILLDOWN_COLUMNS, sort_field="@timestamp")
-    _create_saved_search(
         cfg, HEAVIEST_OPS_SEARCH_ID, "Top 10 Heaviest Operations",
         "Individual requests with highest stress scores",
         _HEAVIEST_OPS_COLUMNS, sort_field="stress.score")
 
     main_vis = _build_main_visualizations()
     vis_ids = _upsert_visualizations(cfg, main_vis, all_lens=False)
-    vis_ids.append(DRILLDOWN_SEARCH_ID)
     vis_ids.append(HEAVIEST_OPS_SEARCH_ID)
     ok1 = build_dashboard(cfg, DASHBOARD_ID, "Applicative Load Observability",
                           "Stress analysis by application, target, operation, and template, with overall trend.",
