@@ -292,7 +292,7 @@
     },
     {
       "id": 6,
-      "title": "Flagged vs Unflagged Requests",
+      "title": "Stress by Cost Indicator (Selected Period)",
       "type": "piechart",
       "datasource": {
         "type": "elasticsearch",
@@ -310,7 +310,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "cluster_name:${cluster} AND identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template} AND stress.cost_indicator_count:[1 TO *]",
+          "query": "cluster_name:${cluster} AND identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "A",
           "metrics": [
             {
@@ -321,50 +321,26 @@
           ],
           "bucketAggs": [
             {
-              "type": "date_histogram",
-              "field": "@timestamp",
+              "type": "terms",
+              "field": "stress.cost_indicator_names",
               "id": "2",
               "settings": {
-                "interval": "auto"
+                "size": "10",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
               }
             }
-          ],
-          "alias": "Flagged"
-        },
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:${cluster} AND identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template} AND NOT stress.cost_indicator_count:[1 TO *]",
-          "refId": "B",
-          "metrics": [
-            {
-              "type": "sum",
-              "id": "1",
-              "field": "stress.score"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ],
-          "alias": "Unflagged"
+          ]
         }
       ],
       "options": {
         "reduceOptions": {
           "calcs": [
-            "sum"
+            "lastNotNull"
           ],
           "fields": "",
-          "values": false
+          "values": true
         },
         "pieType": "donut",
         "legend": {

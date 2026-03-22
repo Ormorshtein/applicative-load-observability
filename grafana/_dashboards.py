@@ -349,12 +349,10 @@ def build_main_dashboard():
                              {"x": i * 8, "y": y, "w": 8, "h": pie_h},
                              size=size))
     y += pie_h
-    # Second row: Flagged/Unflagged + Template
-    panels.append(mk_pie_filters(
-        "Flagged vs Unflagged Requests", [
-            ("Flagged", "stress.cost_indicator_count:[1 TO *]"),
-            ("Unflagged", "NOT stress.cost_indicator_count:[1 TO *]"),
-        ], {"x": 0, "y": y, "w": 12, "h": pie_h}))
+    # Second row: Cost Indicator breakdown + Template
+    panels.append(mk_pie("Stress by Cost Indicator (Selected Period)",
+                         "stress.cost_indicator_names",
+                         {"x": 0, "y": y, "w": 12, "h": pie_h}, size=10))
     panels.append(mk_pie("Stress by Template (Selected Period)",
                          "request.template",
                          {"x": 12, "y": y, "w": 12, "h": pie_h}, size=10))
