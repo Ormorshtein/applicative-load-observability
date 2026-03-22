@@ -201,7 +201,7 @@ logstash:
     type: memory
     maxBytes: 256mb
   # Prometheus exporter sidecar (kuskoman/logstash-exporter).
-  # Enabled automatically when monitoring=prometheus; can also be set manually.
+  # Enable to add a Prometheus exporter sidecar to this component.
   exporter:
     enabled: false
     image:
@@ -314,7 +314,7 @@ gateway:
   tolerations: []
   affinity: {}
   # Prometheus exporter sidecar (nginx-prometheus-exporter).
-  # Enabled automatically when monitoring=prometheus; can also be set manually.
+  # Enable to add a Prometheus exporter sidecar to this component.
   exporter:
     enabled: false
     image:
@@ -489,7 +489,7 @@ testImage:
 
 # ── Prometheus ServiceMonitors ────────────────────────────────────────────
 # Deploy ServiceMonitor CRDs for Prometheus Operator autodiscovery.
-# Only relevant when monitoring=prometheus (requires at least one exporter).
+# Requires at least one exporter to be enabled.
 serviceMonitors:
   enabled: false
   # Extra labels for ServiceMonitor resources (e.g. { release: prometheus })
