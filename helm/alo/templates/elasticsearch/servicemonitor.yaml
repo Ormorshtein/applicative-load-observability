@@ -1,0 +1,19 @@
+{{- if and (not .Values.elasticsearch.external.enabled) .Values.elasticsearch.exporter.enabled .Values.serviceMonitors.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "alo.fullname" . }}-elasticsearch
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "elasticsearch") | nindent 4 }}
+    {{- with .Values.serviceMonitors.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "alo.selectorLabels" (dict "ctx" . "component" "elasticsearch") | nindent 6 }}
+  endpoints:
+    - port: metrics
+      interval: {{ .Values.serviceMonitors.interval }}
+{{- end }}

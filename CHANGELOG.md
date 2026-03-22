@@ -4,11 +4,15 @@
 
 ### Helm
 
-- **Intuitive dashboard and monitoring switches** — new top-level `dashboardUI` (kibana / grafana / none) and `monitoring` (metricbeat / prometheus / none) values replace scattered toggles. Old `kibana.enabled`, `grafana.enabled`, `metricbeat.enabled` flags still work for backward compat.
-- **Prometheus exporter sidecars** — `monitoring: prometheus` adds nginx-prometheus-exporter sidecar to the gateway and logstash-exporter sidecar to the logstash pod. Metrics ports exposed on services.
-- **ServiceMonitor CRDs** — new `serviceMonitors.enabled` deploys ServiceMonitor resources for Prometheus Operator autodiscovery.
+- **Intuitive dashboard switching** — new top-level `dashboardUI` (kibana / grafana / none) replaces scattered toggles.
+- **Removed Metricbeat** — replaced by Prometheus exporters for stack monitoring.
+- **Prometheus exporter sidecars** — `gateway.exporter.enabled` and `logstash.exporter.enabled` add nginx-prometheus-exporter and logstash-exporter sidecars. Optional `elasticsearch.exporter.enabled` adds elasticsearch-exporter.
+- **ALO Health Grafana dashboard** — 4-row, 21-panel dashboard: gateway (connections, drops), analyzer (RED metrics, latency histograms), logstash (events, worker util, JVM/GC, output errors), and Elasticsearch (collapsed, cluster health, search/index rate, JVM, disk).
+- **ServiceMonitor CRDs** — `serviceMonitors.enabled` deploys ServiceMonitor resources for Prometheus Operator autodiscovery (gateway, logstash, analyzer, elasticsearch).
+- **Analyzer Prometheus instrumentation** — `prometheus-fastapi-instrumentator` exposes `/metrics` with request rate, latency histograms, error rates, and process metrics.
+- **Docker Compose prometheus profile** — `docker compose --profile prometheus up` adds Prometheus, nginx-exporter, logstash-exporter, and elasticsearch-exporter services.
 - **Validation** — enabling both Kibana and Grafana without `dashboardUI` now fails with a clear error at template render time.
-- Added `stub_status` server block to gateway nginx config (internal port 8080, used by the exporter sidecar).
+- Added `stub_status` server block to gateway nginx config (internal port 9145, used by the exporter sidecar).
 
 ---
 

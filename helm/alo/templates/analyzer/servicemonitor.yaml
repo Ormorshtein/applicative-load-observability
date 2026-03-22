@@ -1,4 +1,4 @@
-{{- if and (or (eq (include "alo.exportersEffective" .) "true") .Values.gateway.exporter.enabled .Values.logstash.exporter.enabled) .Values.serviceMonitors.enabled }}
+{{- if .Values.serviceMonitors.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:

@@ -1,4 +1,4 @@
-{{- if and (or .Values.gateway.exporter.enabled (eq (include "alo.exportersEffective" .) "true")) .Values.serviceMonitors.enabled }}
+{{- if and .Values.gateway.exporter.enabled .Values.serviceMonitors.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:

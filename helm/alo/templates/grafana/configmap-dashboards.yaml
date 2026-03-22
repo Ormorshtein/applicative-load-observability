@@ -9,7 +9,7 @@ metadata:
 binaryData:
   alo-main.json: {{ .Files.Get "files/grafana-alo-main.json" | b64enc }}
   alo-cost-indicators.json: {{ .Files.Get "files/grafana-alo-cost-indicators.json" | b64enc }}
-  {{- if or (eq (include "alo.exportersEffective" .) "true") .Values.gateway.exporter.enabled .Values.logstash.exporter.enabled }}
+  {{- if or .Values.gateway.exporter.enabled .Values.logstash.exporter.enabled }}
   alo-health.json: {{ .Files.Get "files/grafana-alo-health.json" | b64enc }}
   {{- end }}
 {{- end }}

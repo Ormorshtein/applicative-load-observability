@@ -25,7 +25,7 @@ data:
           maxConcurrentShardRequests: 5
           interval: ""
         editable: true
-  {{- if or (eq (include "alo.exportersEffective" .) "true") .Values.gateway.exporter.enabled .Values.logstash.exporter.enabled }}
+  {{- if or .Values.gateway.exporter.enabled .Values.logstash.exporter.enabled }}
   prometheus.yml: |
     apiVersion: 1
     datasources:

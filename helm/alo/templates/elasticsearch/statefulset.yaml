@@ -86,6 +86,19 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /usr/share/elasticsearch/data
+        {{- if .Values.elasticsearch.exporter.enabled }}
+        - name: elasticsearch-exporter
+          image: "{{ .Values.elasticsearch.exporter.image.repository }}:{{ .Values.elasticsearch.exporter.image.tag }}"
+          imagePullPolicy: {{ .Values.elasticsearch.exporter.image.pullPolicy }}
+          args:
+            - --es.uri=http://localhost:9200
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.elasticsearch.exporter.port }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.elasticsearch.exporter.resources | nindent 12 }}
+        {{- end }}
       {{- include "alo.scheduling" .Values.elasticsearch | nindent 6 }}
   {{- if .Values.elasticsearch.persistence.enabled }}
   volumeClaimTemplates:

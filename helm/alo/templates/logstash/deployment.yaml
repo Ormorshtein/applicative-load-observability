@@ -87,7 +87,7 @@ spec:
             periodSeconds: 30
           resources:
             {{- toYaml .Values.logstash.resources | nindent 12 }}
-        {{- if or .Values.logstash.exporter.enabled (eq (include "alo.exportersEffective" .) "true") }}
+        {{- if .Values.logstash.exporter.enabled }}
         - name: logstash-exporter
           image: "{{ .Values.logstash.exporter.image.repository }}:{{ .Values.logstash.exporter.image.tag }}"
           imagePullPolicy: {{ .Values.logstash.exporter.image.pullPolicy }}

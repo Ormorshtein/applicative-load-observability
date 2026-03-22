@@ -117,23 +117,6 @@ services:
       elasticsearch:
         condition: service_healthy
 
-  metricbeat:
-    image: docker.elastic.co/beats/metricbeat:8.13.0
-    # Set METRICBEAT_ENABLED=0 to disable stack monitoring
-    scale: ${METRICBEAT_ENABLED:-1}
-    user: root
-    command: ["--strict.perms=false"]
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-      - KIBANA_HOST=http://kibana:5601
-    volumes:
-      - ./metricbeat/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml:ro
-    networks:
-      - obs-net
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-
   # ── Prometheus monitoring stack (activate with: docker compose --profile prometheus up) ──
 
   prometheus:
@@ -155,6 +138,16 @@ services:
       - obs-net
     depends_on:
       - gateway
+
+  elasticsearch-exporter:
+    image: quay.io/prometheuscommunity/elasticsearch-exporter:v1.10.0
+    profiles: ["prometheus"]
+    command: ["--es.uri=http://elasticsearch:9200"]
+    networks:
+      - obs-net
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
 
   logstash-exporter:
     image: kuskoman/logstash-exporter:v1.9.1

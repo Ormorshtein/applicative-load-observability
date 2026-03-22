@@ -13,13 +13,6 @@ pipelineMode: logstash
 # the external section under kibana or grafana below.
 dashboardUI: kibana
 
-# ── Monitoring ─────────────────────────────────────────────────────────────
-# How to monitor ALO stack components: "metricbeat", "prometheus", or "none".
-#   metricbeat  → deploys Metricbeat for Elastic Stack Monitoring
-#   prometheus  → adds exporter sidecars to gateway + logstash
-#   none        → no stack monitoring (default)
-monitoring: none
-
 # ── Global ──────────────────────────────────────────────────────────────────
 global:
   # Name of the monitored Elasticsearch cluster (used as data stream namespace)
@@ -101,6 +94,22 @@ elasticsearch:
     existingSecret: ""
   service:
     port: 9200
+  # Prometheus exporter sidecar (elasticsearch-exporter).
+  # Disabled by default — enable to monitor the ES cluster via Prometheus.
+  exporter:
+    enabled: false
+    image:
+      repository: quay.io/prometheuscommunity/elasticsearch-exporter
+      tag: "v1.10.0"
+      pullPolicy: IfNotPresent
+    port: 9114
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
   nodeSelector: {}
   tolerations: []
   affinity: {}
@@ -209,26 +218,6 @@ logstash:
       limits:
         cpu: 200m
         memory: 128Mi
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  podAnnotations: {}
-
-# ── Metricbeat ──────────────────────────────────────────────────────────────
-metricbeat:
-  enabled: false
-  image:
-    repository: docker.elastic.co/beats/metricbeat
-    tag: "8.13.0"
-    pullPolicy: IfNotPresent
-  replicas: 1
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: 500m
-      memory: 256Mi
   nodeSelector: {}
   tolerations: []
   affinity: {}

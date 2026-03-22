@@ -10,6 +10,5 @@ keywords:
   - load-analysis
   - logstash
   - nifi
-  - metricbeat
   - prometheus
   - grafana

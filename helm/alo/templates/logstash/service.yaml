@@ -17,7 +17,7 @@ spec:
       targetPort: monitoring
       protocol: TCP
       name: monitoring
-    {{- if or .Values.logstash.exporter.enabled (eq (include "alo.exportersEffective" .) "true") }}
+    {{- if .Values.logstash.exporter.enabled }}
     - port: {{ .Values.logstash.exporter.port }}
       targetPort: metrics
       protocol: TCP

@@ -337,27 +337,6 @@ Whether Grafana is effectively enabled.
 {{- end }}
 
 {{/*
-Whether Metricbeat is effectively enabled.
-Prefers monitoring enum; falls back to metricbeat.enabled for backward compat.
-*/}}
-{{- define "alo.metricbeatEffective" -}}
-{{- if .Values.monitoring -}}
-  {{- if eq .Values.monitoring "metricbeat" -}}true{{- else -}}false{{- end -}}
-{{- else -}}
-  {{- if .Values.metricbeat.enabled -}}true{{- else -}}false{{- end -}}
-{{- end -}}
-{{- end }}
-
-{{/*
-Whether Prometheus exporters are effectively enabled.
-*/}}
-{{- define "alo.exportersEffective" -}}
-{{- if and .Values.monitoring (eq .Values.monitoring "prometheus") -}}true
-{{- else -}}false
-{{- end -}}
-{{- end }}
-
-{{/*
 Validate conflicting dashboard/monitoring settings.
 Call from NOTES.txt to fail at render time with a clear message.
 */}}

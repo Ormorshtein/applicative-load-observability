@@ -13,6 +13,12 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    {{- if .Values.elasticsearch.exporter.enabled }}
+    - port: {{ .Values.elasticsearch.exporter.port }}
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+    {{- end }}
   selector:
     {{- include "alo.selectorLabels" (dict "ctx" . "component" "elasticsearch") | nindent 4 }}
 {{- end }}

@@ -200,7 +200,7 @@ data:
             }
         }
 
-        {{- if or .Values.gateway.exporter.enabled (eq (include "alo.exportersEffective" .) "true") }}
+        {{- if .Values.gateway.exporter.enabled }}
         server {
             listen {{ .Values.gateway.exporter.stubStatusPort }};
             location /stub_status {

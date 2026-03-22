@@ -114,7 +114,7 @@ spec:
             {{- end }}
           resources:
             {{- toYaml .Values.gateway.resources | nindent 12 }}
-        {{- if or .Values.gateway.exporter.enabled (eq (include "alo.exportersEffective" .) "true") }}
+        {{- if .Values.gateway.exporter.enabled }}
         - name: nginx-exporter
           image: "{{ .Values.gateway.exporter.image.repository }}:{{ .Values.gateway.exporter.image.tag }}"
           imagePullPolicy: {{ .Values.gateway.exporter.image.pullPolicy }}

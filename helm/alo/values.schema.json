@@ -13,11 +13,6 @@
       "enum": ["kibana", "grafana", "none"],
       "description": "Dashboard UI to deploy: kibana, grafana, or none."
     },
-    "monitoring": {
-      "type": "string",
-      "enum": ["metricbeat", "prometheus", "none"],
-      "description": "Stack monitoring: metricbeat (Elastic), prometheus (exporters), or none."
-    },
     "global": {
       "type": "object",
       "additionalProperties": false,
@@ -103,6 +98,17 @@
           "additionalProperties": false,
           "properties": {
             "port": { "$ref": "#/$defs/port" }
+          }
+        },
+        "exporter": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Prometheus elasticsearch-exporter sidecar.",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "image": { "$ref": "#/$defs/image" },
+            "port": { "$ref": "#/$defs/port" },
+            "resources": { "$ref": "#/$defs/resources" }
           }
         },
         "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
@@ -232,20 +238,6 @@
             "resources": { "$ref": "#/$defs/resources" }
           }
         },
-        "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
-        "tolerations": { "$ref": "#/$defs/tolerations" },
-        "affinity": { "$ref": "#/$defs/affinity" },
-        "podAnnotations": { "$ref": "#/$defs/podAnnotations" }
-      }
-    },
-    "metricbeat": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "enabled": { "type": "boolean" },
-        "image": { "$ref": "#/$defs/image" },
-        "replicas": { "$ref": "#/$defs/replicas" },
-        "resources": { "$ref": "#/$defs/resources" },
         "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
         "tolerations": { "$ref": "#/$defs/tolerations" },
         "affinity": { "$ref": "#/$defs/affinity" },

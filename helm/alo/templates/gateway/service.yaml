@@ -12,7 +12,7 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
-    {{- if or .Values.gateway.exporter.enabled (eq (include "alo.exportersEffective" .) "true") }}
+    {{- if .Values.gateway.exporter.enabled }}
     - port: {{ .Values.gateway.exporter.port }}
       targetPort: metrics
       protocol: TCP

@@ -68,27 +68,13 @@ Point your applications to the gateway instead of Elasticsearch directly.
 {{- end }}
 {{- end }}
 
-{{- if eq (include "alo.metricbeatEffective" .) "true" }}
-
-=== Metricbeat (Stack Monitoring) ===
-  Metricbeat is enabled and monitoring:
-    - Elasticsearch
-  {{- if eq .Values.pipelineMode "logstash" }}
-    - Logstash
-  {{- end }}
-  {{- if and (eq (include "alo.kibanaEffective" .) "true") (not .Values.kibana.external.enabled) }}
-    - Kibana
-  {{- end }}
-  View metrics in Kibana -> Stack Monitoring.
-{{- end }}
-
-{{- if or (or .Values.gateway.exporter.enabled .Values.logstash.exporter.enabled) (eq (include "alo.exportersEffective" .) "true") }}
+{{- if or .Values.gateway.exporter.enabled .Values.logstash.exporter.enabled }}
 
 === Prometheus Exporters ===
-  {{- if or .Values.gateway.exporter.enabled (eq (include "alo.exportersEffective" .) "true") }}
+  {{- if .Values.gateway.exporter.enabled }}
   Gateway (nginx-exporter): port {{ .Values.gateway.exporter.port }}
   {{- end }}
-  {{- if and (or .Values.logstash.exporter.enabled (eq (include "alo.exportersEffective" .) "true")) (eq .Values.pipelineMode "logstash") (not .Values.logstash.external.enabled) }}
+  {{- if and .Values.logstash.exporter.enabled (eq .Values.pipelineMode "logstash") (not .Values.logstash.external.enabled) }}
   Logstash (logstash-exporter): port {{ .Values.logstash.exporter.port }}
   {{- end }}
   {{- if .Values.serviceMonitors.enabled }}
