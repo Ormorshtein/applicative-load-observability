@@ -35,7 +35,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template} AND stress.cost_indicator_count:[1 TO *]",
+          "query": "cluster_name:${cluster} AND identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template} AND stress.cost_indicator_count:[1 TO *]",
           "refId": "A",
           "metrics": [
             {
@@ -93,7 +93,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
+          "query": "cluster_name:${cluster} AND identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "A",
           "metrics": [
             {
@@ -151,7 +151,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
+          "query": "cluster_name:${cluster} AND identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "A",
           "metrics": [
             {
@@ -209,7 +209,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
+          "query": "cluster_name:${cluster} AND identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "A",
           "metrics": [
             {
@@ -267,7 +267,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
+          "query": "cluster_name:${cluster} AND identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "A",
           "metrics": [
             {
@@ -325,7 +325,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template} AND stress.cost_indicator_count:[1 TO *]",
+          "query": "cluster_name:${cluster} AND identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template} AND stress.cost_indicator_count:[1 TO *]",
           "refId": "A",
           "metrics": [
             {
@@ -350,7 +350,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
+          "query": "cluster_name:${cluster} AND identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "B",
           "metrics": [
             {
@@ -410,7 +410,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
+          "query": "cluster_name:${cluster} AND identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "A",
           "metrics": [
             {
@@ -436,7 +436,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
+          "query": "cluster_name:${cluster} AND identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "B",
           "metrics": [
             {
@@ -462,7 +462,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
+          "query": "cluster_name:${cluster} AND identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "C",
           "metrics": [
             {
@@ -488,7 +488,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
+          "query": "cluster_name:${cluster} AND identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "D",
           "metrics": [
             {
@@ -549,7 +549,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
+          "query": "cluster_name:${cluster} AND identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "A",
           "metrics": [
             {
@@ -575,7 +575,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
+          "query": "cluster_name:${cluster} AND identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "B",
           "metrics": [
             {
@@ -601,7 +601,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
+          "query": "cluster_name:${cluster} AND identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "C",
           "metrics": [
             {
@@ -627,7 +627,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
+          "query": "cluster_name:${cluster} AND identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "D",
           "metrics": [
             {
@@ -691,7 +691,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
+          "query": "cluster_name:${cluster} AND identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "A",
           "metrics": [
             {
@@ -812,7 +812,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
+          "query": "cluster_name:${cluster} AND identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "A",
           "metrics": [
             {
@@ -871,7 +871,7 @@
             "type": "elasticsearch",
             "uid": "alo-elasticsearch"
           },
-          "query": "identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
+          "query": "cluster_name:${cluster} AND identity.applicative_provider:${application} AND request.target:${target} AND request.operation:${operation} AND identity.username:${username} AND stress.cost_indicator_names:${cost_indicator} AND identity.client_host:${client_host} AND request.template:${template}",
           "refId": "A",
           "metrics": [
             {
@@ -913,6 +913,21 @@
   ],
   "templating": {
     "list": [
+      {
+        "type": "query",
+        "name": "cluster",
+        "label": "Cluster",
+        "datasource": {
+          "type": "elasticsearch",
+          "uid": "alo-elasticsearch"
+        },
+        "query": "{\"find\": \"terms\", \"field\": \"cluster_name\"}",
+        "includeAll": true,
+        "allValue": "",
+        "multi": true,
+        "sort": 1,
+        "refresh": 2
+      },
       {
         "type": "query",
         "name": "application",

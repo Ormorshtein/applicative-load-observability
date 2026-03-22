@@ -28,6 +28,41 @@ INDEX_PATTERN = "logs-alo.*-*"
 DATA_VIEW_ID = "alo-data-view"
 DASHBOARD_ID = "alo-dashboard"
 CI_DASHBOARD_ID = "alo-ci-dashboard"
+
+# Dashboard-level controls (dropdown filters above all panels).
+_CONTROLS = [
+    ("cluster_name", "Cluster"),
+]
+
+
+def _build_control_group_input() -> dict:
+    """Build Kibana controlGroupInput for dashboard-level filters."""
+    panels = {}
+    for idx, (field, title) in enumerate(_CONTROLS):
+        panels[str(idx)] = {
+            "order": idx,
+            "width": "medium",
+            "grow": True,
+            "type": "optionsListControl",
+            "explicitInput": {
+                "fieldName": field,
+                "title": title,
+                "id": str(idx),
+                "dataViewId": DATA_VIEW_ID,
+                "selectedOptions": [],
+                "singleSelect": False,
+                "enhancements": {},
+            },
+        }
+    return {
+        "chainingSystem": "HIERARCHICAL",
+        "controlStyle": "oneLine",
+        "ignoreParentSettingsJSON": json.dumps({
+            "ignoreFilters": False, "ignoreQuery": False,
+            "ignoreTimerange": False, "ignoreValidations": False,
+        }),
+        "panelsJSON": json.dumps(panels),
+    }
 _SCRIPT_DIR = Path(__file__).resolve().parent
 NDJSON_PATH = str(_SCRIPT_DIR / "dashboard.ndjson")
 CI_NDJSON_PATH = str(_SCRIPT_DIR / "dashboard-cost-indicators.ndjson")
@@ -116,6 +151,7 @@ def build_dashboard(cfg: StackConfig, dashboard_id: str, title: str,
     ok = upsert(cfg, "dashboard", dashboard_id, {
         "title": title,
         "description": description,
+        "controlGroupInput": _build_control_group_input(),
         "kibanaSavedObjectMeta": {"searchSourceJSON": json.dumps(
             {"query": {"query": "", "language": "kuery"}, "filter": []})},
         "panelsJSON": json.dumps(panels),

@@ -519,6 +519,7 @@ def build_cost_indicators_dashboard():
 
 
 _VARIABLES = [
+    ("cluster", "Cluster", "cluster_name"),
     ("application", "Application", "identity.applicative_provider"),
     ("target", "Target", "request.target"),
     ("operation", "Operation", "request.operation"),

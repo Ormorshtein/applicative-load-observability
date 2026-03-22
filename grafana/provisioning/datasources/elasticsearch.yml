@@ -5,7 +5,7 @@ datasources:
     type: elasticsearch
     uid: alo-elasticsearch
     access: proxy
-    url: ${ELASTICSEARCH_URL:-http://elasticsearch:9200}
+    url: http://elasticsearch:9200
     database: "logs-alo.*-*"
     isDefault: true
     jsonData:
