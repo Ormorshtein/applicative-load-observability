@@ -190,7 +190,7 @@ INDEX_TEMPLATES: dict[str, dict] = {
     "alo-dead-letter": {
         "index_patterns": ["logs-alo.dead_letter-*"],
         "data_stream": {},
-        "priority": 100,
+        "priority": 200,
         "template": {
             "settings": {
                 "index.lifecycle.name": "alo-dead-letter-lifecycle",
