@@ -204,13 +204,6 @@
             "monitoringPort": { "$ref": "#/$defs/port" }
           }
         },
-        "monitoring": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "enabled": { "type": "boolean" }
-          }
-        },
         "pipeline": {
           "type": "object",
           "additionalProperties": false,

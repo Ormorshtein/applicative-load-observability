@@ -7,7 +7,6 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - xpack.monitoring.collection.enabled=false
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
     cpus: 2
     volumes:
@@ -30,9 +29,6 @@ services:
       - ANALYZER_URL=${ANALYZER_URL:-http://analyzer:8000/analyze}
       - LOGSTASH_HTTP_PORT=${LOGSTASH_HTTP_PORT:-8080}
       - CLUSTER_NAME=${CLUSTER_NAME:-default}
-      # Set LOGSTASH_MONITORING=true to ship pipeline metrics to ES
-      # (viewable in Kibana → Stack Monitoring)
-      - LOGSTASH_MONITORING=${LOGSTASH_MONITORING:-false}
     volumes:
       - ./logstash/pipeline/:/usr/share/logstash/pipeline/
       - ./logstash/logstash.yml:/usr/share/logstash/logstash.yml:ro

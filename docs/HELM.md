@@ -210,7 +210,6 @@ All configurable environment variables with their defaults:
 | `gateway.proxyReadTimeout` | `60s` | Gateway | ES proxy read timeout |
 | `gateway.workerProcesses` | `auto` | Gateway | Nginx worker processes |
 | `gateway.workerConnections` | `4096` | Gateway | Connections per worker |
-| `logstash.monitoring.enabled` | `false` | Logstash | Ship pipeline metrics to ES |
 | `gateway.exporter.enabled` | `false` | Gateway | Deploy nginx-prometheus-exporter sidecar |
 | `logstash.exporter.enabled` | `false` | Logstash | Deploy logstash-exporter sidecar |
 | `elasticsearch.exporter.enabled` | `false` | Elasticsearch | Deploy elasticsearch-exporter sidecar |

@@ -194,8 +194,6 @@ logstash:
   service:
     httpPort: 8080
     monitoringPort: 9600
-  monitoring:
-    enabled: false
   pipeline:
     batchSize: 125
     batchDelay: 50
