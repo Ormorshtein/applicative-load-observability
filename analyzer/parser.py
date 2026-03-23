@@ -158,11 +158,18 @@ def scrub_bulk_template(raw_body: str) -> tuple[str, str]:
 # Response body extraction
 # ---------------------------------------------------------------------------
 
-def parse_hits(response_body: dict) -> int:
+def parse_hits(response_body: dict) -> tuple[int, bool]:
+    """Return (hit_count, is_lower_bound).
+
+    ``is_lower_bound`` is True when ES capped counting at ``track_total_hits``
+    (default 10 000) — the real hit count is higher than reported.
+    """
     total = (response_body.get("hits") or {}).get("total")
     if isinstance(total, dict):
-        return total.get("value", 0) or 0
-    return 0
+        value = total.get("value", 0) or 0
+        lower_bound = total.get("relation") == "gte"
+        return value, lower_bound
+    return 0, False
 
 
 def parse_shards_total(response_body: dict) -> int:

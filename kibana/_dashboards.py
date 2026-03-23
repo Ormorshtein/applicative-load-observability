@@ -241,6 +241,14 @@ def _build_main_visualizations() -> list[tuple[str, dict]]:
         metric_op="count", size=10,
         description="Request count over time by template — shows ingestion/query rate trends."))
 
+    vis.append(mk_ts(
+        "alo-ts-total-hits",
+        "Total Hits Over Time",
+        "request.operation",
+        metric_field="response.hits", metric_label="Total Hits",
+        metric_op="sum", size=8,
+        description="Sum of response hits over time by operation — correlates with CPU usage. High spikes indicate queries scanning large result sets."))
+
     vis.append(mk_datatable(
         "alo-table-top-templates", "Top 10 Templates by Stress Score",
         "request.template", "Template", [

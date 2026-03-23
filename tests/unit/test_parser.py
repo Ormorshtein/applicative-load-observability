@@ -342,14 +342,18 @@ class TestScrubBulkTemplate:
 
 class TestParseHits:
     def test_standard_response(self):
-        resp = {"hits": {"total": {"value": 1500}, "hits": []}}
-        assert parse_hits(resp) == 1500
+        resp = {"hits": {"total": {"value": 1500, "relation": "eq"}, "hits": []}}
+        assert parse_hits(resp) == (1500, False)
+
+    def test_lower_bound(self):
+        resp = {"hits": {"total": {"value": 10000, "relation": "gte"}, "hits": []}}
+        assert parse_hits(resp) == (10000, True)
 
     def test_missing_hits(self):
-        assert parse_hits({}) == 0
+        assert parse_hits({}) == (0, False)
 
     def test_missing_total(self):
-        assert parse_hits({"hits": {}}) == 0
+        assert parse_hits({"hits": {}}) == (0, False)
 
 
 class TestParseShardsTotal:

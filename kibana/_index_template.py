@@ -82,6 +82,7 @@ COMPONENT_TEMPLATE: dict = {
                         "excessive_bool":      {"type": "integer"},
                         "large_terms_list":    {"type": "integer"},
                         "deep_aggs":           {"type": "integer"},
+                        "unbound_hits":        {"type": "integer"},
                     }
                 },
                 "stress": {

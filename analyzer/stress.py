@@ -131,6 +131,8 @@ _COST_INDICATORS: list[tuple[str, Callable[[dict], bool], float, Callable[[dict]
                             lambda c: c["terms_values_count"]),
     ("deep_aggs",           lambda c: c["agg_clause_count"] >= _COST_INDICATOR_AGGS_THRESHOLD,    1.3,
                             lambda c: c["agg_clause_count"]),
+    ("unbound_hits",        lambda c: c.get("hits_lower_bound", 0) >= 1,  1.3,
+                            lambda c: 1),
 ]
 
 

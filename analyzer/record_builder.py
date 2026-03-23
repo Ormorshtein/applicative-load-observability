@@ -140,7 +140,7 @@ def build_record(raw: RawFields) -> dict:
     user_agent           = parse_user_agent(raw.headers)
     labels               = parse_labels(raw.headers)
 
-    hits                 = parse_hits(raw.response_body)
+    hits, hits_lower_bound = parse_hits(raw.response_body)
     if operation == "_bulk":
         shards_total     = parse_shards_total_bulk(raw.response_body)
     else:
@@ -159,6 +159,7 @@ def build_record(raw: RawFields) -> dict:
 
     if operation in _QUERY_OPS:
         clause_counts = count_clauses(raw.request_body)
+        clause_counts["hits_lower_bound"] = int(hits_lower_bound)
         cost_indicators, stress_multiplier = evaluate_cost_indicators(clause_counts)
     else:
         clause_counts = {k: 0 for k in _ALL_COUNT_FIELDS}

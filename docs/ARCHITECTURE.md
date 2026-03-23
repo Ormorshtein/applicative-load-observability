@@ -547,6 +547,10 @@ All ILM policies use hot→delete phases. Hot phase rolls over at 1 day or 50 GB
 | Single docker-compose | Full stack runs with one command |
 | Environment-variable configuration | All service URLs, ports, and hostnames are configurable via env vars with sensible defaults — works across Docker Compose, Helm, and manual deployments |
 
+### Known Limitations
+
+**Hit count is best-effort.** Elasticsearch caps `hits.total.value` at 10,000 by default unless the client sends `track_total_hits: true` in the request. ALO records the value ES returns — when the real hit count exceeds 10,000, the recorded `response.hits` is a lower bound, not the actual count. The `unbound_hits` cost indicator flags queries where `hits.total.relation` is `"gte"` (meaning ES stopped counting), but the true hit count is unknown. This affects the stress score's hits component and the "Total Hits Over Time" dashboard panel: both underreport during periods of heavy scanning. ALO does not inject `track_total_hits` into proxied requests because it would change query semantics and add overhead to every search.
+
 ---
 
 ## 7. Repository Structure

@@ -375,7 +375,15 @@ def build_main_dashboard():
         series_type="line", fill_opacity=20))
     y += 8
 
-    # Row 8: Top 10 Templates table
+    # Row 8: Total hits over time (correlates with CPU usage)
+    panels.append(mk_timeseries(
+        "Total Hits Over Time", "request.operation",
+        {"x": 0, "y": y, "w": 24, "h": 8},
+        metric_field="response.hits", metric_op="sum", size=8,
+        series_type="line", fill_opacity=20))
+    y += 8
+
+    # Row 9: Top 10 Templates table
     panels.append(mk_table(
         "Top 10 Templates by Stress Score", "request.template", "Template", [
             ("Sum Stress", "stress.score", "sum"),
