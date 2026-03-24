@@ -169,7 +169,6 @@ def build_record(raw: RawFields) -> dict:
         es_took_ms=       es_took_ms,
         gateway_took_ms=  raw.gateway_took_ms,
         hits=             hits,
-        size=             size,
         shards_total=     shards_total,
         docs_affected=    docs_affected,
     )

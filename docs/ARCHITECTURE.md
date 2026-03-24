@@ -303,8 +303,9 @@ Each normalised input divides the observed value by a baseline. Baselines repres
 | `es_took_ms` | 100 ms | `STRESS_BASELINE_TOOK_MS` | Slow-log default starts at 500ms; healthy queries are <100ms |
 | `hits` | 1 000 docs | `STRESS_BASELINE_HITS` | Moderate result set; scoring + sorting scales with hits |
 | `shards_total` | 5 shards | `STRESS_BASELINE_SHARDS_TOTAL` | Typical primary count; each shard is CPU + JVM overhead |
-| `size` | 100 docs | `STRESS_BASELINE_SIZE` | 10× ES default of 10; drives fetch-phase heap — `_search` formula only |
 | `docs_affected` | 500 docs | `STRESS_BASELINE_DOCS_AFFECTED` | Bulk/update/delete volume |
+
+> **Note:** `request.size` (the user's requested page size) was removed from the stress formula. ES scores and ranks all matched documents regardless of `size` — the query-phase CPU cost is identical whether the client asks for 10 or 10,000 results. `size` only affects the fetch phase (memory and serialization), not the compute-heavy scoring phase. The field is still recorded in the observability document for informational purposes.
 
 **Dynamic baselines** (`_baselines.py`):
 
@@ -337,10 +338,9 @@ Operations fall into five formula classes. Unknown operations (not in the dispat
 
 *`_search`:*
 ```
-base = 0.55·norm(es_took_ms, 100)
-     + 0.20·norm(shards_total, 5)
-     + 0.15·norm(hits, 10000)
-     + 0.10·norm(size, 100)
+base = 0.50·norm(es_took_ms, 100)
+     + 0.15·norm(shards_total, 5)
+     + 0.35·norm(hits, 1000)
 stress.score = (base + Σ bonuses) × stress.multiplier
 ```
 

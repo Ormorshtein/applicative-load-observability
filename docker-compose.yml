@@ -53,7 +53,6 @@ services:
       #   - STRESS_BASELINE_TOOK_MS=100
       #   - STRESS_BASELINE_HITS=1000
       #   - STRESS_BASELINE_SHARDS_TOTAL=5
-      #   - STRESS_BASELINE_SIZE=100
       #   - STRESS_BASELINE_DOCS_AFFECTED=500
     networks:
       - obs-net

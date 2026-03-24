@@ -240,7 +240,6 @@ analyzer:
     tookMs: ""
     hits: ""
     shardsTotal: ""
-    size: ""
     docsAffected: ""
   resources:
     requests:

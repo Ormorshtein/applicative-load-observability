@@ -261,7 +261,6 @@
             "tookMs": { "type": "string" },
             "hits": { "type": "string" },
             "shardsTotal": { "type": "string" },
-            "size": { "type": "string" },
             "docsAffected": { "type": "string" }
           }
         },

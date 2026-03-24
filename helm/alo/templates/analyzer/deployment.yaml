@@ -73,10 +73,6 @@ spec:
             - name: STRESS_BASELINE_SHARDS_TOTAL
               value: {{ .shardsTotal | quote }}
             {{- end }}
-            {{- if .size }}
-            - name: STRESS_BASELINE_SIZE
-              value: {{ .size | quote }}
-            {{- end }}
             {{- if .docsAffected }}
             - name: STRESS_BASELINE_DOCS_AFFECTED
               value: {{ .docsAffected | quote }}

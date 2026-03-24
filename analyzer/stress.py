@@ -42,7 +42,6 @@ class StressContext:
     es_took_ms:       float
     gateway_took_ms:  float
     hits:             int
-    size:             int
     shards_total:     int
     docs_affected:    int
 
@@ -152,10 +151,9 @@ def evaluate_cost_indicators(counts: dict) -> tuple[dict[str, int], float]:
 
 def _stress_query(ctx: StressContext, bl: dict[str, float]) -> float:
     return (
-        0.55 * normalize(ctx.es_took_ms, bl["took_ms"])
-        + 0.20 * normalize(ctx.shards_total, bl["shards_total"])
-        + 0.15 * normalize(ctx.hits, bl["hits"])
-        + 0.10 * normalize(ctx.size, bl["size"])
+        0.50 * normalize(ctx.es_took_ms, bl["took_ms"])
+        + 0.15 * normalize(ctx.shards_total, bl["shards_total"])
+        + 0.35 * normalize(ctx.hits, bl["hits"])
     )
 
 

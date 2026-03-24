@@ -33,7 +33,6 @@ _STATIC: dict[str, float] = {
     "took_ms":       float(os.environ.get("STRESS_BASELINE_TOOK_MS", "100")),
     "hits":          float(os.environ.get("STRESS_BASELINE_HITS", "1000")),
     "shards_total":  float(os.environ.get("STRESS_BASELINE_SHARDS_TOTAL", "5")),
-    "size":          float(os.environ.get("STRESS_BASELINE_SIZE", "100")),
     "docs_affected": float(os.environ.get("STRESS_BASELINE_DOCS_AFFECTED", "500")),
 }
 

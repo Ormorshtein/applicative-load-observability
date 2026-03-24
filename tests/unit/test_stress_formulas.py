@@ -29,12 +29,12 @@ class TestNormalize:
 
 class TestCalcStress:
     def _ctx(self, **kw) -> StressContext:
-        defaults = dict(es_took_ms=100, gateway_took_ms=100, hits=1000, size=100, shards_total=5, docs_affected=500)
+        defaults = dict(es_took_ms=100, gateway_took_ms=100, hits=1000, shards_total=5, docs_affected=500)
         defaults.update(kw)
         return StressContext(**defaults)
 
     def test_search_at_baseline(self):
-        """All values at baseline -> base = 0.55+0.20+0.15+0.10 = 1.0"""
+        """All values at baseline -> base = 0.50+0.15+0.35 = 1.0"""
         score, _ = calc_stress("_search", self._ctx())
         assert score == pytest.approx(1.0)
 
@@ -44,11 +44,11 @@ class TestCalcStress:
 
     def test_search_double_took(self):
         score, _ = calc_stress("_search", self._ctx(es_took_ms=200))
-        expected = 0.55 * 2.0 + 0.20 * 1.0 + 0.15 * 1.0 + 0.10 * 1.0
+        expected = 0.50 * 2.0 + 0.15 * 1.0 + 0.35 * 1.0
         assert score == pytest.approx(expected)
 
     def test_search_zero_values(self):
-        score, _ = calc_stress("_search", self._ctx(es_took_ms=0, hits=0, size=0, shards_total=0))
+        score, _ = calc_stress("_search", self._ctx(es_took_ms=0, hits=0, shards_total=0))
         assert score == pytest.approx(0.0)
 
     def test_bulk_at_baseline(self):
@@ -129,7 +129,7 @@ class TestCalcStress:
 
     def test_stress_unbounded(self):
         """Score should exceed 1.0 for extreme values."""
-        ctx = self._ctx(es_took_ms=10000, hits=1000000, shards_total=100, size=10000)
+        ctx = self._ctx(es_took_ms=10000, hits=1000000, shards_total=100)
         score, _ = calc_stress("_search", ctx)
         assert score > 10.0
 
@@ -137,7 +137,7 @@ class TestCalcStress:
         """Extreme multiplier compounds stress."""
         ctx = self._ctx(es_took_ms=500)
         score, _ = calc_stress("_search", ctx, stress_multiplier=3.0)
-        base = 0.55 * 5.0 + 0.20 * 1.0 + 0.15 * 1.0 + 0.10 * 1.0
+        base = 0.50 * 5.0 + 0.15 * 1.0 + 0.35 * 1.0
         assert score == pytest.approx(base * 3.0)
 
     # -- bool clause bonus ------------------------------------------------
