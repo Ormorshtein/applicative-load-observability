@@ -52,25 +52,26 @@ CHEAT_SHEET_MARKDOWN = """\
 
 **How to examine this dashboard:**
 
-1. **Start with the top row** — pie charts show which application, target, \
-operation, or template contributes the most stress; the overall trend shows \
-whether stress is rising or falling.
-2. **Check the time series** — look for spikes or trends in stress over time. \
+1. **Start with the overview** — pie charts show which application, target, \
+operation, or template contributes the most stress.
+2. **Check Highest Impact** — the Top 10 Templates and Heaviest Operations \
+tables show exactly what to fix. Focus on templates with high sum stress \
+and cost indicator counts.
+3. **Look at trends** — stress over time charts reveal spikes and patterns. \
 Correlate with deployments or traffic changes.
-3. **Review the Top 10 Templates table** — focus on templates with the highest \
-sum stress and cost indicator counts.
-4. **Inspect the Top 10 Heaviest Operations** — use filters to narrow down, then \
-examine the actual request bodies of the most resource-intensive individual requests.
+4. **Review volume & throughput** — request volume, total hits, docs affected, \
+and request size panels show operational load. Total hits correlates with CPU.
 5. **Examine response times** — high ES or gateway latency alongside high stress \
 may indicate query optimization opportunities.
-6. **Sanity check tables** — verify if the most recurring templates are also the \
+6. **Sanity checks** — verify if the most recurring templates are also the \
 most stressful; templates with many cost indicators need attention.
 
 **What to focus on:**
-- **High stress slices** in pie charts — these are your optimization targets
-- **Upward trends** in time series — indicates growing load or degrading patterns
-- **Templates with many cost indicators** — likely candidates for query optimization
+- **High stress slices** in pie charts — optimization targets
+- **Upward trends** in time series — growing load or degrading patterns
+- **Templates with many cost indicators** — query optimization candidates
 - **Latency spikes** correlating with specific operations or templates
+- **Total hits spikes** — correlate with CPU usage under queue saturation
 """
 
 
@@ -422,33 +423,38 @@ def _add_panel(panels: list[dict], refs: list[dict], vid: str,
 def layout_main(vis_ids: list[str], panels: list[dict],
                 refs: list[dict]) -> None:
     """
-    Layout structure:
+    Layout (reorganized for investigation flow):
 
-    Row 0 (y=0, h=10):    Cheat sheet (w=36) + Total Stress Score metric (w=12)
-    Row 1 (y=10, h=10):   5 pie charts — Application, Target, Operation, Cost Indicator, Template
-    Row 2-6 (h=12 each):  5 stress-over-time charts, same order as pies
-    Row 7 (h=12):          Request Volume Over Time (w=24) + by Template (w=24)
-    Row 8 (h=12):          Total Hits Over Time
-    Row 9 (h=12):          Docs Affected Over Time (w=24) + Request Size Over Time (w=24)
-    Row 10 (h=14):         Top 10 Templates by Stress Score table
-    Row 11 (h=16):         Top 10 Heaviest Operations (saved search)
-    Row 12 (h=14):         Top 10 Cost Indicators by Stress Score table
-    Row 13-14 (h=12 each): Avg ES/Gateway Response Time — by Cost Indicator, Operation, Template
-    Row 15 (h=12):         Sanity check tables — most recurring templates, most cost indicators
+    Section 1 — Overview:
+      Cheat sheet + Total Stress Score, 5 pie charts
+    Section 2 — Highest Impact:
+      Header, Top Templates table, Heaviest Ops, Top Cost Indicators table
+    Section 3 — Stress Trends:
+      Header, 5x Stress Over Time
+    Section 4 — Volume & Throughput:
+      Header, Volume by Op + Template, Total Hits, Docs Affected + Request Size
+    Section 5 — Response Times:
+      Header, 3x ES resp, 3x Gateway resp
+    Section 6 — Sanity Checks:
+      Header, Recurring Templates + Most Cost Indicators
 
-    Vis indices: 0=cheat, 1=metric, 2-6=pies, 7-11=ts, 12=volume-op,
-    13=volume-template, 14=hits, 15=docs, 16=reqsize, 17=top-templates,
-    18=top-indicators, 19-21=es-resp, 22-24=gw-resp, 25=recurring,
-    26=cost-ind-table, saved-search=27
+    Vis indices:
+      0=cheat, 1=metric, 2-6=pies,
+      7=hdr-offenders, 8=top-templates, 9=top-indicators,
+      10=hdr-trends, 11-15=stress-ts,
+      16=hdr-volume, 17=vol-op, 18=vol-template, 19=hits, 20=docs, 21=reqsize,
+      22=hdr-latency, 23-25=es-resp, 26-28=gw-resp,
+      29=hdr-sanity, 30=recurring, 31=cost-ind-table,
+      saved-search=32
     """
+    HDR_H = 3
     y = 0
 
-    # --- Row 0: Cheat sheet + Total Stress Score (indices 0-1) ---
+    # ── Section 1: Overview ────────────────────────────────────────────────
     _add_panel(panels, refs, vis_ids[0], 0, y, 36, 10, panel_type="visualization")
     _add_panel(panels, refs, vis_ids[1], 36, y, 12, 10)
     y += 10
 
-    # --- Row 1: 5 pie charts (indices 2-6) ---
     pie_w = 48 // 5
     for i in range(5):
         vid = vis_ids[2 + i]
@@ -456,46 +462,57 @@ def layout_main(vis_ids: list[str], panels: list[dict],
         _add_panel(panels, refs, vid, i * pie_w, y, w, 10)
     y += 10
 
-    # --- Rows 2-6: 5 stress-over-time charts (indices 7-11) ---
-    for i in range(5):
-        _add_panel(panels, refs, vis_ids[7 + i], 0, y, 48, 12)
-        y += 12
+    # ── Section 2: Highest Impact ──────────────────────────────────────────
+    _add_panel(panels, refs, vis_ids[7], 0, y, 48, HDR_H, panel_type="visualization")
+    y += HDR_H
 
-    # --- Row 7: Request Volume side by side (indices 12-13) ---
-    _add_panel(panels, refs, vis_ids[12], 0, y, 24, 12)
-    _add_panel(panels, refs, vis_ids[13], 24, y, 24, 12)
-    y += 12
-
-    # --- Row 8: Total Hits Over Time (index 14) ---
-    _add_panel(panels, refs, vis_ids[14], 0, y, 48, 12)
-    y += 12
-
-    # --- Row 9: Docs Affected + Request Size side by side (indices 15-16) ---
-    _add_panel(panels, refs, vis_ids[15], 0, y, 24, 12)
-    _add_panel(panels, refs, vis_ids[16], 24, y, 24, 12)
-    y += 12
-
-    # --- Row 10: Top Templates by Stress Score table (index 17) ---
-    _add_panel(panels, refs, vis_ids[17], 0, y, 48, 14)
+    _add_panel(panels, refs, vis_ids[8], 0, y, 48, 14)
     y += 14
 
-    # --- Row 11: Top 10 Heaviest Operations (index 27, saved search) ---
-    _add_panel(panels, refs, vis_ids[27], 0, y, 48, 16, panel_type="search")
+    _add_panel(panels, refs, vis_ids[32], 0, y, 48, 16, panel_type="search")
     y += 16
 
-    # --- Row 12: Top Cost Indicators by Stress Score table (index 18) ---
-    _add_panel(panels, refs, vis_ids[18], 0, y, 48, 14)
+    _add_panel(panels, refs, vis_ids[9], 0, y, 48, 14)
     y += 14
 
-    # --- Rows 13-14: Response time panels (indices 19-24), 3 per row ---
-    for row_start in (19, 22):
+    # ── Section 3: Stress Trends ───────────────────────────────────────────
+    _add_panel(panels, refs, vis_ids[10], 0, y, 48, HDR_H, panel_type="visualization")
+    y += HDR_H
+
+    for i in range(5):
+        _add_panel(panels, refs, vis_ids[11 + i], 0, y, 48, 12)
+        y += 12
+
+    # ── Section 4: Volume & Throughput ─────────────────────────────────────
+    _add_panel(panels, refs, vis_ids[16], 0, y, 48, HDR_H, panel_type="visualization")
+    y += HDR_H
+
+    _add_panel(panels, refs, vis_ids[17], 0, y, 24, 12)
+    _add_panel(panels, refs, vis_ids[18], 24, y, 24, 12)
+    y += 12
+
+    _add_panel(panels, refs, vis_ids[19], 0, y, 48, 12)
+    y += 12
+
+    _add_panel(panels, refs, vis_ids[20], 0, y, 24, 12)
+    _add_panel(panels, refs, vis_ids[21], 24, y, 24, 12)
+    y += 12
+
+    # ── Section 5: Response Times ──────────────────────────────────────────
+    _add_panel(panels, refs, vis_ids[22], 0, y, 48, HDR_H, panel_type="visualization")
+    y += HDR_H
+
+    for row_start in (23, 26):
         for j in range(3):
             _add_panel(panels, refs, vis_ids[row_start + j], j * 16, y, 16, 12)
         y += 12
 
-    # --- Row 15: 2 sanity check tables (indices 25-26) ---
+    # ── Section 6: Sanity Checks ───────────────────────────────────────────
+    _add_panel(panels, refs, vis_ids[29], 0, y, 48, HDR_H, panel_type="visualization")
+    y += HDR_H
+
     for j in range(2):
-        _add_panel(panels, refs, vis_ids[25 + j], j * 24, y, 24, 12)
+        _add_panel(panels, refs, vis_ids[30 + j], j * 24, y, 24, 12)
 
 
 def layout_cost_indicators(vis_ids: list[str], panels: list[dict],

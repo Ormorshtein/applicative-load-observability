@@ -196,9 +196,15 @@ def _upsert_visualizations(
     return vis_ids
 
 
+def _section_header(vis_id: str, title: str) -> tuple[str, dict]:
+    """Thin markdown panel used as a visual section divider."""
+    return mk_markdown(vis_id, title, f"### {title}")
+
+
 def _build_main_visualizations() -> list[tuple[str, dict]]:
     vis: list[tuple[str, dict]] = []
 
+    # ── Section 1: Overview ────────────────────────────────────────────────
     vis.append(mk_markdown(
         "alo-cheat-sheet", "Dashboard Guide",
         CHEAT_SHEET_MARKDOWN,
@@ -224,6 +230,33 @@ def _build_main_visualizations() -> list[tuple[str, dict]]:
             field, size=size,
             description=PANEL_DESCRIPTIONS["pie"][label]))
 
+    # ── Section 2: Top Offenders ───────────────────────────────────────────
+    vis.append(_section_header("alo-hdr-offenders", "Highest Impact"))
+
+    vis.append(mk_datatable(
+        "alo-table-top-templates", "Top 10 Templates by Stress Score",
+        "request.template", "Template", [
+            ("sum_stress",       "Sum Stress",              "stress.score",                "sum"),
+            ("avg_stress",       "Avg Stress",              "stress.score",                "average"),
+            ("avg_es_latency",   "Avg ES Latency (ms)",     "response.es_took_ms",         "average"),
+            ("avg_gw_latency",   "Avg Gateway Latency (ms)","response.gateway_took_ms",    "average"),
+            ("cost_indicators",  "Avg Cost Indicators",     "stress.cost_indicator_count",  "average"),
+            ("requests",         "Requests",                None,                           "count"),
+        ], size=10))
+
+    vis.append(mk_datatable(
+        "alo-table-top-indicators", "Top 10 Cost Indicators by Stress Score",
+        "stress.cost_indicator_names", "Cost Indicator", [
+            ("sum_stress",       "Sum Stress",              "stress.score",                "sum"),
+            ("avg_stress",       "Avg Stress",              "stress.score",                "average"),
+            ("avg_es_latency",   "Avg ES Latency (ms)",     "response.es_took_ms",         "average"),
+            ("avg_gw_latency",   "Avg Gateway Latency (ms)","response.gateway_took_ms",    "average"),
+            ("requests",         "Requests",                None,                           "count"),
+        ], size=10))
+
+    # ── Section 3: Stress Trends ───────────────────────────────────────────
+    vis.append(_section_header("alo-hdr-trends", "Stress Trends"))
+
     for field, label in SECTIONS:
         size = 10 if field == "request.template" else 5
         slug = label.lower().replace(" ", "-")
@@ -232,6 +265,9 @@ def _build_main_visualizations() -> list[tuple[str, dict]]:
             f"Stress Over Time by {label}",
             field, size=size,
             description=PANEL_DESCRIPTIONS["ts"][label]))
+
+    # ── Section 4: Volume & Throughput ─────────────────────────────────────
+    vis.append(_section_header("alo-hdr-volume", "Volume & Throughput"))
 
     vis.append(mk_ts(
         "alo-ts-volume-operation",
@@ -273,26 +309,8 @@ def _build_main_visualizations() -> list[tuple[str, dict]]:
         metric_op="sum", size=8,
         description="Sum of request payload size over time by operation — shows ingestion volume and helps identify oversized bulk requests."))
 
-    vis.append(mk_datatable(
-        "alo-table-top-templates", "Top 10 Templates by Stress Score",
-        "request.template", "Template", [
-            ("sum_stress",       "Sum Stress",              "stress.score",                "sum"),
-            ("avg_stress",       "Avg Stress",              "stress.score",                "average"),
-            ("avg_es_latency",   "Avg ES Latency (ms)",     "response.es_took_ms",         "average"),
-            ("avg_gw_latency",   "Avg Gateway Latency (ms)","response.gateway_took_ms",    "average"),
-            ("cost_indicators",  "Avg Cost Indicators",     "stress.cost_indicator_count",  "average"),
-            ("requests",         "Requests",                None,                           "count"),
-        ], size=10))
-
-    vis.append(mk_datatable(
-        "alo-table-top-indicators", "Top 10 Cost Indicators by Stress Score",
-        "stress.cost_indicator_names", "Cost Indicator", [
-            ("sum_stress",       "Sum Stress",              "stress.score",                "sum"),
-            ("avg_stress",       "Avg Stress",              "stress.score",                "average"),
-            ("avg_es_latency",   "Avg ES Latency (ms)",     "response.es_took_ms",         "average"),
-            ("avg_gw_latency",   "Avg Gateway Latency (ms)","response.gateway_took_ms",    "average"),
-            ("requests",         "Requests",                None,                           "count"),
-        ], size=10))
+    # ── Section 5: Response Times ──────────────────────────────────────────
+    vis.append(_section_header("alo-hdr-latency", "Response Times"))
 
     response_breakdowns = [
         ("stress.cost_indicator_names", "Cost Indicator"),
@@ -314,6 +332,9 @@ def _build_main_visualizations() -> list[tuple[str, dict]]:
             f"Avg Gateway Response Time by {bd_label}",
             bd_field, "response.gateway_took_ms", "Avg Gateway Latency (ms)",
             description=PANEL_DESCRIPTIONS["resp_gw"][bd_label]))
+
+    # ── Section 6: Sanity Checks ───────────────────────────────────────────
+    vis.append(_section_header("alo-hdr-sanity", "Sanity Checks"))
 
     vis.append(mk_datatable(
         "alo-sanity-recurring", "Top 10 Most Recurring Templates",
