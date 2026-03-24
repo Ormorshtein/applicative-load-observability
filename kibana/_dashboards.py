@@ -234,6 +234,14 @@ def _build_main_visualizations() -> list[tuple[str, dict]]:
             description=PANEL_DESCRIPTIONS["ts"][label]))
 
     vis.append(mk_ts(
+        "alo-ts-volume-operation",
+        "Request Volume Over Time",
+        "request.operation",
+        metric_field="___records___", metric_label="Requests",
+        metric_op="count", size=8,
+        description="Total request count over time by operation — shows overall traffic volume."))
+
+    vis.append(mk_ts(
         "alo-ts-volume-template",
         "Request Volume Over Time by Template",
         "request.template",
@@ -248,6 +256,22 @@ def _build_main_visualizations() -> list[tuple[str, dict]]:
         metric_field="response.hits", metric_label="Total Hits",
         metric_op="sum", size=8,
         description="Sum of response hits over time by operation — correlates with CPU usage. High spikes indicate queries scanning large result sets."))
+
+    vis.append(mk_ts(
+        "alo-ts-docs-affected",
+        "Docs Affected Over Time",
+        "request.operation",
+        metric_field="response.docs_affected", metric_label="Docs Affected",
+        metric_op="sum", size=8,
+        description="Sum of docs affected over time by operation — shows write pressure (bulk indexing, update/delete by query)."))
+
+    vis.append(mk_ts(
+        "alo-ts-request-size",
+        "Request Size Over Time",
+        "request.operation",
+        metric_field="request.size_bytes", metric_label="Request Bytes",
+        metric_op="sum", size=8,
+        description="Sum of request payload size over time by operation — shows ingestion volume and helps identify oversized bulk requests."))
 
     vis.append(mk_datatable(
         "alo-table-top-templates", "Top 10 Templates by Stress Score",

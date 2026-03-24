@@ -383,7 +383,20 @@ def build_main_dashboard():
         series_type="line", fill_opacity=20))
     y += 8
 
-    # Row 9: Top 10 Templates table
+    # Row 9: Docs affected + request size over time (write pressure + payload size)
+    panels.append(mk_timeseries(
+        "Docs Affected Over Time", "request.operation",
+        {"x": 0, "y": y, "w": 12, "h": 8},
+        metric_field="response.docs_affected", metric_op="sum", size=8,
+        series_type="line", fill_opacity=20))
+    panels.append(mk_timeseries(
+        "Request Size Over Time", "request.operation",
+        {"x": 12, "y": y, "w": 12, "h": 8},
+        metric_field="request.size_bytes", metric_op="sum", size=8,
+        series_type="line", fill_opacity=20))
+    y += 8
+
+    # Row 10: Top 10 Templates table
     panels.append(mk_table(
         "Top 10 Templates by Stress Score", "request.template", "Template", [
             ("Sum Stress", "stress.score", "sum"),

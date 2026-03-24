@@ -422,16 +422,24 @@ def _add_panel(panels: list[dict], refs: list[dict], vid: str,
 def layout_main(vis_ids: list[str], panels: list[dict],
                 refs: list[dict]) -> None:
     """
-    Layout structure (mapped to improvement notes):
+    Layout structure:
 
-    Row 0 (y=0, h=10):   Cheat sheet (w=36) + Total Stress Score metric (w=12)
-    Row 1 (y=10, h=10):  5 pie charts — Application, Target, Operation, Cost Indicator, Template
-    Row 2-6 (h=12 each): 5 stress-over-time charts, same order as pies
-    Row 7 (h=14):         Top 10 Templates by Stress Score table
-    Row 8 (h=16):         Top 10 Heaviest Operations (saved search, sorted by stress.score)
-    Row 9 (h=14):         Top 10 Cost Indicators by Stress Score table
-    Row 10-11 (h=12 each): Avg ES/Gateway Response Time — by Cost Indicator, Operation, Template
-    Row 12 (h=12):        Sanity check tables — most recurring templates, most cost indicators
+    Row 0 (y=0, h=10):    Cheat sheet (w=36) + Total Stress Score metric (w=12)
+    Row 1 (y=10, h=10):   5 pie charts — Application, Target, Operation, Cost Indicator, Template
+    Row 2-6 (h=12 each):  5 stress-over-time charts, same order as pies
+    Row 7 (h=12):          Request Volume Over Time (w=24) + by Template (w=24)
+    Row 8 (h=12):          Total Hits Over Time
+    Row 9 (h=12):          Docs Affected Over Time (w=24) + Request Size Over Time (w=24)
+    Row 10 (h=14):         Top 10 Templates by Stress Score table
+    Row 11 (h=16):         Top 10 Heaviest Operations (saved search)
+    Row 12 (h=14):         Top 10 Cost Indicators by Stress Score table
+    Row 13-14 (h=12 each): Avg ES/Gateway Response Time — by Cost Indicator, Operation, Template
+    Row 15 (h=12):         Sanity check tables — most recurring templates, most cost indicators
+
+    Vis indices: 0=cheat, 1=metric, 2-6=pies, 7-11=ts, 12=volume-op,
+    13=volume-template, 14=hits, 15=docs, 16=reqsize, 17=top-templates,
+    18=top-indicators, 19-21=es-resp, 22-24=gw-resp, 25=recurring,
+    26=cost-ind-table, saved-search=27
     """
     y = 0
 
@@ -453,31 +461,41 @@ def layout_main(vis_ids: list[str], panels: list[dict],
         _add_panel(panels, refs, vis_ids[7 + i], 0, y, 48, 12)
         y += 12
 
-    # --- Row 7: Request Volume Over Time by Template (index 12) ---
-    _add_panel(panels, refs, vis_ids[12], 0, y, 48, 12)
+    # --- Row 7: Request Volume side by side (indices 12-13) ---
+    _add_panel(panels, refs, vis_ids[12], 0, y, 24, 12)
+    _add_panel(panels, refs, vis_ids[13], 24, y, 24, 12)
     y += 12
 
-    # --- Row 8: Top Templates by Stress Score table (index 13) ---
-    _add_panel(panels, refs, vis_ids[13], 0, y, 48, 14)
+    # --- Row 8: Total Hits Over Time (index 14) ---
+    _add_panel(panels, refs, vis_ids[14], 0, y, 48, 12)
+    y += 12
+
+    # --- Row 9: Docs Affected + Request Size side by side (indices 15-16) ---
+    _add_panel(panels, refs, vis_ids[15], 0, y, 24, 12)
+    _add_panel(panels, refs, vis_ids[16], 24, y, 24, 12)
+    y += 12
+
+    # --- Row 10: Top Templates by Stress Score table (index 17) ---
+    _add_panel(panels, refs, vis_ids[17], 0, y, 48, 14)
     y += 14
 
-    # --- Row 9: Top 10 Heaviest Operations (index 23) ---
-    _add_panel(panels, refs, vis_ids[23], 0, y, 48, 16, panel_type="search")
+    # --- Row 11: Top 10 Heaviest Operations (index 27, saved search) ---
+    _add_panel(panels, refs, vis_ids[27], 0, y, 48, 16, panel_type="search")
     y += 16
 
-    # --- Row 9: Top Cost Indicators by Stress Score table (index 14) ---
-    _add_panel(panels, refs, vis_ids[14], 0, y, 48, 14)
+    # --- Row 12: Top Cost Indicators by Stress Score table (index 18) ---
+    _add_panel(panels, refs, vis_ids[18], 0, y, 48, 14)
     y += 14
 
-    # --- Rows 10-11: Response time panels (indices 15-20), 3 per row ---
-    for row_start in (15, 18):
+    # --- Rows 13-14: Response time panels (indices 19-24), 3 per row ---
+    for row_start in (19, 22):
         for j in range(3):
             _add_panel(panels, refs, vis_ids[row_start + j], j * 16, y, 16, 12)
         y += 12
 
-    # --- Row 12: 2 sanity check tables (indices 21-22) ---
+    # --- Row 15: 2 sanity check tables (indices 25-26) ---
     for j in range(2):
-        _add_panel(panels, refs, vis_ids[21 + j], j * 24, y, 24, 12)
+        _add_panel(panels, refs, vis_ids[25 + j], j * 24, y, 24, 12)
 
 
 def layout_cost_indicators(vis_ids: list[str], panels: list[dict],
