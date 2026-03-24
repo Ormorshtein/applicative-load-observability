@@ -301,7 +301,7 @@ Each normalised input divides the observed value by a baseline. Baselines repres
 | Input | Default | Env var | Rationale |
 |-------|---------|---------|-----------|
 | `es_took_ms` | 100 ms | `STRESS_BASELINE_TOOK_MS` | Slow-log default starts at 500ms; healthy queries are <100ms |
-| `hits` | 1 000 docs | `STRESS_BASELINE_HITS` | Moderate result set; scoring + sorting scales with hits |
+| `hits` | 500 docs | `STRESS_BASELINE_HITS` | Moderate result set; scoring + sorting scales with hits |
 | `shards_total` | 5 shards | `STRESS_BASELINE_SHARDS_TOTAL` | Typical primary count; each shard is CPU + JVM overhead |
 | `docs_affected` | 500 docs | `STRESS_BASELINE_DOCS_AFFECTED` | Bulk/update/delete volume |
 
@@ -340,7 +340,7 @@ Operations fall into five formula classes. Unknown operations (not in the dispat
 ```
 base = 0.50·norm(es_took_ms, 100)
      + 0.15·norm(shards_total, 5)
-     + 0.35·norm(hits, 1000)
+     + 0.35·norm(hits, 500)
 stress.score = (base + Σ bonuses) × stress.multiplier
 ```
 

@@ -31,7 +31,7 @@ _QUERY_WINDOW = os.environ.get("BASELINE_QUERY_WINDOW", "1h")
 
 _STATIC: dict[str, float] = {
     "took_ms":       float(os.environ.get("STRESS_BASELINE_TOOK_MS", "100")),
-    "hits":          float(os.environ.get("STRESS_BASELINE_HITS", "1000")),
+    "hits":          float(os.environ.get("STRESS_BASELINE_HITS", "500")),
     "shards_total":  float(os.environ.get("STRESS_BASELINE_SHARDS_TOTAL", "5")),
     "docs_affected": float(os.environ.get("STRESS_BASELINE_DOCS_AFFECTED", "500")),
 }

@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.14.0
+
+### Analyzer
+
+- **Removed `request.size` from stress formula** — ES scores all matched docs regardless of `size`; it only affects the fetch phase (memory/serialization), not CPU. Field still recorded for informational purposes.
+- **Reweighted search stress formula** — now `0.50·took + 0.15·shards + 0.35·hits`. Hits weight increased from 15% to 35% to reflect CPU correlation discovered in production.
+- **Hits baseline lowered** from 1000 to 500 for better sensitivity.
+- **New cost indicator: `unbound_hits`** — flags queries where ES capped hit counting (`hits.total.relation: "gte"`), indicating weak predicate pushdown. 1.3× stress multiplier.
+- **Prometheus `/metrics` endpoint** — `prometheus-fastapi-instrumentator` exposes RED metrics, latency histograms, and process stats.
+
+### Dashboard
+
+- **Reorganized layout** — sections now follow investigation flow: Overview → Highest Impact → Stress Trends → Volume & Throughput → Response Times → Sanity Checks.
+- **Section headers** — markdown dividers between dashboard sections.
+- **Replaced Flagged vs Unflagged pie** with Cost Indicator breakdown (drilldown into has_geo, has_wildcard, etc.).
+- **New panels**: Total Hits Over Time, Docs Affected Over Time, Request Size Over Time, Request Volume Over Time (by operation).
+- **Multi-cluster filtering** — Cluster dropdown variable in Grafana; Cluster controls panel in Kibana.
+- **Disabled `otherBucket`** on all Kibana pie/bar panels (fixes 413 payload errors on high-cardinality fields).
+- **Custom labels documented** — `x-alo-*` header naming convention added to README.
+
+### Infrastructure
+
+- **Removed Metricbeat** — replaced by Prometheus exporters.
+- **Removed legacy `xpack.monitoring`** from Logstash.
+- **Fixed dead letter index template** — priority bumped to 200 (was conflicting with built-in `logs` template at 100).
+- **Gateway stub_status** on port 9145 for nginx-prometheus-exporter.
+
+---
+
 ## Helm Chart 0.5.0
 
 ### Helm
