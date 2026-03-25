@@ -19,6 +19,7 @@ from parser import (
     parse_shards_total_bulk,
     parse_docs_affected,
     parse_es_took_ms,
+    parse_geo_vertex_count,
 )
 
 
@@ -420,6 +421,88 @@ class TestParseDocsAffected:
 # ---------------------------------------------------------------------------
 # es_took_ms
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Geo vertex counting
+# ---------------------------------------------------------------------------
+
+class TestParseGeoVertexCount:
+    def test_triangle(self):
+        """Simple polygon with 3 vertices."""
+        body = {"query": {"geo_shape": {"location": {"shape": {
+            "type": "polygon",
+            "coordinates": [[[0, 0], [1, 0], [0, 1]]],
+        }}}}}
+        assert parse_geo_vertex_count(body) == 3
+
+    def test_rectangle(self):
+        body = {"query": {"geo_shape": {"location": {"shape": {
+            "type": "polygon",
+            "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]],
+        }}}}}
+        assert parse_geo_vertex_count(body) == 5
+
+    def test_multipolygon(self):
+        """Two polygons — vertices are summed."""
+        body = {"query": {"geo_shape": {"location": {"shape": {
+            "type": "multipolygon",
+            "coordinates": [
+                [[[0, 0], [1, 0], [0, 1]]],
+                [[[2, 2], [3, 2], [3, 3], [2, 3]]],
+            ],
+        }}}}}
+        assert parse_geo_vertex_count(body) == 7
+
+    def test_geo_polygon_clause(self):
+        """geo_polygon is counted the same as geo_shape."""
+        body = {"query": {"geo_polygon": {"location": {"shape": {
+            "coordinates": [[[0, 0], [1, 0], [0, 1]]],
+        }}}}}
+        assert parse_geo_vertex_count(body) == 3
+
+    def test_empty_coordinates(self):
+        body = {"query": {"geo_shape": {"location": {"shape": {
+            "type": "polygon",
+            "coordinates": [],
+        }}}}}
+        assert parse_geo_vertex_count(body) == 0
+
+    def test_no_query(self):
+        assert parse_geo_vertex_count({}) == 0
+
+    def test_no_geo_clauses(self):
+        body = {"query": {"match": {"title": "shoes"}}}
+        assert parse_geo_vertex_count(body) == 0
+
+    def test_nested_in_bool(self):
+        """geo_shape inside a bool query is still found."""
+        body = {"query": {"bool": {"filter": [
+            {"geo_shape": {"location": {"shape": {
+                "type": "polygon",
+                "coordinates": [[[0, 0], [1, 0], [0, 1], [0, 0]]],
+            }}}},
+        ]}}}
+        assert parse_geo_vertex_count(body) == 4
+
+    def test_multiple_geo_clauses_summed(self):
+        """Two geo_shape clauses in a bool — vertices are summed."""
+        body = {"query": {"bool": {"filter": [
+            {"geo_shape": {"loc1": {"shape": {
+                "coordinates": [[[0, 0], [1, 0], [0, 1]]],
+            }}}},
+            {"geo_shape": {"loc2": {"shape": {
+                "coordinates": [[[2, 2], [3, 2]]],
+            }}}},
+        ]}}}
+        assert parse_geo_vertex_count(body) == 5
+
+    def test_inline_shape_without_shape_key(self):
+        """When field value has coordinates directly (no 'shape' wrapper)."""
+        body = {"query": {"geo_shape": {"location": {
+            "coordinates": [[[0, 0], [1, 0], [0, 1]]],
+        }}}}
+        assert parse_geo_vertex_count(body) == 3
+
 
 class TestParseEsTookMs:
     def test_present(self):

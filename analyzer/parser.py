@@ -161,6 +161,8 @@ def scrub_bulk_template(raw_body: str) -> tuple[str, str]:
 
 def _count_geo_vertices(node: Any) -> int:
     """Walk a query body and count total vertices in geo_shape/geo_polygon."""
+    if isinstance(node, list):
+        return sum(_count_geo_vertices(item) for item in node)
     if not isinstance(node, dict):
         return 0
     total = 0
