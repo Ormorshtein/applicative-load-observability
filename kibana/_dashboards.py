@@ -445,16 +445,24 @@ def _build_usage_visualizations() -> list[tuple[str, dict]]:
         # ── Section 2: Latency ────────────────────────────────────────────
         _section_header("alo-usage-hdr-latency", "Latency"),
 
-        mk_ts_multi("alo-usage-ts-es-latency", "ES Latency Percentiles", [
-            ("p50", "P50", "response.es_took_ms", "median"),
-            ("p95", "P95", "response.es_took_ms", "percentiles"),
-            ("p99", "P99", "response.es_took_ms", "percentiles"),
+        mk_ts_multi("alo-usage-ts-es-latency", "ES Latency", [
+            ("min", "Min", "response.es_took_ms", "min"),
+            ("avg", "Avg", "response.es_took_ms", "average"),
+            ("p50", "P50", "response.es_took_ms", "percentile_50"),
+            ("p75", "P75", "response.es_took_ms", "percentile_75"),
+            ("p95", "P95", "response.es_took_ms", "percentile_95"),
+            ("p99", "P99", "response.es_took_ms", "percentile_99"),
+            ("max", "Max", "response.es_took_ms", "max"),
         ], "line"),
 
-        mk_ts_multi("alo-usage-ts-gw-latency", "Gateway Latency Percentiles", [
-            ("p50", "P50", "response.gateway_took_ms", "median"),
-            ("p95", "P95", "response.gateway_took_ms", "percentiles"),
-            ("p99", "P99", "response.gateway_took_ms", "percentiles"),
+        mk_ts_multi("alo-usage-ts-gw-latency", "Gateway Latency", [
+            ("min", "Min", "response.gateway_took_ms", "min"),
+            ("avg", "Avg", "response.gateway_took_ms", "average"),
+            ("p50", "P50", "response.gateway_took_ms", "percentile_50"),
+            ("p75", "P75", "response.gateway_took_ms", "percentile_75"),
+            ("p95", "P95", "response.gateway_took_ms", "percentile_95"),
+            ("p99", "P99", "response.gateway_took_ms", "percentile_99"),
+            ("max", "Max", "response.gateway_took_ms", "max"),
         ], "line"),
 
         mk_ts("alo-usage-ts-latency-by-op", "Avg ES Latency by Operation",

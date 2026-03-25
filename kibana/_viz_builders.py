@@ -269,6 +269,10 @@ def mk_ts_multi(vis_id: str, title: str, metrics: list[tuple],
             c["sourceField"] = "___records___"
             if field:
                 c["filter"] = {"language": "kuery", "query": field}
+        elif op.startswith("percentile_"):
+            pct = int(op.split("_")[1])
+            c["operationType"] = "percentile"
+            c["params"] = {"percentile": pct}
         cols[col_id] = c
         col_order.append(col_id)
         accessors.append(col_id)
