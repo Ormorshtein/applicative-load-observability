@@ -137,7 +137,7 @@ def scrub_bulk_template(raw_body: str) -> tuple[str, str]:
         except json.JSONDecodeError:
             continue
         for action_type in ("index", "create", "update", "delete"):
-            if action_type in obj:
+            if action_type in obj and isinstance(obj[action_type], dict):
                 actions.add(action_type)
                 idx = obj[action_type].get("_index", "")
                 if idx:

@@ -336,6 +336,19 @@ class TestScrubBulkTemplate:
         result = json.loads(template)
         assert result["actions"] == ["index"]
 
+    def test_doc_body_with_action_like_field_name(self):
+        """Document body containing a field named 'index' must not crash."""
+        body = (
+            '{"index":{"_index":"products"}}\n'
+            '{"title":"shoes","index":42}\n'
+            '{"index":{"_index":"products"}}\n'
+            '{"title":"hat","delete":"never"}\n'
+        )
+        template, targets = scrub_bulk_template(body)
+        result = json.loads(template)
+        assert result["actions"] == ["index"]
+        assert targets == "products"
+
 
 # ---------------------------------------------------------------------------
 # Response body extraction
