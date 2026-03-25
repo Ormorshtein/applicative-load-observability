@@ -11,6 +11,7 @@ from parser import (
     parse_applicative_provider,
     parse_docs_affected,
     parse_es_took_ms,
+    parse_geo_area_km2,
     parse_hits,
     parse_labels,
     parse_operation,
@@ -157,9 +158,12 @@ def build_record(raw: RawFields) -> dict:
             and es_took_ms / raw.gateway_took_ms > 1000):
         es_took_ms /= 1_000_000
 
+    geo_area_km2 = 0.0
     if operation in _QUERY_OPS:
         clause_counts = count_clauses(raw.request_body)
         clause_counts["hits_lower_bound"] = int(hits_lower_bound)
+        geo_area_km2 = parse_geo_area_km2(raw.request_body)
+        clause_counts["geo_area_km2"] = geo_area_km2
         cost_indicators, stress_multiplier = evaluate_cost_indicators(clause_counts)
     else:
         clause_counts = {k: 0 for k in _ALL_COUNT_FIELDS}
@@ -183,6 +187,8 @@ def build_record(raw: RawFields) -> dict:
         "body":       raw.request_body_raw,
         "size_bytes": raw.request_size_bytes,
     }
+    if geo_area_km2 > 0:
+        request["geo_area_km2"] = round(geo_area_km2, 3)
     if operation == "_search":
         request["size"] = size
 

@@ -7,8 +7,9 @@ import pytest
 from stress import normalize, calc_stress, StressContext, _ALL_COUNT_FIELDS
 
 
-def _counts(**overrides) -> dict[str, int]:
+def _counts(**overrides) -> dict:
     counts = {k: 0 for k in _ALL_COUNT_FIELDS}
+    counts["geo_area_km2"] = 0.0
     counts.update(overrides)
     return counts
 
@@ -29,7 +30,7 @@ class TestNormalize:
 
 class TestCalcStress:
     def _ctx(self, **kw) -> StressContext:
-        defaults = dict(es_took_ms=100, gateway_took_ms=100, hits=1000, shards_total=5, docs_affected=500)
+        defaults = dict(es_took_ms=100, gateway_took_ms=100, hits=500, shards_total=5, docs_affected=500)
         defaults.update(kw)
         return StressContext(**defaults)
 
@@ -200,17 +201,26 @@ class TestCalcStress:
         score_with, bonuses = calc_stress("_search", ctx, clause_counts=_counts(**{key: count}))
         expected_bonus = min(0.10 * math.log(1 + count - threshold), 0.50)
         assert score_with == pytest.approx(score_base + expected_bonus)
-        assert key in bonuses or "geo_total" in bonuses
+        assert key in bonuses
 
-    def test_geo_bonus_combines_counts(self):
-        """Geo bonus sums distance + shape + bbox counts."""
+    def test_geo_area_bonus(self):
+        """Geo area bonus scales with search area in km²."""
         ctx = self._ctx()
         score_base, _ = calc_stress("_search", ctx)
-        score_with, bonuses = calc_stress("_search", ctx, clause_counts=_counts(
-            geo_distance_count=2, geo_shape_count=1, geo_bbox_count=1))
-        expected_bonus = min(0.10 * math.log(1 + 3), 0.50)  # total 4, threshold 1, excess 3
+        # 500 km² geo area (above 1 km² threshold)
+        score_with, bonuses = calc_stress("_search", ctx,
+            clause_counts=_counts(geo_area_km2=500.0))
+        expected_bonus = min(0.12 * math.log(1 + 500.0 - 1), 0.60)
         assert score_with == pytest.approx(score_base + expected_bonus)
-        assert "geo_total" in bonuses
+        assert "geo_area_km2" in bonuses
+
+    def test_geo_area_below_threshold_no_bonus(self):
+        """Geo area below threshold adds no bonus."""
+        ctx = self._ctx()
+        score_base, _ = calc_stress("_search", ctx)
+        score_with, _ = calc_stress("_search", ctx,
+            clause_counts=_counts(geo_area_km2=0.5))
+        assert score_with == pytest.approx(score_base)
 
     def test_terms_values_bonus(self):
         """Terms values above threshold 50 adds bonus."""

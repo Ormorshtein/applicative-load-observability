@@ -4,6 +4,7 @@ Pure extraction functions — no I/O, no side effects.
 
 import base64
 import json
+import math
 import re
 from typing import Any, Callable
 
@@ -152,6 +153,111 @@ def scrub_bulk_template(raw_body: str) -> tuple[str, str]:
         "target": sorted_targets,
     }, sort_keys=True)
     return template, target_str
+
+
+# ---------------------------------------------------------------------------
+# Geo area extraction
+# ---------------------------------------------------------------------------
+
+_KM_PER_DEGREE = 111.32
+
+_DISTANCE_UNITS: dict[str, float] = {
+    "km": 1.0, "mi": 1.60934, "m": 0.001, "yd": 0.0009144,
+    "ft": 0.0003048, "nmi": 1.852, "nm": 1.852,
+    "cm": 0.00001, "mm": 0.000001, "in": 0.0000254,
+}
+
+_DISTANCE_RE = re.compile(r"^([\d.]+)\s*([a-zA-Z]+)$")
+
+
+def _parse_distance_km(distance: str) -> float:
+    """Parse ES distance string to kilometers. Returns 0.0 on failure."""
+    if not distance:
+        return 0.0
+    m = _DISTANCE_RE.match(str(distance).strip())
+    if not m:
+        return 0.0
+    value, unit = float(m.group(1)), m.group(2).lower()
+    return value * _DISTANCE_UNITS.get(unit, 0.0)
+
+
+def _bbox_area_km2(min_lat: float, max_lat: float,
+                   min_lon: float, max_lon: float) -> float:
+    """Approximate area of a lat/lon bounding box in km².
+
+    Uses cosine correction at the mid-latitude. This is a deliberate
+    simplification — see ARCHITECTURE.md for why we use bounding-box
+    area as a proxy instead of true spherical polygon area.
+    """
+    mid_lat_rad = math.radians((min_lat + max_lat) / 2)
+    height_km = (max_lat - min_lat) * _KM_PER_DEGREE
+    width_km = (max_lon - min_lon) * _KM_PER_DEGREE * math.cos(mid_lat_rad)
+    return abs(height_km * width_km)
+
+
+def _extract_coords(node: Any) -> list[tuple[float, float]]:
+    """Recursively extract (lat, lon) pairs from nested coordinate arrays."""
+    if not node:
+        return []
+    if isinstance(node, dict):
+        lat = node.get("lat")
+        lon = node.get("lon")
+        if lat is not None and lon is not None:
+            return [(float(lat), float(lon))]
+        return []
+    if isinstance(node, list):
+        if len(node) >= 2 and isinstance(node[0], (int, float)):
+            return [(float(node[1]), float(node[0]))]
+        coords = []
+        for item in node:
+            coords.extend(_extract_coords(item))
+        return coords
+    return []
+
+
+def _walk_geo_areas(node: Any) -> float:
+    """Walk a query body and sum the search area (km²) of all geo clauses."""
+    if not isinstance(node, dict):
+        return 0.0
+    total = 0.0
+    for key, value in node.items():
+        if key == "geo_distance" and isinstance(value, dict):
+            dist_str = value.get("distance", "")
+            radius_km = _parse_distance_km(dist_str)
+            total += math.pi * radius_km * radius_km
+
+        elif key == "geo_bounding_box" and isinstance(value, dict):
+            for field_val in value.values():
+                if not isinstance(field_val, dict):
+                    continue
+                tl = field_val.get("top_left", {})
+                br = field_val.get("bottom_right", {})
+                if isinstance(tl, dict) and isinstance(br, dict):
+                    total += _bbox_area_km2(
+                        br.get("lat", 0), tl.get("lat", 0),
+                        tl.get("lon", 0), br.get("lon", 0))
+
+        elif key in ("geo_shape", "geo_polygon") and isinstance(value, dict):
+            for field_val in value.values():
+                if not isinstance(field_val, dict):
+                    continue
+                shape = field_val.get("shape", field_val)
+                coords = _extract_coords(
+                    shape.get("coordinates", []))
+                if coords:
+                    lats = [c[0] for c in coords]
+                    lons = [c[1] for c in coords]
+                    total += _bbox_area_km2(
+                        min(lats), max(lats), min(lons), max(lons))
+
+        if isinstance(value, (dict, list)):
+            total += _walk_geo_areas(value)
+    return total
+
+
+def parse_geo_area_km2(body: dict) -> float:
+    """Sum of geo search areas in the query body, in km²."""
+    return _walk_geo_areas(body.get("query", {}))
 
 
 # ---------------------------------------------------------------------------

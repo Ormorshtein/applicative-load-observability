@@ -234,7 +234,7 @@ class TestBuildRecord:
         rec = build_record(_make_raw())
         assert rec["cost_indicators"] == {}
         assert rec["stress"]["cost_indicator_count"] == 0
-        assert rec["stress"]["cost_indicator_names"] == []
+        assert rec["stress"]["cost_indicator_names"] == ["unflagged"]
         assert rec["stress"]["multiplier"] == 1.0
 
     def test_cost_indicators_for_script_query(self):
