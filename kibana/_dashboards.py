@@ -359,6 +359,27 @@ def _build_ci_visualizations() -> list[tuple[str, dict]]:
         mk_ci_metric("alo-ci-kpi-avg-flags",  "Avg Indicator Count",  "stress.cost_indicator_count", "average"),
         mk_ci_metric("alo-ci-kpi-avg-mult",   "Avg Stress Multiplier", "stress.multiplier",          "average"),
         mk_ci_metric("alo-ci-kpi-max-mult",   "Max Stress Multiplier", "stress.multiplier",          "max"),
+
+        # Score breakdown table — shows what drives each template's score
+        mk_datatable("alo-ci-table-breakdown", "Score Breakdown by Template",
+                     "request.template", "Template", [
+                         ("avg_score",  "Avg Score",     "stress.score",              "average"),
+                         ("avg_took",   "Avg Took",      "stress.components.took",    "average"),
+                         ("avg_shards", "Avg Shards",    "stress.components.shards",  "average"),
+                         ("avg_hits",   "Avg Hits",      "stress.components.hits",    "average"),
+                         ("avg_bonus",  "Avg Bonus",     "stress.components.bonus",   "average"),
+                         ("avg_mult",   "Multiplier",    "stress.multiplier",         "average"),
+                         ("count",      "Requests",      None,                        "count"),
+                     ]),
+
+        # Component trends over time
+        mk_ts_multi("alo-ci-ts-components", "Score Components Over Time", [
+            ("took",   "Avg Took",   "stress.components.took",   "average"),
+            ("shards", "Avg Shards", "stress.components.shards", "average"),
+            ("hits",   "Avg Hits",   "stress.components.hits",   "average"),
+            ("bonus",  "Avg Bonus",  "stress.components.bonus",  "average"),
+        ], "area_stacked"),
+
         mk_horizontal_bar("alo-ci-bar-indicator-types", "Cost Indicator Types — Frequency",
                           "stress.cost_indicator_names", None, "count", "Count"),
         mk_ts_multi("alo-ci-ts-flag-rate", "Flagged vs Total Requests Over Time", [

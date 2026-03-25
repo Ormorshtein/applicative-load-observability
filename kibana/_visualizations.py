@@ -524,17 +524,21 @@ def layout_cost_indicators(vis_ids: list[str], panels: list[dict],
         (vis_ids[1], 12,  0, 12, 6),
         (vis_ids[2], 24,  0, 12, 6),
         (vis_ids[3], 36,  0, 12, 6),
-        # Row 1: Indicator overview (h=14)
-        (vis_ids[4],  0,  6, 20, 14),
-        (vis_ids[5], 20,  6, 28, 14),
-        # Row 2: Clause counts (h=14)
-        (vis_ids[6],  0, 20, 28, 14),
-        (vis_ids[7], 28, 20, 20, 14),
-        # Row 3: Table (h=12)
-        (vis_ids[8],  0, 34, 48, 12),
-        # Row 4: By dimension (h=14)
-        (vis_ids[9],   0, 46, 24, 14),
-        (vis_ids[10], 24, 46, 24, 14),
+        # Row 1: Score breakdown table (h=14)
+        (vis_ids[4],  0,  6, 48, 14),
+        # Row 2: Component trends (h=14)
+        (vis_ids[5],  0, 20, 48, 14),
+        # Row 3: Indicator overview (h=14)
+        (vis_ids[6],  0, 34, 20, 14),
+        (vis_ids[7], 20, 34, 28, 14),
+        # Row 4: Clause counts (h=14)
+        (vis_ids[8],  0, 48, 28, 14),
+        (vis_ids[9], 28, 48, 20, 14),
+        # Row 5: Table (h=12)
+        (vis_ids[10], 0, 62, 48, 12),
+        # Row 6: By dimension (h=14)
+        (vis_ids[11],  0, 74, 24, 14),
+        (vis_ids[12], 24, 74, 24, 14),
     ]
     for vid, x, y, w, h in grid:
         panels.append({"panelIndex": vid, "gridData": {"x": x, "y": y, "w": w, "h": h, "i": vid},
