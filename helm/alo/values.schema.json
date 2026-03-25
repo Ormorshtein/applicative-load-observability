@@ -433,13 +433,6 @@
             "port": { "$ref": "#/$defs/port" }
           }
         },
-        "dashboardSetup": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "enabled": { "type": "boolean" }
-          }
-        },
         "setup": {
           "type": "object",
           "additionalProperties": false,

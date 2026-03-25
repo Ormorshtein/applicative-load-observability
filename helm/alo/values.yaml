@@ -356,11 +356,9 @@ kibana:
   service:
     type: ClusterIP
     port: 5601
-  # Import the pre-built dashboard on startup (deprecated, use setup below)
-  dashboardSetup:
-    enabled: true
   # Kibana setup job — runs setup.py to create index templates and import dashboards.
-  # Uses a custom image containing setup.py + ndjson files (too large for ConfigMap).
+  # Set enabled=false to skip the job (e.g. if you manage dashboards manually
+  # or want to avoid re-importing on upgrades).
   setup:
     enabled: true
     image:
