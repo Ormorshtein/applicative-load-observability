@@ -43,6 +43,7 @@ COMPONENT_TEMPLATE: dict = {
                 },
                 "response": {
                     "properties": {
+                        "status":          {"type": "short"},
                         "es_took_ms":      {"type": "float"},
                         "gateway_took_ms": {"type": "float"},
                         "hits":            {"type": "long"},

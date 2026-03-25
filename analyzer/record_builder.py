@@ -47,6 +47,7 @@ class RawFields:
     request_body_raw:     str
     response_body:        dict
     client_host:          str
+    response_status:      int
     gateway_took_ms:      float
     request_size_bytes:   int
     response_size_bytes:  int
@@ -92,6 +93,7 @@ def extract_raw_fields(payload: dict) -> RawFields:
         request_body_raw=    raw_body,
         response_body=       _parse_json_field(payload.get("response_body", "")),
         client_host=         payload.get("client_host", ""),
+        response_status=     int(payload.get("response_status", 0)),
         gateway_took_ms=     _parse_upstream_response_time(
                                  payload.get("upstream_response_time", "")),
         request_size_bytes=  _parse_content_length(
@@ -203,6 +205,7 @@ def build_record(raw: RawFields) -> dict:
         },
         "request":  request,
         "response": {
+            "status":        raw.response_status,
             "es_took_ms":    es_took_ms,
             "gateway_took_ms": raw.gateway_took_ms,
             "hits":          hits,

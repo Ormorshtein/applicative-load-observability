@@ -144,6 +144,7 @@ def _make_raw(**overrides):
             "_shards": {"total": 5},
         },
         client_host="10.0.0.5",
+        response_status=200,
         gateway_took_ms=67.0,
         request_size_bytes=284,
         response_size_bytes=1920,
