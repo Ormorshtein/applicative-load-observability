@@ -47,7 +47,9 @@ services:
         condition: service_healthy
 
   analyzer:
-    build: ./analyzer
+    build:
+      context: .
+      dockerfile: analyzer/Dockerfile
     image: oracle1012/applicative-load-observability:analyzer-1.14.0
     environment:
       - ELASTICSEARCH_URL=http://elasticsearch:9200

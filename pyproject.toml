@@ -1,0 +1,19 @@
+[project]
+name = "applicative-load-observability"
+version = "1.14.0"
+description = "Applicative load observability for Elasticsearch"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi==0.115.12",
+    "uvicorn[standard]==0.34.2",
+    "prometheus-fastapi-instrumentator==7.0.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0",
+    "pytest-xdist>=3.5",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
