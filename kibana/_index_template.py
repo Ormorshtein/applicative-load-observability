@@ -90,7 +90,17 @@ COMPONENT_TEMPLATE: dict = {
                 "stress": {
                     "properties": {
                         "score":                {"type": "float"},
+                        "base":                 {"type": "float"},
                         "multiplier":           {"type": "float"},
+                        "components": {
+                            "properties": {
+                                "took":          {"type": "float"},
+                                "shards":        {"type": "float"},
+                                "hits":          {"type": "float"},
+                                "docs_affected": {"type": "float"},
+                                "bonus":         {"type": "float"},
+                            }
+                        },
                         "cost_indicator_count": {"type": "integer"},
                         "cost_indicator_names": {"type": "keyword"},
                         "bonuses":              {"type": "object", "enabled": False},

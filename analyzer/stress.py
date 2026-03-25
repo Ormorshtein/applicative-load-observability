@@ -152,41 +152,41 @@ def evaluate_cost_indicators(counts: dict) -> tuple[dict[str, int], float]:
 # Stress formulas — one function per operation class
 # ---------------------------------------------------------------------------
 
-def _stress_query(ctx: StressContext, bl: dict[str, float]) -> float:
-    return (
-        0.50 * normalize(ctx.es_took_ms, bl["took_ms"])
-        + 0.15 * normalize(ctx.shards_total, bl["shards_total"])
-        + 0.35 * normalize(ctx.hits, bl["hits"])
-    )
+def _stress_query(ctx: StressContext, bl: dict[str, float]) -> dict[str, float]:
+    return {
+        "took":   0.50 * normalize(ctx.es_took_ms, bl["took_ms"]),
+        "shards": 0.15 * normalize(ctx.shards_total, bl["shards_total"]),
+        "hits":   0.35 * normalize(ctx.hits, bl["hits"]),
+    }
 
 
-def _stress_bulk(ctx: StressContext, bl: dict[str, float]) -> float:
-    return (
-        0.45 * normalize(ctx.es_took_ms, bl["took_ms"])
-        + 0.55 * normalize(ctx.docs_affected, bl["docs_affected"])
-    )
+def _stress_bulk(ctx: StressContext, bl: dict[str, float]) -> dict[str, float]:
+    return {
+        "took":          0.45 * normalize(ctx.es_took_ms, bl["took_ms"]),
+        "docs_affected": 0.55 * normalize(ctx.docs_affected, bl["docs_affected"]),
+    }
 
 
-def _stress_by_query(ctx: StressContext, bl: dict[str, float]) -> float:
-    return (
-        0.40 * normalize(ctx.es_took_ms, bl["took_ms"])
-        + 0.35 * normalize(ctx.docs_affected, bl["docs_affected"])
-        + 0.25 * normalize(ctx.shards_total, bl["shards_total"])
-    )
+def _stress_by_query(ctx: StressContext, bl: dict[str, float]) -> dict[str, float]:
+    return {
+        "took":          0.40 * normalize(ctx.es_took_ms, bl["took_ms"]),
+        "docs_affected": 0.35 * normalize(ctx.docs_affected, bl["docs_affected"]),
+        "shards":        0.25 * normalize(ctx.shards_total, bl["shards_total"]),
+    }
 
 
-def _stress_update(ctx: StressContext, bl: dict[str, float]) -> float:
-    return (
-        0.60 * normalize(ctx.es_took_ms, bl["took_ms"])
-        + 0.40 * normalize(ctx.shards_total, bl["shards_total"])
-    )
+def _stress_update(ctx: StressContext, bl: dict[str, float]) -> dict[str, float]:
+    return {
+        "took":   0.60 * normalize(ctx.es_took_ms, bl["took_ms"]),
+        "shards": 0.40 * normalize(ctx.shards_total, bl["shards_total"]),
+    }
 
 
-def _stress_doc_write(ctx: StressContext, bl: dict[str, float]) -> float:
-    return (
-        0.70 * normalize(ctx.es_took_ms, bl["took_ms"])
-        + 0.30 * normalize(ctx.shards_total, bl["shards_total"])
-    )
+def _stress_doc_write(ctx: StressContext, bl: dict[str, float]) -> dict[str, float]:
+    return {
+        "took":   0.70 * normalize(ctx.es_took_ms, bl["took_ms"]),
+        "shards": 0.30 * normalize(ctx.shards_total, bl["shards_total"]),
+    }
 
 
 _STRESS_DISPATCH: dict[str, Callable[[StressContext, dict[str, float]], float]] = {
@@ -232,12 +232,19 @@ def calc_stress(
     ctx: StressContext,
     stress_multiplier: float = 1.0,
     clause_counts: dict[str, int] | None = None,
-) -> tuple[float, dict[str, float]]:
+) -> tuple[float, dict[str, float], dict[str, float]]:
+    """Return (score, bonuses, components).
+
+    ``components`` maps each formula input (took, shards, hits, etc.)
+    plus ``bonus`` (sum of continuous bonuses) to its contribution to
+    the base score *before* the multiplier is applied.
+    """
     bl = get_baselines()
     formula = _STRESS_DISPATCH.get(operation, _stress_doc_write)
-    base = formula(ctx, bl)
+    components = formula(ctx, bl)
+    base = sum(components.values())
     if operation in _NO_MULTIPLIER_OPS:
-        return base, {}
+        return base, {}, components
     bonuses: dict[str, float] = {}
     if clause_counts:
         counts = {
@@ -245,10 +252,14 @@ def calc_stress(
             "bool_total": (clause_counts["bool_must_count"] + clause_counts["bool_should_count"]
                            + clause_counts["bool_filter_count"] + clause_counts["bool_must_not_count"]),
         }
+        bonus_total = 0.0
         for key, threshold, weight, cap in _CONTINUOUS_BONUSES:
             count = counts.get(key, 0)
             if count > threshold:
                 bonus = min(weight * math.log(1 + count - threshold), cap)
                 bonuses[key] = bonus
-                base += bonus
-    return base * stress_multiplier, bonuses
+                bonus_total += bonus
+        if bonus_total > 0:
+            components["bonus"] = bonus_total
+            base += bonus_total
+    return base * stress_multiplier, bonuses, components

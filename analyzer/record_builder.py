@@ -176,7 +176,7 @@ def build_record(raw: RawFields) -> dict:
         shards_total=     shards_total,
         docs_affected=    docs_affected,
     )
-    score, bonuses = calc_stress(operation, ctx, stress_multiplier, clause_counts)
+    score, bonuses, components = calc_stress(operation, ctx, stress_multiplier, clause_counts)
 
     request = {
         "method":     raw.method,
@@ -214,7 +214,9 @@ def build_record(raw: RawFields) -> dict:
         "cost_indicators":  cost_indicators,
         "stress": {
             "score":                round(score, _STRESS_PRECISION),
+            "base":                 round(sum(components.values()), _STRESS_PRECISION),
             "multiplier":           stress_multiplier,
+            "components":           {k: round(v, _STRESS_PRECISION) for k, v in components.items()},
             "bonuses":              {k: round(v, _STRESS_PRECISION) for k, v in bonuses.items()},
             "cost_indicator_count": len(cost_indicators),
             "cost_indicator_names": list(cost_indicators.keys()) or ["unflagged"],
