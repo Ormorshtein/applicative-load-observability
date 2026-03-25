@@ -211,7 +211,7 @@ def build_record(raw: RawFields) -> dict:
             "multiplier":           stress_multiplier,
             "bonuses":              {k: round(v, _STRESS_PRECISION) for k, v in bonuses.items()},
             "cost_indicator_count": len(cost_indicators),
-            "cost_indicator_names": list(cost_indicators.keys()),
+            "cost_indicator_names": list(cost_indicators.keys()) or ["unflagged"],
         },
     }
 

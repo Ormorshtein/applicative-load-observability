@@ -219,8 +219,8 @@ def _build_main_visualizations() -> list[tuple[str, dict]]:
         if label == "Cost Indicator":
             vis.append(mk_pie(
                 "alo-pie-cost-indicators", "Stress by Cost Indicator (Selected Period)",
-                field, size=10,
-                description="Stress breakdown by cost indicator type. Missing value = requests with no cost indicators."))
+                field, size=10, include_missing=True,
+                description="Stress by cost indicator type. (missing) = requests with no cost indicators."))
             continue
         size = 10 if field == "request.template" else 8
         slug = label.lower().replace(" ", "-")

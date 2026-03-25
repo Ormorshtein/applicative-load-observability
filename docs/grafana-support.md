@@ -243,3 +243,5 @@ Users choose their dashboard provider by:
 1. **Running the respective setup script** (`kibana/setup.py` or `grafana/setup.py`)
 2. **Starting the respective service** in Docker Compose (both start by default)
 3. **Scaling down** the unwanted service: `docker compose up --scale kibana=0` or `--scale grafana=0`
+
+> **Note:** The Grafana Cost Indicator pie chart does not include a "(missing)" bucket for unflagged queries. The Kibana version does via `missingBucket`. This is a Grafana ES datasource limitation.

@@ -125,7 +125,7 @@ def mk_markdown(vis_id: str, title: str, content: str,
 
 
 def mk_pie(vis_id: str, title: str, field: str,
-           size: int = 8,
+           size: int = 8, include_missing: bool = False,
            description: str = "") -> tuple[str, dict]:
     attrs = {
         "title": title, "visualizationType": "lnsPie",
@@ -143,7 +143,8 @@ def mk_pie(vis_id: str, title: str, field: str,
                     "breakdown": {"label": field.split(".")[-1], "dataType": "string",
                                   "operationType": "terms", "sourceField": field, "isBucketed": True,
                                   "params": {"size": size, "orderBy": {"type": "column", "columnId": "metric"},
-                                             "orderDirection": "desc", "otherBucket": False}},
+                                             "orderDirection": "desc", "otherBucket": False,
+                                             "missingBucket": include_missing}},
                     "metric": {"label": "Total Stress", "dataType": "number",
                                "operationType": "sum", "sourceField": "stress.score", "isBucketed": False},
                     "request_count": {"label": "Requests", "dataType": "number",
