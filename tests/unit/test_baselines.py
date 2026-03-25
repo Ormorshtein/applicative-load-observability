@@ -9,15 +9,14 @@ import _baselines
 class TestStaticDefaults:
     def test_contains_all_keys(self):
         baselines = _baselines.get_baselines()
-        expected_keys = {"took_ms", "hits", "shards_total", "size", "docs_affected"}
+        expected_keys = {"took_ms", "hits", "shards_total", "docs_affected"}
         assert set(baselines.keys()) == expected_keys
 
     def test_default_values(self):
         baselines = _baselines.get_baselines()
         assert baselines["took_ms"] == 100
-        assert baselines["hits"] == 1000
+        assert baselines["hits"] == 500
         assert baselines["shards_total"] == 5
-        assert baselines["size"] == 100
         assert baselines["docs_affected"] == 500
 
 
@@ -48,7 +47,7 @@ class TestDynamicRefresh:
             bl = _baselines.get_baselines()
             assert bl["took_ms"] == 75.0
             assert bl["shards_total"] == 3.0
-            assert bl["hits"] == 1000  # static, unchanged
+            assert bl["hits"] == 500  # static, unchanged
 
     def test_partial_dynamic_reverts_missing_to_static(self):
         self._force_stale()

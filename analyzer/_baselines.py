@@ -94,6 +94,11 @@ def _fetch_p50() -> dict[str, float]:
 
 
 def _refresh() -> None:
+    """Refresh cache if stale.
+
+    NOTE: no lock — concurrent requests at TTL boundary may all fire
+    _fetch_p50().  Acceptable: results are identical and ES handles it.
+    """
     global _cache_ts
 
     now = time.monotonic()
@@ -118,4 +123,4 @@ def _refresh() -> None:
 def get_baselines() -> dict[str, float]:
     """Return current baselines, refreshing from ES if cache is stale."""
     _refresh()
-    return _cache
+    return dict(_cache)
