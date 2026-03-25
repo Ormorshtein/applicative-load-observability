@@ -9,7 +9,6 @@ from stress import normalize, calc_stress, StressContext, _ALL_COUNT_FIELDS
 
 def _counts(**overrides) -> dict:
     counts = {k: 0 for k in _ALL_COUNT_FIELDS}
-    counts["geo_area_km2"] = 0.0
     counts.update(overrides)
     return counts
 

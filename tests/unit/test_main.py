@@ -193,3 +193,17 @@ class TestAnalyzeErrorHandling:
         rec = resp.json()
         assert rec["response"]["es_took_ms"] == 0
         assert rec["response"]["hits"] == 0
+
+    def test_build_record_exception_returns_partial_error(self):
+        """Payload that parses as JSON but causes build_record to throw."""
+        payload = {
+            "method": "POST",
+            "path": "/idx/_search",
+            "response_status": "not_a_number",
+        }
+        resp = client.post("/analyze", json=payload)
+        assert resp.status_code == 200
+        rec = resp.json()
+        assert "error" in rec
+        assert rec["path"] == "/idx/_search"
+        assert rec["method"] == "POST"

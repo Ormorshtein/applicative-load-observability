@@ -144,6 +144,25 @@ class TestEvaluateCostIndicators:
         indicators, _ = evaluate_cost_indicators(c)
         assert "deep_aggs" not in indicators
 
+    def test_unbound_hits(self):
+        c = _zero_counts()
+        c["hits_lower_bound"] = 1
+        indicators, mult = evaluate_cost_indicators(c)
+        assert "unbound_hits" in indicators
+        assert indicators["unbound_hits"] == 1
+        assert mult == pytest.approx(1.3)
+
+    def test_unbound_hits_below_threshold(self):
+        c = _zero_counts()
+        c["hits_lower_bound"] = 0
+        indicators, _ = evaluate_cost_indicators(c)
+        assert "unbound_hits" not in indicators
+
+    def test_unbound_hits_absent_key(self):
+        """hits_lower_bound missing from counts dict — should not trigger."""
+        indicators, _ = evaluate_cost_indicators(_zero_counts())
+        assert "unbound_hits" not in indicators
+
     def test_multiple_indicators_multiplicative(self):
         """script (1.5) + wildcard (1.3) = 1.95"""
         c = _zero_counts()
@@ -155,6 +174,16 @@ class TestEvaluateCostIndicators:
         assert indicators["has_script"] == 2
         assert indicators["has_wildcard"] == 3
         assert mult == pytest.approx(1.5 * 1.3)
+
+    def test_unbound_hits_compounds_with_wildcard(self):
+        """unbound_hits (1.3) + wildcard (1.3) = 1.69"""
+        c = _zero_counts()
+        c["hits_lower_bound"] = 1
+        c["wildcard_clause_count"] = 2
+        indicators, mult = evaluate_cost_indicators(c)
+        assert "unbound_hits" in indicators
+        assert "has_wildcard" in indicators
+        assert mult == pytest.approx(1.3 * 1.3)
 
     def test_three_indicators_compound(self):
         """script (1.5) + nested (1.3) + geo (1.2) = 2.34"""
@@ -204,3 +233,16 @@ class TestClauseCountToCostIndicators:
         assert indicators["has_nested"] == 1
         assert indicators["has_runtime_mapping"] == 1
         assert mult == pytest.approx(1.3 * 1.3 * 1.5)
+
+    def test_split_terms_trigger_large_terms_list(self):
+        """Multiple terms clauses accumulate — 300+300=600 triggers threshold 500."""
+        body = {"query": {"bool": {"must": [
+            {"terms": {"color": list(range(300))}},
+            {"terms": {"size": list(range(300))}},
+        ]}}}
+        counts = count_clauses(body)
+        assert counts["terms_values_count"] == 600
+        indicators, mult = evaluate_cost_indicators(counts)
+        assert "large_terms_list" in indicators
+        assert indicators["large_terms_list"] == 600
+        assert mult == pytest.approx(1.2)

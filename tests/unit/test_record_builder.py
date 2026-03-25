@@ -14,7 +14,9 @@ from record_builder import (
     _parse_json_field,
     _parse_upstream_response_time,
     _parse_content_length,
+    _CLAUSE_COUNT_OUTPUT_KEYS,
 )
+from stress import _ALL_COUNT_FIELDS
 
 
 # ---------------------------------------------------------------------------
@@ -121,6 +123,15 @@ class TestExtractRawFields:
     def test_malformed_response_body(self):
         raw = extract_raw_fields({"response_body": "{broken"})
         assert raw.response_body == {}
+
+
+# ---------------------------------------------------------------------------
+# Structural: count fields ↔ output keys stay in sync
+# ---------------------------------------------------------------------------
+
+class TestClauseCountKeySync:
+    def test_all_count_fields_have_output_mapping(self):
+        assert set(_ALL_COUNT_FIELDS) == set(_CLAUSE_COUNT_OUTPUT_KEYS.keys())
 
 
 # ---------------------------------------------------------------------------
@@ -409,8 +420,8 @@ class TestBuildRecord:
         rec = build_record(raw)
         assert rec["response"]["es_took_ms"] == 5_000_000.0
 
-    def test_es_took_fallback_to_gateway(self):
-        """When es_took_ms is 0, stress uses gateway_took_ms."""
+    def test_zero_es_took_still_scores_from_shards(self):
+        """When es_took_ms is 0, shards component still contributes to score."""
         raw = _make_raw(
             response_body={"hits": {"total": {"value": 0}, "hits": []}, "_shards": {"total": 1}},
             gateway_took_ms=200.0,

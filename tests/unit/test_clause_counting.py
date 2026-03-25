@@ -105,6 +105,15 @@ class TestCountClauses:
         counts = count_clauses(body)
         assert counts["terms_values_count"] == 600
 
+    def test_terms_multiple_clauses_accumulate(self):
+        """Two terms clauses in a bool — values summed across both."""
+        body = {"query": {"bool": {"must": [
+            {"terms": {"color": ["red", "blue", "green"]}},
+            {"terms": {"size": ["S", "M"]}},
+        ]}}}
+        counts = count_clauses(body)
+        assert counts["terms_values_count"] == 5
+
     def test_geo_distance(self):
         body = {"query": {"geo_distance": {"distance": "10km", "location": {"lat": 40, "lon": -74}}}}
         counts = count_clauses(body)
