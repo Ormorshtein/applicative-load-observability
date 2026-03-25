@@ -104,7 +104,6 @@ def count_clauses(body: dict) -> dict[str, int]:
 _COST_INDICATOR_BOOL_THRESHOLD = int(os.environ.get("COST_INDICATOR_BOOL_THRESHOLD", 50))
 _COST_INDICATOR_TERMS_THRESHOLD = int(os.environ.get("COST_INDICATOR_TERMS_THRESHOLD", 500))
 _COST_INDICATOR_AGGS_THRESHOLD = int(os.environ.get("COST_INDICATOR_AGGS_THRESHOLD", 10))
-_COST_INDICATOR_GEO_AREA_THRESHOLD = float(os.environ.get("COST_INDICATOR_GEO_AREA_KM2_THRESHOLD", 100))
 
 # (name, condition, multiplier, detail_extractor)
 _COST_INDICATORS: list[tuple[str, Callable[[dict], bool], float, Callable[[dict], int]]] = [
@@ -133,8 +132,6 @@ _COST_INDICATORS: list[tuple[str, Callable[[dict], bool], float, Callable[[dict]
                             lambda c: c["agg_clause_count"]),
     ("unbound_hits",        lambda c: c.get("hits_lower_bound", 0) >= 1,  1.3,
                             lambda c: 1),
-    ("broad_geo",           lambda c: c.get("geo_area_km2", 0) >= _COST_INDICATOR_GEO_AREA_THRESHOLD, 1.3,
-                            lambda c: int(c.get("geo_area_km2", 0))),
 ]
 
 
@@ -211,7 +208,7 @@ _AGG_THRESHOLD = int(os.environ.get("STRESS_AGG_THRESHOLD", 3))
 _AGG_WEIGHT = float(os.environ.get("STRESS_AGG_WEIGHT", 0.10))
 _AGG_CAP = float(os.environ.get("STRESS_AGG_CAP", 0.50))
 
-_GEO_AREA_BONUS_THRESHOLD = float(os.environ.get("STRESS_GEO_AREA_BONUS_THRESHOLD_KM2", 1))
+_GEO_VERTEX_THRESHOLD = int(os.environ.get("STRESS_GEO_VERTEX_THRESHOLD", 10))
 
 # (count_key, threshold, weight, cap) — applied additively to base before multiplier
 _CONTINUOUS_BONUSES: list[tuple[str, int, float, float]] = [
@@ -220,7 +217,7 @@ _CONTINUOUS_BONUSES: list[tuple[str, int, float, float]] = [
     ("wildcard_clause_count", 1, 0.10, 0.50),
     ("nested_clause_count",   1, 0.10, 0.50),
     ("fuzzy_clause_count",    1, 0.10, 0.50),
-    ("geo_area_km2",          _GEO_AREA_BONUS_THRESHOLD, 0.12, 0.60),
+    ("geo_vertex_count",      _GEO_VERTEX_THRESHOLD, 0.12, 0.60),
     ("knn_clause_count",      1, 0.10, 0.50),
     ("script_clause_count",   1, 0.10, 0.50),
     ("terms_values_count",    50, 0.10, 0.50),

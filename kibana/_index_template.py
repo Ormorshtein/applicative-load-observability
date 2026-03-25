@@ -38,7 +38,7 @@ COMPONENT_TEMPLATE: dict = {
                         "body":       {"type": "keyword", "doc_values": False},
                         "size_bytes": {"type": "integer"},
                         "size":       {"type": "integer"},
-                        "geo_area_km2": {"type": "float"},
+                        "geo_vertex_count": {"type": "integer"},
                     }
                 },
                 "response": {
@@ -84,7 +84,6 @@ COMPONENT_TEMPLATE: dict = {
                         "large_terms_list":    {"type": "integer"},
                         "deep_aggs":           {"type": "integer"},
                         "unbound_hits":        {"type": "integer"},
-                        "broad_geo":           {"type": "integer"},
                     }
                 },
                 "stress": {

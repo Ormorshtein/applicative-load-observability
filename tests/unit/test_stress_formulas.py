@@ -203,23 +203,22 @@ class TestCalcStress:
         assert score_with == pytest.approx(score_base + expected_bonus)
         assert key in bonuses
 
-    def test_geo_area_bonus(self):
-        """Geo area bonus scales with search area in km²."""
+    def test_geo_vertex_bonus(self):
+        """Geo vertex bonus scales with vertex count."""
         ctx = self._ctx()
         score_base, _, _ = calc_stress("_search", ctx)
-        # 500 km² geo area (above 1 km² threshold)
         score_with, bonuses, _ = calc_stress("_search", ctx,
-            clause_counts=_counts(geo_area_km2=500.0))
-        expected_bonus = min(0.12 * math.log(1 + 500.0 - 1), 0.60)
+            clause_counts=_counts(geo_vertex_count=200))
+        expected_bonus = min(0.12 * math.log(1 + 200 - 10), 0.60)
         assert score_with == pytest.approx(score_base + expected_bonus)
-        assert "geo_area_km2" in bonuses
+        assert "geo_vertex_count" in bonuses
 
-    def test_geo_area_below_threshold_no_bonus(self):
-        """Geo area below threshold adds no bonus."""
+    def test_geo_vertex_below_threshold_no_bonus(self):
+        """Vertex count at or below threshold adds no bonus."""
         ctx = self._ctx()
         score_base, _, _ = calc_stress("_search", ctx)
         score_with, _, _ = calc_stress("_search", ctx,
-            clause_counts=_counts(geo_area_km2=0.5))
+            clause_counts=_counts(geo_vertex_count=10))
         assert score_with == pytest.approx(score_base)
 
     def test_terms_values_bonus(self):
