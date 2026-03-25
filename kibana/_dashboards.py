@@ -12,6 +12,7 @@ from _visualizations import (
     SECTIONS,
     layout_cost_indicators,
     layout_main,
+    layout_usage,
     mk_ci_metric,
     mk_datatable,
     mk_horizontal_bar,
@@ -28,6 +29,7 @@ INDEX_PATTERN = "logs-alo.*-*"
 DATA_VIEW_ID = "alo-data-view"
 DASHBOARD_ID = "alo-dashboard"
 CI_DASHBOARD_ID = "alo-ci-dashboard"
+USAGE_DASHBOARD_ID = "alo-usage-dashboard"
 
 # Dashboard-level controls (dropdown filters above all panels).
 _CONTROLS = [
@@ -66,6 +68,7 @@ def _build_control_group_input() -> dict:
 _SCRIPT_DIR = Path(__file__).resolve().parent
 NDJSON_PATH = str(_SCRIPT_DIR / "dashboard.ndjson")
 CI_NDJSON_PATH = str(_SCRIPT_DIR / "dashboard-cost-indicators.ndjson")
+USAGE_NDJSON_PATH = str(_SCRIPT_DIR / "dashboard-usage.ndjson")
 
 DV_REF = [{"type": "index-pattern", "id": DATA_VIEW_ID,
            "name": "indexpattern-datasource-layer-layer1"}]
@@ -116,7 +119,8 @@ def import_ndjson(cfg: StackConfig, path: str, label: str) -> bool:
 def do_import(cfg: StackConfig) -> bool:
     ok1 = import_ndjson(cfg, NDJSON_PATH, "main dashboard")
     ok2 = import_ndjson(cfg, CI_NDJSON_PATH, "cost indicators dashboard")
-    return ok1 and ok2
+    ok3 = import_ndjson(cfg, USAGE_NDJSON_PATH, "usage dashboard")
+    return ok1 and ok2 and ok3
 
 
 # ── export / build helpers ───────────────────────────────────────────────────
@@ -414,6 +418,99 @@ def _build_ci_visualizations() -> list[tuple[str, dict]]:
     ]
 
 
+def _build_usage_visualizations() -> list[tuple[str, dict]]:
+    return [
+        # ── Section 1: Rates ──────────────────────────────────────────────
+        _section_header("alo-usage-hdr-rates", "Request Rates"),
+
+        mk_ts_multi("alo-usage-ts-total-rate", "Total Request Rate", [
+            ("total", "Requests", "", "count"),
+        ], "area"),
+
+        mk_ts("alo-usage-ts-rate-by-op", "Rate by Operation",
+               "request.operation",
+               metric_field="___records___", metric_label="Requests",
+               metric_op="count", size=8),
+
+        mk_ts("alo-usage-ts-rate-by-app", "Rate by Application",
+               "identity.applicative_provider",
+               metric_field="___records___", metric_label="Requests",
+               metric_op="count", size=8),
+
+        mk_ts("alo-usage-ts-rate-by-index", "Rate by Target Index",
+               "request.target",
+               metric_field="___records___", metric_label="Requests",
+               metric_op="count", size=8),
+
+        # ── Section 2: Latency ────────────────────────────────────────────
+        _section_header("alo-usage-hdr-latency", "Latency"),
+
+        mk_ts_multi("alo-usage-ts-es-latency", "ES Latency Percentiles", [
+            ("p50", "P50", "response.es_took_ms", "median"),
+            ("p95", "P95", "response.es_took_ms", "percentiles"),
+            ("p99", "P99", "response.es_took_ms", "percentiles"),
+        ], "line"),
+
+        mk_ts_multi("alo-usage-ts-gw-latency", "Gateway Latency Percentiles", [
+            ("p50", "P50", "response.gateway_took_ms", "median"),
+            ("p95", "P95", "response.gateway_took_ms", "percentiles"),
+            ("p99", "P99", "response.gateway_took_ms", "percentiles"),
+        ], "line"),
+
+        mk_ts("alo-usage-ts-latency-by-op", "Avg ES Latency by Operation",
+               "request.operation",
+               metric_field="response.es_took_ms", metric_label="Avg ES Latency (ms)",
+               metric_op="average", size=8),
+
+        # ── Section 3: Errors ─────────────────────────────────────────────
+        _section_header("alo-usage-hdr-errors", "Errors"),
+
+        mk_ts_multi("alo-usage-ts-errors", "Error Rate Over Time", [
+            ("errors", "Errors (4xx+5xx)", "response.status >= 400", "count"),
+            ("total",  "Total Requests",   "",                       "count"),
+        ], "area"),
+
+        mk_horizontal_bar("alo-usage-bar-status", "Requests by Status Code",
+                          "response.status", None, "count", "Count", 10),
+
+        mk_datatable("alo-usage-table-errors-by-app", "Errors by Application",
+                     "identity.applicative_provider", "Application", [
+                         ("errors", "Errors", "response.status", "count"),
+                         ("total",  "Total",  None,              "count"),
+                     ], size=10),
+
+        # ── Section 4: Data Volume ────────────────────────────────────────
+        _section_header("alo-usage-hdr-volume", "Data Volume"),
+
+        mk_ts("alo-usage-ts-hits", "Read Volume (Total Hits)",
+               "request.operation",
+               metric_field="response.hits", metric_label="Total Hits",
+               metric_op="sum", size=8),
+
+        mk_ts("alo-usage-ts-docs", "Write Volume (Docs Affected)",
+               "request.operation",
+               metric_field="response.docs_affected", metric_label="Docs Affected",
+               metric_op="sum", size=8),
+
+        mk_ts_multi("alo-usage-ts-payload", "Payload Sizes", [
+            ("req", "Avg Request Size", "request.size_bytes", "average"),
+            ("resp", "Avg Response Size", "response.size_bytes", "average"),
+        ], "line"),
+
+        # ── Section 5: Activity ───────────────────────────────────────────
+        _section_header("alo-usage-hdr-activity", "Top Activity"),
+
+        mk_horizontal_bar("alo-usage-bar-apps", "Top 10 Applications",
+                          "identity.applicative_provider", None, "count", "Requests", 10),
+
+        mk_horizontal_bar("alo-usage-bar-indices", "Top 10 Indices",
+                          "request.target", None, "count", "Requests", 10),
+
+        mk_horizontal_bar("alo-usage-bar-users", "Top 10 Users",
+                          "identity.username", None, "count", "Requests", 10),
+    ]
+
+
 HEAVIEST_OPS_SEARCH_ID = "alo-heaviest-ops"
 
 _HEAVIEST_OPS_COLUMNS = [
@@ -467,7 +564,15 @@ def do_rebuild(cfg: StackConfig) -> bool:
                           ci_ids, layout_cost_indicators)
 
     print()
+    usage_vis = _build_usage_visualizations()
+    usage_ids = _upsert_visualizations(cfg, usage_vis, all_lens=False)
+    ok3 = build_dashboard(cfg, USAGE_DASHBOARD_ID, "Cluster Usage",
+                          "Operational overview: request rates, latency, errors, and data volume.",
+                          usage_ids, layout_usage)
+
+    print()
     export_dashboard(cfg, DASHBOARD_ID, NDJSON_PATH)
     export_dashboard(cfg, CI_DASHBOARD_ID, CI_NDJSON_PATH)
+    export_dashboard(cfg, USAGE_DASHBOARD_ID, USAGE_NDJSON_PATH)
 
-    return ok1 and ok2
+    return ok1 and ok2 and ok3
