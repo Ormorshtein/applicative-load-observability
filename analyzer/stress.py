@@ -9,7 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, NamedTuple
 
-from _baselines import get_baselines
+from ._baselines import get_baselines
 
 # Clause keys that map 1:1 to a count field (used in _walk_query_clauses)
 _SINGLE_CLAUSE_KEYS = {

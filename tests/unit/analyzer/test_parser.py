@@ -2,26 +2,26 @@
 
 import base64
 import json
+
 import pytest
 
-from parser import (
-    parse_username,
+from analyzer.parser import (
     parse_applicative_provider,
-    parse_user_agent,
-    parse_labels,
-    parse_target,
-    parse_operation,
-    parse_size,
-    scrub_template,
-    scrub_bulk_template,
-    parse_hits,
-    parse_shards_total,
-    parse_shards_total_bulk,
     parse_docs_affected,
     parse_es_took_ms,
     parse_geo_vertex_count,
+    parse_hits,
+    parse_labels,
+    parse_operation,
+    parse_shards_total,
+    parse_shards_total_bulk,
+    parse_size,
+    parse_target,
+    parse_user_agent,
+    parse_username,
+    scrub_bulk_template,
+    scrub_template,
 )
-
 
 # ---------------------------------------------------------------------------
 # Header extraction: parse_username

@@ -3,8 +3,9 @@
 import time
 from unittest.mock import patch
 
-import _baselines
 import pytest
+
+from analyzer import _baselines
 
 
 class TestStaticDefaults:

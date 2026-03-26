@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, TypedDict
 
-from parser import (
+from .parser import (
     parse_applicative_provider,
     parse_docs_affected,
     parse_es_took_ms,
@@ -25,7 +25,7 @@ from parser import (
     scrub_bulk_template,
     scrub_template,
 )
-from stress import (
+from .stress import (
     _ALL_COUNT_FIELDS,
     StressContext,
     calc_stress,

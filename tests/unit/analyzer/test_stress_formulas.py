@@ -4,7 +4,7 @@ import math
 
 import pytest
 
-from stress import normalize, calc_stress, StressContext, _ALL_COUNT_FIELDS
+from analyzer.stress import _ALL_COUNT_FIELDS, StressContext, calc_stress, normalize
 
 
 def _counts(**overrides) -> dict:

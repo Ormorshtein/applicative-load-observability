@@ -2,22 +2,22 @@
 
 import base64
 import json
-import pytest
-from unittest.mock import patch
 from datetime import datetime, timezone
+from unittest.mock import patch
 
-from record_builder import (
-    extract_raw_fields,
-    build_record,
-    partial_error_record,
+import pytest
+
+from analyzer.record_builder import (
+    _CLAUSE_COUNT_OUTPUT_KEYS,
     RawFields,
+    _parse_content_length,
     _parse_json_field,
     _parse_upstream_response_time,
-    _parse_content_length,
-    _CLAUSE_COUNT_OUTPUT_KEYS,
+    build_record,
+    extract_raw_fields,
+    partial_error_record,
 )
-from stress import _ALL_COUNT_FIELDS
-
+from analyzer.stress import _ALL_COUNT_FIELDS
 
 # ---------------------------------------------------------------------------
 # _parse_json_field

@@ -10,7 +10,8 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
-from record_builder import build_record, extract_raw_fields, partial_error_record
+
+from .record_builder import build_record, extract_raw_fields, partial_error_record
 
 app = FastAPI()
 
