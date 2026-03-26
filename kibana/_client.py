@@ -7,8 +7,10 @@ import ssl
 import sys
 import time
 from dataclasses import dataclass, field
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+
+_HTTP_TIMEOUT = 30
 
 from _index_template import (
     COMPONENT_TEMPLATE,
@@ -71,13 +73,15 @@ def _http_json(cfg: StackConfig, base_url: str, method: str, path: str,
     data = json.dumps(body).encode() if body else None
     req = Request(url, data=data, headers=headers, method=method)
     try:
-        resp = urlopen(req, timeout=30, context=ssl_ctx)
+        resp = urlopen(req, timeout=_HTTP_TIMEOUT, context=ssl_ctx)
         return resp.status, json.loads(resp.read() or b"{}")
     except HTTPError as e:
         try:
             return e.code, json.loads(e.read())
         except Exception:
             return e.code, {}
+    except (URLError, OSError, TimeoutError):
+        return 0, {}
 
 
 def kibana_request(cfg: StackConfig, method: str, path: str,

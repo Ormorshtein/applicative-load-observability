@@ -157,4 +157,55 @@ This README describes the **intended product and analysis experience**. Implemen
 2. **Move to Row 2** — The "by operation kind" panel confirms the spike aligns with **query** traffic, not inserts or updates. The "by operation/query type" panel narrows it to **agg** type. The "by target" panel shows `products` index is the hotspot. The "by application" panel points to `search-api`.
 3. **Confirm at Row 3** — The top apps bar ranks `search-api` highest. The time series shows its stress rate spiking in the same window.
 
-**Conclusion:** *“The CPU spike was driven by agg-type queries on the `products` index, originating from `search-api`. The top contributing template was `search:agg:products`.”*
+**Conclusion:** *”The CPU spike was driven by agg-type queries on the `products` index, originating from `search-api`. The top contributing template was `search:agg:products`.”*
+
+---
+
+## Developer Quickstart
+
+### Prerequisites
+
+- Python 3.11+
+- [uv](https://docs.astral.sh/uv/) (fast Python package manager)
+
+### Install dependencies
+
+```bash
+uv pip install -e “.[dev]”
+```
+
+### Run linter & formatter
+
+```bash
+ruff check .          # lint
+ruff format --check . # format check (add --diff to preview)
+ruff format .         # auto-format
+```
+
+### Run type checker
+
+```bash
+mypy analyzer/
+```
+
+### Run tests
+
+```bash
+pytest                           # unit tests (default: tests/unit/)
+pytest --cov=analyzer            # with coverage
+pytest -n auto                   # parallel via pytest-xdist
+```
+
+### Pre-commit hooks (optional)
+
+```bash
+pip install pre-commit
+pre-commit install    # runs ruff + mypy on every commit
+```
+
+### Build & run with Docker Compose
+
+```bash
+docker compose up -d                       # start the stack
+docker compose --profile prometheus up -d  # with Prometheus monitoring
+```
