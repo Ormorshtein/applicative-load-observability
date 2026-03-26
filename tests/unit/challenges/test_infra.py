@@ -9,9 +9,10 @@ import pytest
 import sys
 from pathlib import Path
 
-# Add challenges dir to path so we can import _challenge_infra
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "challenges"))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "integration"))
+# Add challenges + integration dirs to path
+_TESTS_DIR = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(_TESTS_DIR / "challenges"))
+sys.path.insert(0, str(_TESTS_DIR / "integration"))
 
 from _challenge_infra import DocIdTracker, HealthMonitor, _progress_bar
 

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "integration"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "integration"))
 
 from helpers import LatencyTracker, _percentile
 
