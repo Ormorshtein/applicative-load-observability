@@ -63,6 +63,7 @@ def _build_headers() -> dict[str, str]:
 
 def _fetch_p50() -> dict[str, float]:
     """Query ES for P50 of took_ms and shards_total from recent searches."""
+    assert _ES_URL is not None  # caller checks _ES_URL before calling
     body = json.dumps({
         "size": 0,
         "query": {"bool": {"filter": [

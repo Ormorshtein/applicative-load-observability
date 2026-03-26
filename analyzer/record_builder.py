@@ -55,12 +55,13 @@ class RawFields:
     response_size_bytes:  int
 
 
-def _parse_json_field(raw: str) -> dict:
+def _parse_json_field(raw: str) -> dict[str, Any]:
     """Safely parse a JSON string; return {} on failure."""
     if not raw:
         return {}
     try:
-        return json.loads(raw)
+        result = json.loads(raw)
+        return result if isinstance(result, dict) else {}
     except json.JSONDecodeError:
         return {}
 

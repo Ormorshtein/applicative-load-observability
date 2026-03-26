@@ -36,24 +36,24 @@ def parse_username(headers: dict) -> str:
     return ""
 
 
-def parse_applicative_provider(headers: dict) -> str:
-    opaque = headers.get("x-opaque-id", "")
+def parse_applicative_provider(headers: dict[str, str]) -> str:
+    opaque: str = headers.get("x-opaque-id", "")
     if opaque:
         return opaque.split("/")[0]
 
-    app_name = headers.get("x-app-name", "")
+    app_name: str = headers.get("x-app-name", "")
     if app_name:
         return app_name
 
-    user_agent = headers.get("user-agent", "")
+    user_agent: str = headers.get("user-agent", "")
     if user_agent:
         return re.split(r"[/ ]", user_agent)[0]
 
     return ""
 
 
-def parse_user_agent(headers: dict) -> str:
-    return headers.get("user-agent", "")
+def parse_user_agent(headers: dict[str, str]) -> str:
+    return str(headers.get("user-agent", ""))
 
 
 _LABEL_PREFIX = "x-alo-"
@@ -104,7 +104,7 @@ def parse_operation(method: str, path: str) -> str:
 # ---------------------------------------------------------------------------
 
 def parse_size(body: dict) -> int:
-    return body.get("size", _ES_DEFAULT_SIZE)
+    return int(body.get("size", _ES_DEFAULT_SIZE))
 
 
 def _scrub(node: Any) -> Any:
@@ -214,7 +214,7 @@ def parse_hits(response_body: dict) -> tuple[int, bool]:
 
 
 def parse_shards_total(response_body: dict) -> int:
-    return response_body.get("_shards", {}).get("total", 0)
+    return int(response_body.get("_shards", {}).get("total", 0))
 
 
 def parse_shards_total_bulk(response_body: dict) -> int:

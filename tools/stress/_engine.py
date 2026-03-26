@@ -68,10 +68,13 @@ def ensure_index(gateway: str, index: str) -> None:
     http_request(gateway, "PUT", f"/{index}", LOADTEST_MAPPING)
 
 
+_SEED_BATCH_SIZE = 500
+
+
 def seed_data(gateway: str, index: str, tracker: DocIdTracker,
               count: int, app_name: str) -> None:
     print(f"  Seeding {count} documents into {index} ...", end=" ", flush=True)
-    batch_size = 500
+    batch_size = _SEED_BATCH_SIZE
     for start in range(0, count, batch_size):
         end = min(start + batch_size, count)
         actions = []

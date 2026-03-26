@@ -1,8 +1,7 @@
 """Unified runner for all ALO interactive challenges.
 
-Provides the interactive challenge loop, cluster health monitoring,
-document tracking, and CLI entry point shared by ALL challenges
-(trivial, ops, stealth, multi-app).
+Orchestrates challenge setup, interactive loop, and summary.
+Infrastructure (DocIdTracker, HealthMonitor, worker) lives in _challenge_infra.
 
 Config module protocol
 ----------------------
@@ -26,252 +25,26 @@ Operation signature: ``fn(gw, tracker) -> (op_name, status)``
 """
 
 import argparse
-import json
 import os
-import random
-import select
 import sys
 import threading
 import time
 
-from helpers import (
-    LOADTEST_MAPPING,
-    Stats,
-    add_auth_args,
-    apply_auth_args,
-    http_request,
-    rand_doc,
-    rand_str,
+from _challenge_infra import (
+    DocIdTracker,
+    HealthMonitor,
+    run_worker,
+    seed_data,
+    stdin_ready,
+    warmup_scripts,
 )
+from helpers import LOADTEST_MAPPING, Stats, add_auth_args, apply_auth_args, http_request
 
 _DEFAULT_GATEWAY = os.getenv("GATEWAY_URL", "http://127.0.0.1:9200")
 
-_DOC_ID_BUFFER_MAX = 5000
-_DOC_ID_TRIM_SIZE = 2000
-_SEED_BATCH_SIZE = 500
-_HEAP_THROTTLE_PCT = 82
-_HEAP_RESUME_PCT = 70
-_HEALTH_POLL_INTERVAL = 4
-_BACKOFF_BASE = 0.5
-_BACKOFF_CAP = 5.0
-
 
 # ---------------------------------------------------------------------------
-# Document ID tracker (thread-safe, with write cap)
-# ---------------------------------------------------------------------------
-
-class DocIdTracker:
-    def __init__(self, max_docs: int = 50_000) -> None:
-        self._ids: list[str] = []
-        self._lock = threading.Lock()
-        self._doc_count = 0
-        self._max_docs = max_docs
-
-    def remember(self, doc_id: str) -> None:
-        with self._lock:
-            self._ids.append(doc_id)
-            self._doc_count += 1
-            if len(self._ids) > _DOC_ID_BUFFER_MAX:
-                self._ids[:] = self._ids[-_DOC_ID_TRIM_SIZE:]
-
-    def pick(self) -> str | None:
-        with self._lock:
-            return random.choice(self._ids) if self._ids else None
-
-    @property
-    def writes_allowed(self) -> bool:
-        return self._doc_count < self._max_docs
-
-
-# ---------------------------------------------------------------------------
-# Cluster health monitor — multi-node aware with TUI display
-# ---------------------------------------------------------------------------
-
-class NodeHealth:
-    __slots__ = ("name", "heap_pct", "cpu_pct")
-
-    def __init__(self, name: str) -> None:
-        self.name = name
-        self.heap_pct = 0
-        self.cpu_pct = 0
-
-
-class HealthMonitor:
-    def __init__(self, gateway: str) -> None:
-        self._gateway = gateway
-        self.throttle = threading.Event()
-        self._nodes: dict[str, NodeHealth] = {}
-        self._stop = threading.Event()
-        self._consecutive_failures = 0
-
-    @property
-    def heap_pct(self) -> int:
-        return max((n.heap_pct for n in self._nodes.values()), default=0)
-
-    @property
-    def cpu_pct(self) -> int:
-        return max((n.cpu_pct for n in self._nodes.values()), default=0)
-
-    def start(self) -> None:
-        threading.Thread(target=self._loop, daemon=True).start()
-
-    def stop(self) -> None:
-        self._stop.set()
-
-    def _loop(self) -> None:
-        while not self._stop.is_set():
-            self._check()
-            wait = min(
-                _BACKOFF_BASE * (2 ** self._consecutive_failures),
-                _BACKOFF_CAP,
-            ) if self._consecutive_failures else _HEALTH_POLL_INTERVAL
-            self._stop.wait(wait)
-
-    def _check(self) -> None:
-        try:
-            status, body = http_request(
-                self._gateway, "GET", "/_nodes/stats/jvm,os", timeout=5,
-            )
-            if status != 200:
-                self._consecutive_failures += 1
-                return
-        except Exception:
-            self._consecutive_failures += 1
-            return
-
-        self._consecutive_failures = 0
-        data = json.loads(body)
-        for node_id, node in data.get("nodes", {}).items():
-            name = node.get("name", node_id[:8])
-            jvm = node.get("jvm", {}).get("mem", {})
-            os_cpu = node.get("os", {}).get("cpu", {})
-            if name not in self._nodes:
-                self._nodes[name] = NodeHealth(name)
-            self._nodes[name].heap_pct = jvm.get("heap_used_percent", 0)
-            self._nodes[name].cpu_pct = os_cpu.get("percent", 0)
-
-        heap_max = self.heap_pct
-        if heap_max >= _HEAP_THROTTLE_PCT:
-            if not self.throttle.is_set():
-                self._print_health("THROTTLING")
-            self.throttle.set()
-        elif heap_max <= _HEAP_RESUME_PCT and self.throttle.is_set():
-            self._print_health("RESUMING")
-            self.throttle.clear()
-
-    def _print_health(self, event: str) -> None:
-        print(f"\n  [HEALTH] {event}")
-        for node in sorted(self._nodes.values(), key=lambda n: n.name):
-            heap_bar = _progress_bar(node.heap_pct)
-            cpu_bar = _progress_bar(node.cpu_pct)
-            print(
-                f"    {node.name:<20} "
-                f"heap {heap_bar} {node.heap_pct:>3}%  "
-                f"cpu {cpu_bar} {node.cpu_pct:>3}%"
-            )
-
-    def format_status(self) -> str:
-        """Return a multi-line health display for the status command."""
-        if not self._nodes:
-            return "  [HEALTH] No node data yet"
-        lines = ["  [HEALTH] Cluster nodes:"]
-        for node in sorted(self._nodes.values(), key=lambda n: n.name):
-            heap_bar = _progress_bar(node.heap_pct)
-            cpu_bar = _progress_bar(node.cpu_pct)
-            lines.append(
-                f"    {node.name:<20} "
-                f"heap {heap_bar} {node.heap_pct:>3}%  "
-                f"cpu {cpu_bar} {node.cpu_pct:>3}%"
-            )
-        return "\n".join(lines)
-
-
-def _progress_bar(pct: int, width: int = 10) -> str:
-    filled = round(pct / 100 * width)
-    return "\u2588" * filled + "\u2591" * (width - filled)
-
-
-# ---------------------------------------------------------------------------
-# Worker
-# ---------------------------------------------------------------------------
-
-def _run_worker(
-    ops: list,
-    weights: list[float],
-    think_ms: int,
-    gw: str,
-    tracker: DocIdTracker,
-    stats: Stats,
-    stop: threading.Event,
-    monitor: HealthMonitor,
-) -> None:
-    while not stop.is_set():
-        if monitor.throttle.is_set():
-            time.sleep(0.5)
-            continue
-        try:
-            fn = random.choices(ops, weights=weights, k=1)[0]
-            op, status = fn(gw, tracker)
-            stats.record(op, status)
-            if status == 0 or status >= 429:
-                time.sleep(0.2)
-            elif think_ms > 0:
-                time.sleep(think_ms / 1000.0)
-        except Exception:
-            stats.record("_error", 0)
-            time.sleep(0.1)
-
-
-# ---------------------------------------------------------------------------
-# Setup helpers
-# ---------------------------------------------------------------------------
-
-def _seed_data(
-    gateway: str,
-    index: str,
-    tracker: DocIdTracker,
-    count: int,
-    doc_fn: callable = None,
-) -> None:
-    doc_fn = doc_fn or rand_doc
-    print(f"  Seeding {count} documents ...", flush=True)
-    for start in range(0, count, _SEED_BATCH_SIZE):
-        end = min(start + _SEED_BATCH_SIZE, count)
-        actions: list[str] = []
-        for _ in range(end - start):
-            did = rand_str(12)
-            actions.append(json.dumps({"index": {"_index": index, "_id": did}}))
-            actions.append(json.dumps(doc_fn()))
-            tracker.remember(did)
-        s, _ = http_request(
-            gateway, "POST", "/_bulk",
-            "\n".join(actions) + "\n",
-            content_type="application/x-ndjson", timeout=30,
-        )
-        print(f"    batch {start}-{end}: {s}", flush=True)
-    http_request(gateway, "POST", f"/{index}/_refresh")
-    print("  Seeding complete.")
-
-
-def _warmup_scripts(gateway: str, script_builders: tuple | list | None) -> None:
-    if not script_builders:
-        return
-    print("  Warming up Painless scripts ...", end=" ", flush=True)
-    tr = DocIdTracker()
-    for fn in script_builders:
-        fn(gateway, tr)
-    print("done.")
-
-
-def _stdin_ready() -> bool:
-    if sys.platform == "win32":
-        import msvcrt
-        return msvcrt.kbhit()
-    return bool(select.select([sys.stdin], [], [], 0)[0])
-
-
-# ---------------------------------------------------------------------------
-# Interactive challenge
+# Setup
 # ---------------------------------------------------------------------------
 
 def _setup_challenge(
@@ -296,8 +69,8 @@ def _setup_challenge(
     mapping = getattr(config, "MAPPING", LOADTEST_MAPPING)
     http_request(gateway, "PUT", f"/{index}", mapping)
     doc_fn = getattr(config, "SEED_DOC_FN", None)
-    _seed_data(gateway, index, tracker, seed_count, doc_fn)
-    _warmup_scripts(gateway, config.SCRIPT_BUILDERS)
+    seed_data(gateway, index, tracker, seed_count, doc_fn)
+    warmup_scripts(gateway, config.SCRIPT_BUILDERS)
 
     task_names = [name for name, *_ in task_configs]
     stats = {n: Stats() for n in task_names}
@@ -311,7 +84,7 @@ def _setup_challenge(
         wts = [w for _, w in op_defs]
         ts = [
             threading.Thread(
-                target=_run_worker, daemon=True,
+                target=run_worker, daemon=True,
                 args=(ops, wts, think_ms, gateway, tracker,
                       stats[name], stops[name], monitor),
             )
@@ -328,6 +101,10 @@ def _setup_challenge(
 
     return tracker, monitor, task_names, stats, stops, threads
 
+
+# ---------------------------------------------------------------------------
+# Interactive loop
+# ---------------------------------------------------------------------------
 
 def _run_interactive_loop(
     task_names: list[str],
@@ -374,7 +151,7 @@ def _run_interactive_loop(
             )
             sys.stdout.flush()
 
-            if not _stdin_ready():
+            if not stdin_ready():
                 time.sleep(0.5)
                 continue
 

@@ -118,12 +118,14 @@ def _simple(
     name: str, field: str, threshold: int, multiplier: float,
 ) -> CostIndicator:
     """Build a cost indicator for a single-field >= threshold check."""
-    return CostIndicator(
-        name,
-        lambda c, f=field, t=threshold: c[f] >= t,
-        multiplier,
-        lambda c, f=field: c[f],
-    )
+
+    def _condition(c: dict[str, int], f: str = field, t: int = threshold) -> bool:
+        return c[f] >= t
+
+    def _extract(c: dict[str, int], f: str = field) -> int:
+        return c[f]
+
+    return CostIndicator(name, _condition, multiplier, _extract)
 
 
 def _bool_total(counts: dict[str, int]) -> int:
@@ -142,17 +144,17 @@ _COST_INDICATORS: list[CostIndicator] = [
     _simple("has_nested",          "nested_clause_count",  1, 1.3),
     _simple("has_fuzzy",           "fuzzy_clause_count",   1, 1.2),
     CostIndicator("has_geo",
-                  lambda c: _geo_total(c) >= 1, 1.2, _geo_total),
+                  lambda c: _geo_total(c) >= 1, 1.2, _geo_total),  # type: ignore[misc]
     _simple("has_knn",             "knn_clause_count",     1, 1.2),
     CostIndicator("excessive_bool",
-                  lambda c: _bool_total(c) >= _COST_INDICATOR_BOOL_THRESHOLD,
+                  lambda c: _bool_total(c) >= _COST_INDICATOR_BOOL_THRESHOLD,  # type: ignore[misc]
                   1.3, _bool_total),
     _simple("large_terms_list", "terms_values_count",
             _COST_INDICATOR_TERMS_THRESHOLD, 1.2),
     _simple("deep_aggs", "agg_clause_count",
             _COST_INDICATOR_AGGS_THRESHOLD, 1.3),
     CostIndicator("unbound_hits",
-                  lambda c: c.get("hits_lower_bound", 0) >= 1, 1.3,
+                  lambda c: c.get("hits_lower_bound", 0) >= 1, 1.3,  # type: ignore[misc]
                   lambda c: 1),
 ]
 
@@ -210,7 +212,7 @@ def _stress_doc_write(ctx: StressContext, bl: dict[str, float]) -> dict[str, flo
     }
 
 
-_STRESS_DISPATCH: dict[str, Callable[[StressContext, dict[str, float]], float]] = {
+_STRESS_DISPATCH: dict[str, Callable[[StressContext, dict[str, float]], dict[str, float]]] = {
     "_search":          _stress_query,
     "_bulk":            _stress_bulk,
     "_update_by_query": _stress_by_query,
