@@ -115,7 +115,10 @@ def _refresh() -> None:
                 {k: _cache[k] for k in _DYNAMIC_KEYS},
             )
         except Exception:
-            logger.warning("ES unreachable for dynamic baselines, keeping current values", exc_info=True)
+            logger.warning(
+                "ES unreachable for dynamic baselines, keeping current values",
+                exc_info=True,
+            )
 
     _cache_ts = now
 

@@ -13,6 +13,20 @@ from helpers import rand_category, rand_color, rand_doc, rand_str, http_request
 INDEX = "challenge-stealth"
 APP_NAME = "platform-core"
 CULPRIT = "recommendation"
+DESCRIPTION = "Challenge v3: The Silent Killer — find the task with no fingerprint"
+HINT = (
+    "Cost indicator panels scream scripts, wildcards, deep aggs - but\n"
+    "  the real culprit triggers none of them. It hides behind ordinary queries."
+)
+CULPRIT_EXPLANATION = (
+    "'recommendation' used complex bool queries with 15-25 clauses and\n"
+    "  large terms lists, but triggered zero cost indicators. Pure clause\n"
+    "  volume drove the stress score via continuous bonuses."
+)
+MISS_EXPLANATION = (
+    "The culprit triggered no cost indicators. Look for high bool clause\n"
+    "  counts and large terms_values_count instead of scripts or wildcards."
+)
 
 _TAGS = ["sale", "new", "popular", "limited", "exclusive", "clearance", "premium"]
 

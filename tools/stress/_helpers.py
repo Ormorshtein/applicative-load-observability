@@ -8,6 +8,8 @@ _spec = importlib.util.spec_from_file_location("_integration_helpers", _integrat
 _mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_mod)
 
+LatencyTracker = _mod.LatencyTracker
+_percentile = _mod._percentile
 LOADTEST_MAPPING = _mod.LOADTEST_MAPPING
 http_request = _mod.http_request
 add_auth_args = _mod.add_auth_args

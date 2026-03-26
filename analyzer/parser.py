@@ -5,7 +5,8 @@ Pure extraction functions — no I/O, no side effects.
 import base64
 import json
 import re
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 _BASIC_AUTH_PREFIX = "Basic "
 _ES_DEFAULT_SIZE   = 10
@@ -27,7 +28,8 @@ def parse_username(headers: dict) -> str:
     auth = headers.get("authorization", "")
     if auth.startswith(_BASIC_AUTH_PREFIX):
         try:
-            decoded = base64.b64decode(auth[len(_BASIC_AUTH_PREFIX):]).decode("utf-8", errors="replace")
+            raw = base64.b64decode(auth[len(_BASIC_AUTH_PREFIX):])
+            decoded = raw.decode("utf-8", errors="replace")
             return decoded.split(":")[0]
         except ValueError:
             pass

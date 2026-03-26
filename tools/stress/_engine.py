@@ -113,4 +113,4 @@ def worker_loop(workload, metrics: LatencyTracker, limiter: RateLimiter,
         except Exception as exc:
             op, status, body = "_error", 0, str(exc).encode()
         latency_ms = (time.monotonic() - t0) * 1000
-        metrics.record(op, latency_ms, status, body)
+        metrics.record_with_status(op, latency_ms, status, body)

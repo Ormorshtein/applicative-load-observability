@@ -5,7 +5,8 @@ No I/O — all functions are pure transformations.
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any, TypedDict
 
 from parser import (
     parse_applicative_provider,
@@ -32,8 +33,9 @@ from stress import (
     evaluate_cost_indicators,
 )
 
+
 def _utc_timestamp() -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"
 _STRESS_PRECISION = 4
 
@@ -122,44 +124,87 @@ _CLAUSE_COUNT_OUTPUT_KEYS = {
 }
 
 _QUERY_OPS = frozenset({"_search", "_update_by_query", "_delete_by_query", "_count", "_validate"})
+_ES_NANOSECOND_BUG_RATIO = 1000
 
 
-def _output_clause_counts(counts: dict) -> dict:
+# ---------------------------------------------------------------------------
+# Output TypedDicts — schema-as-code for the observability record
+# ---------------------------------------------------------------------------
+
+class IdentitySection(TypedDict):
+    username: str
+    applicative_provider: str
+    user_agent: str
+    client_host: str
+    labels: list[str]
+
+
+class RequestSection(TypedDict, total=False):
+    method: str
+    path: str
+    operation: str
+    target: str
+    template: str
+    body: str
+    size_bytes: int
+    size: int
+    geo_vertex_count: int
+
+
+class ResponseSection(TypedDict):
+    status: int
+    es_took_ms: float
+    gateway_took_ms: float
+    hits: int
+    shards_total: int
+    docs_affected: int
+    size_bytes: int
+
+
+class StressSection(TypedDict):
+    score: float
+    base: float
+    multiplier: float
+    components: dict[str, float]
+    bonuses: dict[str, float]
+    cost_indicator_count: int
+    cost_indicator_names: list[str]
+
+
+class ObservabilityRecord(TypedDict):
+    """The full record indexed into Elasticsearch."""
+
+    timestamp: str  # key is "@timestamp" in output
+    identity: IdentitySection
+    request: RequestSection
+    response: ResponseSection
+    clause_counts: dict[str, int]
+    cost_indicators: dict[str, int]
+    stress: StressSection
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _output_clause_counts(counts: dict[str, int]) -> dict[str, int]:
     return {out: counts[internal] for internal, out in _CLAUSE_COUNT_OUTPUT_KEYS.items()}
 
 
-def build_record(raw: RawFields) -> dict:
-    operation = parse_operation(raw.method, raw.path)
-    target    = parse_target(raw.path)
-    if operation == "_bulk":
-        template, bulk_target = scrub_bulk_template(raw.request_body_raw)
-        if target == "_all":
-            target = bulk_target
-    else:
-        template = scrub_template(raw.request_body) if raw.request_body else ""
-
-    username             = parse_username(raw.headers)
-    applicative_provider = parse_applicative_provider(raw.headers)
-    user_agent           = parse_user_agent(raw.headers)
-    labels               = parse_labels(raw.headers)
-
-    hits, hits_lower_bound = parse_hits(raw.response_body)
-    if operation == "_bulk":
-        shards_total     = parse_shards_total_bulk(raw.response_body)
-    else:
-        shards_total     = parse_shards_total(raw.response_body)
-    docs_affected        = parse_docs_affected(operation, raw.response_body)
-    size                 = parse_size(raw.request_body)
-    es_took_ms           = parse_es_took_ms(raw.response_body)
-
-    # ES 8.13–8.15 bulk bug: took sometimes reported in nanoseconds.
-    # es_took can never exceed gateway_took, so if it's 1000x+ larger
-    # the value is in the wrong unit and needs conversion.
+def _fix_es_nanosecond_bug(operation: str, es_took_ms: float, gateway_took_ms: float) -> float:
+    """ES 8.13-8.15 bulk bug: took sometimes reported in nanoseconds."""
     if (operation == "_bulk"
-            and es_took_ms > raw.gateway_took_ms > 0
-            and es_took_ms / raw.gateway_took_ms > 1000):
-        es_took_ms /= 1_000_000
+            and es_took_ms > gateway_took_ms > 0
+            and es_took_ms / gateway_took_ms > _ES_NANOSECOND_BUG_RATIO):
+        return es_took_ms / 1_000_000
+    return es_took_ms
 
+
+def _compute_stress(
+    operation: str, raw: RawFields, es_took_ms: float,
+    hits: int, hits_lower_bound: bool, shards_total: int, docs_affected: int,
+) -> tuple[dict[str, int], dict[str, int], float, int, float, dict[str, float], dict[str, float]]:
+    """Compute clause counts, cost indicators, and stress score."""
     geo_vertex_count = 0
     if operation in _QUERY_OPS:
         clause_counts = count_clauses(raw.request_body)
@@ -172,65 +217,112 @@ def build_record(raw: RawFields) -> dict:
         cost_indicators, stress_multiplier = {}, 1.0
 
     ctx = StressContext(
-        es_took_ms=       es_took_ms,
-        gateway_took_ms=  raw.gateway_took_ms,
-        hits=             hits,
-        shards_total=     shards_total,
-        docs_affected=    docs_affected,
+        es_took_ms=es_took_ms,
+        gateway_took_ms=raw.gateway_took_ms,
+        hits=hits,
+        shards_total=shards_total,
+        docs_affected=docs_affected,
     )
-    score, bonuses, components = calc_stress(operation, ctx, stress_multiplier, clause_counts)
+    score, bonuses, components = calc_stress(
+        operation, ctx, stress_multiplier, clause_counts,
+    )
+    return (clause_counts, cost_indicators, stress_multiplier,
+            geo_vertex_count, score, bonuses, components)
 
-    request = {
-        "method":     raw.method,
-        "path":       raw.path,
-        "operation":  operation,
-        "target":     target,
-        "template":   template,
-        "body":       raw.request_body_raw,
+
+def _build_request_section(
+    raw: RawFields, operation: str, target: str, template: str,
+    size: int, geo_vertex_count: int,
+) -> dict[str, Any]:
+    """Assemble the request section of the observability record."""
+    request: dict[str, Any] = {
+        "method": raw.method,
+        "path": raw.path,
+        "operation": operation,
+        "target": target,
+        "template": template,
+        "body": raw.request_body_raw,
         "size_bytes": raw.request_size_bytes,
     }
     if geo_vertex_count > 0:
         request["geo_vertex_count"] = geo_vertex_count
     if operation == "_search":
         request["size"] = size
+    return request
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+def build_record(raw: RawFields) -> dict[str, Any]:
+    """Build the full observability record from parsed raw fields."""
+    operation = parse_operation(raw.method, raw.path)
+    target = parse_target(raw.path)
+    if operation == "_bulk":
+        template, bulk_target = scrub_bulk_template(raw.request_body_raw)
+        if target == "_all":
+            target = bulk_target
+    else:
+        template = scrub_template(raw.request_body) if raw.request_body else ""
+
+    hits, hits_lower_bound = parse_hits(raw.response_body)
+    shards_total = (parse_shards_total_bulk(raw.response_body) if operation == "_bulk"
+                    else parse_shards_total(raw.response_body))
+    docs_affected = parse_docs_affected(operation, raw.response_body)
+    es_took_ms = _fix_es_nanosecond_bug(
+        operation, parse_es_took_ms(raw.response_body), raw.gateway_took_ms,
+    )
+
+    (clause_counts, cost_indicators, stress_multiplier,
+     geo_vertex_count, score, bonuses, components) = _compute_stress(
+        operation, raw, es_took_ms, hits, hits_lower_bound,
+        shards_total, docs_affected,
+    )
 
     return {
         "@timestamp": _utc_timestamp(),
         "identity": {
-            "username":             username,
-            "applicative_provider": applicative_provider,
-            "user_agent":           user_agent,
-            "client_host":          raw.client_host,
-            "labels":              labels,
+            "username": parse_username(raw.headers),
+            "applicative_provider": parse_applicative_provider(raw.headers),
+            "user_agent": parse_user_agent(raw.headers),
+            "client_host": raw.client_host,
+            "labels": parse_labels(raw.headers),
         },
-        "request":  request,
+        "request": _build_request_section(
+            raw, operation, target, template, parse_size(raw.request_body),
+            geo_vertex_count,
+        ),
         "response": {
-            "status":        raw.response_status,
-            "es_took_ms":    es_took_ms,
+            "status": raw.response_status,
+            "es_took_ms": es_took_ms,
             "gateway_took_ms": raw.gateway_took_ms,
-            "hits":          hits,
-            "shards_total":  shards_total,
+            "hits": hits,
+            "shards_total": shards_total,
             "docs_affected": docs_affected,
-            "size_bytes":    raw.response_size_bytes,
+            "size_bytes": raw.response_size_bytes,
         },
-        "clause_counts":    _output_clause_counts(clause_counts),
-        "cost_indicators":  cost_indicators,
+        "clause_counts": _output_clause_counts(clause_counts),
+        "cost_indicators": cost_indicators,
         "stress": {
-            "score":                round(score, _STRESS_PRECISION),
-            "base":                 round(sum(components.values()), _STRESS_PRECISION),
-            "multiplier":           stress_multiplier,
-            "components":           {k: round(v, _STRESS_PRECISION) for k, v in components.items()},
-            "bonuses":              {k: round(v, _STRESS_PRECISION) for k, v in bonuses.items()},
+            "score": round(score, _STRESS_PRECISION),
+            "base": round(sum(components.values()), _STRESS_PRECISION),
+            "multiplier": stress_multiplier,
+            "components": {k: round(v, _STRESS_PRECISION)
+                           for k, v in components.items()},
+            "bonuses": {k: round(v, _STRESS_PRECISION)
+                        for k, v in bonuses.items()},
             "cost_indicator_count": len(cost_indicators),
-            "cost_indicator_names": list(cost_indicators.keys()) or ["unflagged"],
+            "cost_indicator_names": (list(cost_indicators.keys())
+                                     or ["unflagged"]),
         },
     }
 
 
-def partial_error_record(payload: dict, exc: Exception) -> dict:
+def partial_error_record(payload: dict[str, Any], exc: Exception) -> dict[str, Any]:
     return {
         "@timestamp": _utc_timestamp(),
-        "error":     str(exc),
-        "path":      payload.get("path", ""),
-        "method":    payload.get("method", ""),
+        "error": str(exc),
+        "path": payload.get("path", ""),
+        "method": payload.get("method", ""),
     }

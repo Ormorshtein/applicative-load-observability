@@ -6,40 +6,12 @@ import subprocess
 import threading
 import time
 
-from helpers import LOADTEST_MAPPING, http_request, rand_doc, rand_str
+from helpers import LOADTEST_MAPPING, LatencyTracker, http_request, rand_doc, rand_str
 
 INDEX_OVERHEAD = "resilience-overhead"
 INDEX_INTEGRITY = "resilience-integrity"
 INDEX_SCALING = "resilience-scaling"
 ALL_INDICES = [INDEX_OVERHEAD, INDEX_INTEGRITY, INDEX_SCALING]
-
-
-# ---------------------------------------------------------------------------
-# Latency tracker
-# ---------------------------------------------------------------------------
-
-class LatencyTracker:
-    """Thread-safe latency recorder with percentile computation."""
-
-    def __init__(self) -> None:
-        self._lock = threading.Lock()
-        self._samples: dict[str, list[float]] = {}
-
-    def record(self, operation: str, elapsed_ms: float) -> None:
-        with self._lock:
-            self._samples.setdefault(operation, []).append(elapsed_ms)
-
-    def percentile(self, operation: str, pct: float) -> float:
-        with self._lock:
-            data = sorted(self._samples.get(operation, []))
-        if not data:
-            return 0.0
-        idx = int(len(data) * pct / 100.0)
-        return data[min(idx, len(data) - 1)]
-
-    def count(self, operation: str) -> int:
-        with self._lock:
-            return len(self._samples.get(operation, []))
 
 
 # ---------------------------------------------------------------------------

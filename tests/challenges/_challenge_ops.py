@@ -8,6 +8,21 @@ from helpers import rand_category, rand_doc, rand_str, http_request
 INDEX = "challenge-ops"
 APP_NAME = "backend-v2"
 CULPRIT = "prefetch"
+DESCRIPTION = "Challenge v2: Operation Forensics — find the bad background task"
+HINT = (
+    "Hint: 'Stress by Application' won't help - it's all one app.\n"
+    "  Use Kibana to narrow down which queries cause the stress,\n"
+    "  then figure out which task sends them."
+)
+CULPRIT_EXPLANATION = (
+    "'prefetch' ran 8 workers with zero think_ms, stacking\n"
+    "  runtime_mappings + script_fields + script_score on every query.\n"
+    "  It dominated CPU despite being just 1 of 8 tasks."
+)
+MISS_EXPLANATION = (
+    "Look for the task with the most cost indicators firing -\n"
+    "  has_script, has_runtime_mapping, and excessive query volume."
+)
 
 
 # ---------------------------------------------------------------------------

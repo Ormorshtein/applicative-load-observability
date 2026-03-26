@@ -5,8 +5,9 @@ All values default to 0; score is unbounded above.
 
 import math
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any, NamedTuple
 
 from _baselines import get_baselines
 
@@ -76,7 +77,7 @@ def _count_aggs(node: Any) -> int:
     if not isinstance(node, dict):
         return 0
     count = 0
-    for key, value in node.items():
+    for _key, value in node.items():
         if isinstance(value, dict):
             count += 1
             count += _count_aggs(value.get("aggs") or value.get("aggregations") or {})
@@ -105,43 +106,66 @@ _COST_INDICATOR_BOOL_THRESHOLD = int(os.environ.get("COST_INDICATOR_BOOL_THRESHO
 _COST_INDICATOR_TERMS_THRESHOLD = int(os.environ.get("COST_INDICATOR_TERMS_THRESHOLD", 500))
 _COST_INDICATOR_AGGS_THRESHOLD = int(os.environ.get("COST_INDICATOR_AGGS_THRESHOLD", 10))
 
-# (name, condition, multiplier, detail_extractor)
-_COST_INDICATORS: list[tuple[str, Callable[[dict], bool], float, Callable[[dict], int]]] = [
-    ("has_script",          lambda c: c["script_clause_count"] >= 1,           1.5,
-                            lambda c: c["script_clause_count"]),
-    ("has_runtime_mapping", lambda c: c["runtime_mapping_count"] >= 1,         1.5,
-                            lambda c: c["runtime_mapping_count"]),
-    ("has_wildcard",        lambda c: c["wildcard_clause_count"] >= 1,         1.3,
-                            lambda c: c["wildcard_clause_count"]),
-    ("has_nested",          lambda c: c["nested_clause_count"] >= 1,           1.3,
-                            lambda c: c["nested_clause_count"]),
-    ("has_fuzzy",           lambda c: c["fuzzy_clause_count"] >= 1,            1.2,
-                            lambda c: c["fuzzy_clause_count"]),
-    ("has_geo",             lambda c: c["geo_distance_count"] + c["geo_shape_count"] >= 1, 1.2,
-                            lambda c: c["geo_distance_count"] + c["geo_shape_count"]),
-    ("has_knn",             lambda c: c["knn_clause_count"] >= 1,              1.2,
-                            lambda c: c["knn_clause_count"]),
-    ("excessive_bool",      lambda c: (c["bool_must_count"] + c["bool_should_count"] +
-                                       c["bool_filter_count"] + c["bool_must_not_count"])
-                                      >= _COST_INDICATOR_BOOL_THRESHOLD,       1.3,
-                            lambda c: (c["bool_must_count"] + c["bool_should_count"] +
-                                       c["bool_filter_count"] + c["bool_must_not_count"])),
-    ("large_terms_list",    lambda c: c["terms_values_count"] >= _COST_INDICATOR_TERMS_THRESHOLD, 1.2,
-                            lambda c: c["terms_values_count"]),
-    ("deep_aggs",           lambda c: c["agg_clause_count"] >= _COST_INDICATOR_AGGS_THRESHOLD,    1.3,
-                            lambda c: c["agg_clause_count"]),
-    ("unbound_hits",        lambda c: c.get("hits_lower_bound", 0) >= 1,  1.3,
-                            lambda c: 1),
+
+class CostIndicator(NamedTuple):
+    name: str
+    condition: Callable[[dict[str, int]], bool]
+    multiplier: float
+    extractor: Callable[[dict[str, int]], int]
+
+
+def _simple(
+    name: str, field: str, threshold: int, multiplier: float,
+) -> CostIndicator:
+    """Build a cost indicator for a single-field >= threshold check."""
+    return CostIndicator(
+        name,
+        lambda c, f=field, t=threshold: c[f] >= t,
+        multiplier,
+        lambda c, f=field: c[f],
+    )
+
+
+def _bool_total(counts: dict[str, int]) -> int:
+    return (counts["bool_must_count"] + counts["bool_should_count"]
+            + counts["bool_filter_count"] + counts["bool_must_not_count"])
+
+
+def _geo_total(counts: dict[str, int]) -> int:
+    return counts["geo_distance_count"] + counts["geo_shape_count"]
+
+
+_COST_INDICATORS: list[CostIndicator] = [
+    _simple("has_script",          "script_clause_count",  1, 1.5),
+    _simple("has_runtime_mapping", "runtime_mapping_count", 1, 1.5),
+    _simple("has_wildcard",        "wildcard_clause_count", 1, 1.3),
+    _simple("has_nested",          "nested_clause_count",  1, 1.3),
+    _simple("has_fuzzy",           "fuzzy_clause_count",   1, 1.2),
+    CostIndicator("has_geo",
+                  lambda c: _geo_total(c) >= 1, 1.2, _geo_total),
+    _simple("has_knn",             "knn_clause_count",     1, 1.2),
+    CostIndicator("excessive_bool",
+                  lambda c: _bool_total(c) >= _COST_INDICATOR_BOOL_THRESHOLD,
+                  1.3, _bool_total),
+    _simple("large_terms_list", "terms_values_count",
+            _COST_INDICATOR_TERMS_THRESHOLD, 1.2),
+    _simple("deep_aggs", "agg_clause_count",
+            _COST_INDICATOR_AGGS_THRESHOLD, 1.3),
+    CostIndicator("unbound_hits",
+                  lambda c: c.get("hits_lower_bound", 0) >= 1, 1.3,
+                  lambda c: 1),
 ]
 
 
-def evaluate_cost_indicators(counts: dict) -> tuple[dict[str, int], float]:
-    indicators = {}
+def evaluate_cost_indicators(
+    counts: dict[str, int],
+) -> tuple[dict[str, int], float]:
+    indicators: dict[str, int] = {}
     multiplier = 1.0
-    for name, condition, mult, extract in _COST_INDICATORS:
-        if condition(counts):
-            indicators[name] = extract(counts)
-            multiplier *= mult
+    for indicator in _COST_INDICATORS:
+        if indicator.condition(counts):
+            indicators[indicator.name] = indicator.extractor(counts)
+            multiplier *= indicator.multiplier
     return indicators, multiplier
 
 
@@ -246,8 +270,7 @@ def calc_stress(
     if clause_counts:
         counts = {
             **clause_counts,
-            "bool_total": (clause_counts["bool_must_count"] + clause_counts["bool_should_count"]
-                           + clause_counts["bool_filter_count"] + clause_counts["bool_must_not_count"]),
+            "bool_total": _bool_total(clause_counts),
         }
         bonus_total = 0.0
         for key, threshold, weight, cap in _CONTINUOUS_BONUSES:

@@ -153,6 +153,47 @@ def http_request(gateway: str, method: str, path: str,
 
 
 # ---------------------------------------------------------------------------
+# Latency tracker (base)
+# ---------------------------------------------------------------------------
+
+def _percentile(sorted_vals: list[float], pct: float) -> float:
+    """Linear-interpolation percentile on a pre-sorted list."""
+    if not sorted_vals:
+        return 0.0
+    k = (pct / 100) * (len(sorted_vals) - 1)
+    lo, hi = int(k), min(int(k) + 1, len(sorted_vals) - 1)
+    if lo == hi:
+        return sorted_vals[lo]
+    return sorted_vals[lo] + (k - lo) * (sorted_vals[hi] - sorted_vals[lo])
+
+
+class LatencyTracker:
+    """Thread-safe per-operation latency recorder with percentile computation."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._samples: dict[str, list[float]] = defaultdict(list)
+
+    def record(self, operation: str, elapsed_ms: float) -> None:
+        with self._lock:
+            self._samples[operation].append(elapsed_ms)
+
+    def percentile(self, operation: str, pct: float) -> float:
+        with self._lock:
+            data = sorted(self._samples.get(operation, []))
+        return _percentile(data, pct)
+
+    def count(self, operation: str) -> int:
+        with self._lock:
+            return len(self._samples.get(operation, []))
+
+    def sorted_samples(self, operation: str) -> list[float]:
+        """Return a sorted copy of samples for an operation."""
+        with self._lock:
+            return sorted(self._samples.get(operation, []))
+
+
+# ---------------------------------------------------------------------------
 # Stats tracker
 # ---------------------------------------------------------------------------
 

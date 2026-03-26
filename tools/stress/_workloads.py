@@ -61,6 +61,16 @@ class Workload:
         return "_search", s, resp
 
 
+class SingleOpWorkload(Workload):
+    """Workload that runs a single operation — subclass and define ``_op``."""
+
+    def weighted_operations(self) -> list[tuple]:
+        return [(self._op, 1)]
+
+    def _op(self) -> tuple[str, int, bytes]:
+        raise NotImplementedError
+
+
 # ---------------------------------------------------------------------------
 # Mixed workload — realistic production traffic
 # ---------------------------------------------------------------------------
