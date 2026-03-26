@@ -28,6 +28,7 @@ _ES_INSECURE = os.environ.get("ES_INSECURE", "").lower() in ("1", "true", "yes")
 
 _CACHE_TTL = float(os.environ.get("BASELINE_CACHE_TTL", "60"))
 _QUERY_WINDOW = os.environ.get("BASELINE_QUERY_WINDOW", "1h")
+_ES_QUERY_TIMEOUT = 5
 
 _STATIC: dict[str, float] = {
     "took_ms":       float(os.environ.get("STRESS_BASELINE_TOOK_MS", "100")),
@@ -82,7 +83,8 @@ def _fetch_p50() -> dict[str, float]:
     url = f"{_ES_URL.rstrip('/')}/logs-alo.search-*/_search"
     req = urllib.request.Request(url, data=body, headers=_build_headers(), method="POST")
 
-    with urllib.request.urlopen(req, timeout=5, context=_build_ssl_context()) as resp:
+    ssl_ctx = _build_ssl_context()
+    with urllib.request.urlopen(req, timeout=_ES_QUERY_TIMEOUT, context=ssl_ctx) as resp:
         data = json.loads(resp.read())
 
     aggs = data.get("aggregations", {})

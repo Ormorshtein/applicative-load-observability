@@ -11,7 +11,12 @@ import random
 import types
 
 from helpers import (
-    http_request, rand_category, rand_color, rand_doc, rand_str,
+    http_request,
+    ndjson,
+    rand_category,
+    rand_color,
+    rand_doc,
+    rand_str,
 )
 
 
@@ -133,7 +138,7 @@ def make_noise(index, app_name):
             actions.append(json.dumps(rand_doc()))
             if not capped:
                 tr.remember(did)
-        s, _ = send(gw, "POST", "/_bulk", "\n".join(actions) + "\n",
+        s, _ = send(gw, "POST", "/_bulk", ndjson(actions),
                      content_type="application/x-ndjson", timeout=30)
         return "_bulk", s
 

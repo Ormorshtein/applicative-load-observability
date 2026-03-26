@@ -7,9 +7,8 @@ Each profile targets a specific clause type or volume pattern.
 import json
 import random
 
-from _helpers import http_request, rand_doc, rand_str
+from _helpers import http_request, ndjson, rand_doc, rand_str
 from _workloads import SingleOpWorkload, workload
-
 
 # ---------------------------------------------------------------------------
 # Script-heavy
@@ -163,9 +162,8 @@ class BulkStress(SingleOpWorkload):
             actions.append(json.dumps({"index": {"_index": self.index, "_id": doc_id}}))
             actions.append(json.dumps(rand_doc()))
             self.tracker.remember(doc_id)
-        body = "\n".join(actions) + "\n"
         s, resp = http_request(
-            self.gateway, "POST", "/_bulk", body,
+            self.gateway, "POST", "/_bulk", ndjson(actions),
             headers={**self._h(), "Content-Type": "application/x-ndjson"},
             content_type="application/x-ndjson", timeout=30)
         return "_bulk", s, resp

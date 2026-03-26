@@ -1,21 +1,18 @@
 """Unit tests for challenge infrastructure components."""
 
 import json
-import threading
+import sys
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
-import sys
-from pathlib import Path
 
 # Add challenges + integration dirs to path
 _TESTS_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_TESTS_DIR / "challenges"))
 sys.path.insert(0, str(_TESTS_DIR / "integration"))
 
-from _challenge_infra import DocIdTracker, HealthMonitor, _progress_bar
-
+from _challenge_infra import DocIdTracker, HealthMonitor, _progress_bar  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # DocIdTracker

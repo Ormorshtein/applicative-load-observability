@@ -1,13 +1,9 @@
 """Unit tests for the shared LatencyTracker base class."""
 
-import sys
-from pathlib import Path
-
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "integration"))
-
-from helpers import LatencyTracker, _percentile
+from shared._stats import LatencyTracker
+from shared._stats import percentile as _percentile
 
 
 class TestPercentile:

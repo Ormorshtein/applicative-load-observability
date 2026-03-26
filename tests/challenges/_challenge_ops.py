@@ -3,7 +3,7 @@
 import json
 import random
 
-from helpers import rand_category, rand_doc, rand_str, http_request
+from helpers import http_request, ndjson, rand_category, rand_doc, rand_str
 
 INDEX = "challenge-ops"
 APP_NAME = "backend-v2"
@@ -83,7 +83,7 @@ def _bulk_index(gw, tr, lo=5, hi=15):
         actions.append(json.dumps({"index": {"_index": INDEX, "_id": did}}))
         actions.append(json.dumps(rand_doc()))
         tr.remember(did)
-    s, _ = _send(gw, "POST", "/_bulk", "\n".join(actions) + "\n",
+    s, _ = _send(gw, "POST", "/_bulk", ndjson(actions),
                  content_type="application/x-ndjson", timeout=30)
     return "_bulk", s
 

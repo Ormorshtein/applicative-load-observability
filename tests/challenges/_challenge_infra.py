@@ -12,7 +12,7 @@ import sys
 import threading
 import time
 
-from helpers import http_request, rand_doc, rand_str, Stats
+from helpers import Stats, http_request, ndjson, rand_doc, rand_str
 
 _DOC_ID_BUFFER_MAX = 5000
 _DOC_ID_TRIM_SIZE = 2000
@@ -215,7 +215,7 @@ def seed_data(
             tracker.remember(did)
         s, _ = http_request(
             gateway, "POST", "/_bulk",
-            "\n".join(actions) + "\n",
+            ndjson(actions),
             content_type="application/x-ndjson", timeout=30,
         )
         print(f"    batch {start}-{end}: {s}", flush=True)

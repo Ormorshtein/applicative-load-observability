@@ -1,8 +1,7 @@
 """Unit tests for cost indicator evaluation in analyzer/stress.py."""
 
 import pytest
-
-from stress import evaluate_cost_indicators, count_clauses
+from stress import count_clauses, evaluate_cost_indicators
 
 
 def _zero_counts() -> dict[str, int]:

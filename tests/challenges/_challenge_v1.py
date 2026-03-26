@@ -10,7 +10,7 @@ import json
 import random
 from types import SimpleNamespace
 
-from helpers import http_request, rand_category, rand_doc, rand_str
+from helpers import http_request, ndjson, rand_category, rand_doc, rand_str
 
 INDEX = "challenge"
 CULPRIT = "analytics-dashboard"
@@ -83,7 +83,7 @@ def _make_app_ops(app_name: str) -> SimpleNamespace:
             actions.append(json.dumps(rand_doc()))
             tr.remember(did)
         s, _ = send(
-            gw, "POST", "/_bulk", "\n".join(actions) + "\n",
+            gw, "POST", "/_bulk", ndjson(actions),
             content_type="application/x-ndjson", timeout=30,
         )
         return "_bulk", s

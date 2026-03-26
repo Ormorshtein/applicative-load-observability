@@ -6,7 +6,7 @@ import subprocess
 import threading
 import time
 
-from helpers import LOADTEST_MAPPING, LatencyTracker, http_request, rand_doc, rand_str
+from helpers import LOADTEST_MAPPING, LatencyTracker, http_request, ndjson, rand_doc, rand_str
 
 INDEX_OVERHEAD = "resilience-overhead"
 INDEX_INTEGRITY = "resilience-integrity"
@@ -46,7 +46,7 @@ def build_bulk_body(index: str, count: int = 10) -> str:
     for _ in range(count):
         lines.append(json.dumps({"index": {"_index": index, "_id": rand_str(12)}}))
         lines.append(json.dumps(rand_doc()))
-    return "\n".join(lines) + "\n"
+    return ndjson(lines)
 
 
 def seed_index(base_url: str, index: str, count: int = 50) -> None:

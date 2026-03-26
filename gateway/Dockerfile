@@ -1,4 +1,4 @@
-FROM openresty/openresty:alpine
+FROM openresty/openresty:1.29.2.2-alpine
 RUN apk add --no-cache curl gettext perl \
     && mkdir -p /usr/local/openresty/site/lualib/resty \
     && curl -fsSL https://raw.githubusercontent.com/ledgetech/lua-resty-http/v0.17.2/lib/resty/http.lua \

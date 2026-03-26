@@ -4,6 +4,7 @@ import time
 from unittest.mock import patch
 
 import _baselines
+import pytest
 
 
 class TestStaticDefaults:
@@ -18,6 +19,14 @@ class TestStaticDefaults:
         assert baselines["hits"] == 500
         assert baselines["shards_total"] == 5
         assert baselines["docs_affected"] == 500
+
+
+@pytest.fixture(autouse=True)
+def _reset_baselines_state():
+    """Guarantee cache state is restored even if a test raises."""
+    yield
+    _baselines._cache.update(_baselines._STATIC)
+    _baselines._cache_ts = 0.0
 
 
 class TestCacheTTL:
@@ -73,7 +82,3 @@ class TestDynamicRefresh:
              patch.object(_baselines, "_fetch_p50") as mock:
             _baselines.get_baselines()
             mock.assert_not_called()
-
-    def teardown_method(self):
-        _baselines._cache.update(_baselines._STATIC)
-        _baselines._cache_ts = 0.0

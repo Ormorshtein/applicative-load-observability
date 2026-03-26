@@ -22,6 +22,9 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests/unit"]
 addopts = "-vv --tb=short"
+markers = [
+    "slow: Tests involving cache TTL waits or heavy computation",
+]
 
 [tool.ruff]
 line-length = 100
@@ -31,7 +34,7 @@ target-version = "py311"
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["analyzer", "kibana", "grafana"]
+known-first-party = ["analyzer", "kibana", "grafana", "shared"]
 
 [tool.mypy]
 python_version = "3.11"
