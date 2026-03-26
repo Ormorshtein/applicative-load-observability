@@ -67,7 +67,7 @@ class LatencyTracker(_BaseTracker):
                 self._errors[op] += 1
                 self._total_errors += 1
                 if len(self._error_samples) < self.MAX_ERROR_SAMPLES:
-                    snippet = body[:512].decode("utf-8", errors="replace") if body else ""
+                    snippet = body.decode("utf-8", errors="replace")[:512] if body else ""
                     self._error_samples.append((op, status, snippet))
 
     def snapshot(self) -> dict:

@@ -242,7 +242,8 @@ def _build_request_section(
         "operation": operation,
         "target": target,
         "template": template,
-        "body": raw.request_body_raw,
+        "body": json.dumps(raw.request_body, ensure_ascii=False) if raw.request_body
+               else raw.request_body_raw,
         "size_bytes": raw.request_size_bytes,
     }
     if geo_vertex_count > 0:
