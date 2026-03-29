@@ -359,7 +359,7 @@ def _wrap_dashboard(uid, title, description, panels):
         "schemaVersion": 39,
         "version": 1,
         "refresh": "30s",
-        "time": {"from": "now-24h", "to": "now"},
+        "time": {"from": "now-15m", "to": "now"},
         "panels": panels,
         "templating": {"list": template_vars},
         "annotations": {"list": []},

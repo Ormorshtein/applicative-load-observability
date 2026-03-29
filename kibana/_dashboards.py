@@ -147,7 +147,7 @@ def build_dashboard(cfg: StackConfig, dashboard_id: str, title: str,
         "kibanaSavedObjectMeta": {"searchSourceJSON": json.dumps(
             {"query": {"query": "", "language": "kuery"}, "filter": []})},
         "panelsJSON": json.dumps(panels),
-        "timeRestore": True, "timeTo": "now", "timeFrom": "now-24h",
+        "timeRestore": True, "timeTo": "now", "timeFrom": "now-15m",
         "refreshInterval": {"pause": False, "value": 30000},
         "optionsJSON": json.dumps({"useMargins": True, "syncColors": True,
                                     "syncCursor": True, "syncTooltips": True,
