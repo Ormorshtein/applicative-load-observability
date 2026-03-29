@@ -156,6 +156,25 @@ def scrub_bulk_template(raw_body: str) -> tuple[str, str]:
     return template, target_str
 
 
+def parse_msearch_pairs(raw_body: str) -> list[tuple[dict, dict]]:
+    """Extract (header, search_body) pairs from an _msearch NDJSON request.
+
+    _msearch alternates: header line, search body line, header line, ...
+    Returns [(header_dict, body_dict), ...].
+    """
+    pairs: list[tuple[dict, dict]] = []
+    lines = [ln for ln in raw_body.splitlines() if ln.strip()]
+    for i in range(0, len(lines) - 1, 2):
+        try:
+            header = json.loads(lines[i])
+            body = json.loads(lines[i + 1])
+        except (json.JSONDecodeError, IndexError):
+            continue
+        if isinstance(header, dict) and isinstance(body, dict):
+            pairs.append((header, body))
+    return pairs
+
+
 # ---------------------------------------------------------------------------
 # Geo vertex counting
 # ---------------------------------------------------------------------------

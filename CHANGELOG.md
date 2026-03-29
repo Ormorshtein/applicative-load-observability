@@ -1,5 +1,49 @@
 # Changelog
 
+## 1.15.0
+
+### Analyzer
+
+- **Geo vertex counting** replaces geo area scoring — counts vertices in `geo_shape`/`geo_polygon` queries for more accurate and predictable stress scoring.
+- **Stress score component breakdown** — each observability record now stores the individual `took`, `shards`, `hits`, and `bonus` components that make up the final score.
+- **`response.status`** field added to observability records.
+- **Proper Python package** — analyzer converted to use relative imports, eliminating stdlib `parser` module shadowing.
+
+### Bug Fixes
+
+- Fixed `scrub_bulk_template` crash when document bodies contain action-like field names (e.g. `{"index": "value"}`).
+- Fixed geo vertex counting returning 0 for shapes nested inside `bool` queries.
+- Fixed multibyte character corruption in stress tool error snippets (was slicing bytes before UTF-8 decode).
+
+### Dashboard
+
+- **Cluster Usage dashboard** — request rates, latency percentiles, error rates, and volume by operation.
+- **Score component breakdown** — table and trend panels added to Cost Indicators dashboard.
+- Cost indicator pie chart: `missingBucket` for backward compat with older data, `unflagged` label for new records.
+- Fixed usage dashboard latency panels with percentile support.
+
+### Infrastructure
+
+- **`pyproject.toml` with `uv`** — migrated from `requirements.txt`; dev dependencies managed via optional `[dev]` extra.
+- **Logstash healthcheck** added; unknown operations routed to dead-letter queue.
+- **Docker base images pinned** — uv 0.11.1, OpenResty 1.29.2.2-alpine.
+- **CI aligned to Python 3.12** (matching Docker images); standard pre-commit hooks added (`trailing-whitespace`, `end-of-file-fixer`, `check-yaml`, `check-merge-conflict`).
+- Grafana/Kibana Dockerfiles narrowed `COPY` scope; `.dockerignore` extended.
+
+### Known Issues
+
+- Kibana legend squashing on template panels in the main dashboard.
+
+### Code Quality
+
+- **`shared/` package** — consolidates HTTP client, data generators, stats utilities; eliminates `importlib` hack in stress tool and challenge scripts.
+- **`ndjson()` utility** replaces 11 inline `"\n".join(actions) + "\n"` patterns.
+- Dashboard modules split by responsibility (builders + CRUD); challenge runner split into infra + runner.
+- Unit tests reorganized into subdirectories mirroring source tree; added tests for challenge infrastructure, latency tracker, and edge cases.
+- Developer quickstart added to README; external cheat sheets for dashboard reference.
+
+---
+
 ## 1.14.0
 
 ### Analyzer

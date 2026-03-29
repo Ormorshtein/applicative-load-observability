@@ -214,6 +214,11 @@ def _stress_doc_write(ctx: StressContext, bl: dict[str, float]) -> dict[str, flo
 
 _STRESS_DISPATCH: dict[str, Callable[[StressContext, dict[str, float]], dict[str, float]]] = {
     "_search":          _stress_query,
+    "_msearch":         _stress_query,
+    "_count":           _stress_query,
+    "_scroll":          _stress_query,
+    "_explain":         _stress_query,
+    "_validate":        _stress_query,
     "_bulk":            _stress_bulk,
     "_update_by_query": _stress_by_query,
     "_delete_by_query": _stress_by_query,
@@ -221,6 +226,7 @@ _STRESS_DISPATCH: dict[str, Callable[[StressContext, dict[str, float]], dict[str
     "_create":          _stress_doc_write,
     "index":            _stress_doc_write,
     "delete":           _stress_doc_write,
+    "get":              _stress_doc_write,
 }
 
 
