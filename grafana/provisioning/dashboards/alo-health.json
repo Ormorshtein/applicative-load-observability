@@ -1007,7 +1007,32 @@
       },
       "fieldConfig": {
         "defaults": {},
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Error"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 600
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 180
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "showHeader": true,
@@ -1045,11 +1070,22 @@
             "excludeByName": {
               "_id": true,
               "_type": true,
-              "_index": false,
-              "_source": true
+              "_index": true,
+              "highlight": true,
+              "sort": true
             },
-            "indexByName": {},
-            "renameByName": {}
+            "indexByName": {
+              "@timestamp": 0,
+              "error": 1,
+              "path": 2,
+              "method": 3
+            },
+            "renameByName": {
+              "@timestamp": "Time",
+              "error": "Error",
+              "path": "Path",
+              "method": "Method"
+            }
           }
         }
       ]
