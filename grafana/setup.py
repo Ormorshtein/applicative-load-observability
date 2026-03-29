@@ -21,11 +21,12 @@ import time
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from _dashboards import (
+from _dashboard_builders import (
     build_cost_indicators_dashboard,
     build_main_dashboard,
-    export_dashboards,
+    build_usage_dashboard,
 )
+from _dashboards import export_dashboards
 from _datasource import generate_datasource_yaml
 
 INDEX_PATTERN = "logs-alo.*-*"
@@ -139,14 +140,13 @@ def do_api_setup(grafana_url, elasticsearch_url, username, password):
     all_ok = create_datasource(grafana_url, elasticsearch_url, username,
                                password)
 
-    main_dashboard = build_main_dashboard()
-    ci_dashboard = build_cost_indicators_dashboard()
-
-    all_ok &= import_dashboard(grafana_url, main_dashboard, username, password)
-    all_ok &= import_dashboard(grafana_url, ci_dashboard, username, password)
+    for builder in [build_main_dashboard, build_cost_indicators_dashboard,
+                     build_usage_dashboard]:
+        all_ok &= import_dashboard(grafana_url, builder(), username, password)
 
     print(f"\n  Main dashboard:            {grafana_url}/d/alo-main")
-    print(f"  Cost indicators dashboard: {grafana_url}/d/alo-cost-indicators\n")
+    print(f"  Cost indicators dashboard: {grafana_url}/d/alo-cost-indicators")
+    print(f"  Usage dashboard:           {grafana_url}/d/alo-usage\n")
     return all_ok
 
 

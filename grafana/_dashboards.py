@@ -79,6 +79,10 @@ def _es_target(query="", metrics=None, bucket_aggs=None, ref_id="A"):
 
 
 def _metric(metric_type, field=None, metric_id="1", settings=None):
+    if metric_type.startswith("percentile_"):
+        pct = metric_type.split("_", 1)[1]
+        return {"type": "percentiles", "field": field, "id": metric_id,
+                "settings": {"percents": [pct]}}
     m = {"type": metric_type, "id": metric_id}
     if field:
         m["field"] = field
@@ -328,10 +332,11 @@ def _make_query_var(name, label, field):
         "datasource": DATASOURCE,
         "query": json.dumps({"find": "terms", "field": field}),
         "includeAll": True,
-        "allValue": "",
+        "allValue": "*",
         "multi": True,
         "sort": 1,
         "refresh": 2,
+        "current": {"text": "All", "value": "$__all", "selected": True},
     }
 
 
@@ -339,7 +344,7 @@ def _build_var_query():
     """Build a Lucene filter string from the dashboard variables."""
     parts = []
     for name, _, field in _VARIABLES:
-        parts.append(f'{field}:${{{name}}}')
+        parts.append(f'{field}:(${{{name}:lucene}})')
     return " AND ".join(parts)
 
 
@@ -368,23 +373,26 @@ def _wrap_dashboard(uid, title, description, panels):
 
 
 def export_dashboards():
-    from _dashboard_builders import build_cost_indicators_dashboard, build_main_dashboard
+    from _dashboard_builders import (
+        build_cost_indicators_dashboard,
+        build_main_dashboard,
+        build_usage_dashboard,
+    )
 
     os.makedirs(PROVISION_DIR, exist_ok=True)
 
-    main = build_main_dashboard()
-    main_path = os.path.join(PROVISION_DIR, "alo-main.json")
-    with open(main_path, "w", encoding="utf-8") as f:
-        json.dump(main, f, indent=2)
-    print(f"  Exported: {main_path}")
+    for builder, filename in [
+        (build_main_dashboard, "alo-main.json"),
+        (build_cost_indicators_dashboard, "alo-cost-indicators.json"),
+        (build_usage_dashboard, "alo-usage.json"),
+    ]:
+        dashboard = builder()
+        path = os.path.join(PROVISION_DIR, filename)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(dashboard, f, indent=2)
+        print(f"  Exported: {path}")
 
-    ci = build_cost_indicators_dashboard()
-    ci_path = os.path.join(PROVISION_DIR, "alo-cost-indicators.json")
-    with open(ci_path, "w", encoding="utf-8") as f:
-        json.dump(ci, f, indent=2)
-    print(f"  Exported: {ci_path}")
-
-    return main_path, ci_path
+    return PROVISION_DIR
 
 
 if __name__ == "__main__":
