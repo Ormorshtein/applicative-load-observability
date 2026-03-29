@@ -208,6 +208,7 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
+            "workers": { "type": "integer", "minimum": 1 },
             "batchSize": { "type": "integer", "minimum": 1 },
             "batchDelay": { "type": "integer", "minimum": 0 }
           }

@@ -207,3 +207,137 @@ class TestAnalyzeErrorHandling:
         assert "error" in rec
         assert rec["path"] == "/idx/_search"
         assert rec["method"] == "POST"
+
+
+# ---------------------------------------------------------------------------
+# POST /analyze/bulk
+# ---------------------------------------------------------------------------
+
+def _search_payload(**overrides):
+    base = {
+        "method": "POST",
+        "path": "/products/_search",
+        "headers": {"x-app-name": "test-app"},
+        "request_body": json.dumps({"query": {"match_all": {}}, "size": 10}),
+        "response_body": json.dumps({
+            "took": 5,
+            "hits": {"total": {"value": 100}, "hits": []},
+            "_shards": {"total": 3},
+        }),
+        "client_host": "10.0.0.1",
+        "response_status": 200,
+        "upstream_response_time": "0.005",
+        "content_length": "50",
+        "response_size_bytes": 500,
+    }
+    base.update(overrides)
+    return base
+
+
+def _bulk_payload():
+    return {
+        "method": "POST",
+        "path": "/_bulk",
+        "headers": {"x-app-name": "ingest"},
+        "request_body": '{"index":{"_index":"x"}}\n{"title":"t"}\n',
+        "response_body": json.dumps({
+            "took": 10, "errors": False,
+            "items": [{"index": {"_index": "x", "_id": "1", "status": 201,
+                                 "_shards": {"total": 2}}}],
+        }),
+        "response_status": 200,
+        "upstream_response_time": "0.010",
+        "content_length": "80",
+        "response_size_bytes": 200,
+    }
+
+
+def _index_payload():
+    return {
+        "method": "PUT",
+        "path": "/myindex/_doc/abc",
+        "headers": {"x-app-name": "writer"},
+        "request_body": json.dumps({"title": "hello"}),
+        "response_body": json.dumps({
+            "result": "created", "_shards": {"total": 2},
+        }),
+        "response_status": 201,
+        "upstream_response_time": "0.003",
+        "content_length": "20",
+        "response_size_bytes": 100,
+    }
+
+
+class TestAnalyzeBulk:
+    def test_returns_array_matching_input_length(self):
+        payloads = [_search_payload(), _bulk_payload(), _index_payload()]
+        resp = client.post("/analyze/bulk", json=payloads)
+        assert resp.status_code == 200
+        results = resp.json()
+        assert isinstance(results, list)
+        assert len(results) == 3
+
+    def test_each_item_has_correct_structure(self):
+        payloads = [_search_payload(), _search_payload()]
+        results = client.post("/analyze/bulk", json=payloads).json()
+        for rec in results:
+            assert "@timestamp" in rec
+            assert "identity" in rec
+            assert "request" in rec
+            assert "response" in rec
+            assert "stress" in rec
+
+    def test_item_matches_single_endpoint(self):
+        payload = _search_payload()
+        single = client.post("/analyze", json=payload).json()
+        bulk = client.post("/analyze/bulk", json=[payload]).json()
+        assert len(bulk) == 1
+        # Compare everything except @timestamp (generated independently)
+        for key in ("identity", "request", "response", "clause_counts",
+                    "cost_indicators"):
+            assert bulk[0][key] == single[key], f"Mismatch in {key}"
+
+    def test_mixed_operations(self):
+        payloads = [_search_payload(), _bulk_payload(), _index_payload()]
+        results = client.post("/analyze/bulk", json=payloads).json()
+        assert results[0]["request"]["operation"] == "_search"
+        assert results[1]["request"]["operation"] == "_bulk"
+        assert results[2]["request"]["operation"] == "index"
+
+    def test_per_item_error_isolation(self):
+        """One bad item doesn't poison the batch."""
+        payloads = [
+            _search_payload(),
+            {"method": "POST", "path": "/x/_search",
+             "response_status": "not_a_number"},  # will throw
+            _search_payload(),
+        ]
+        results = client.post("/analyze/bulk", json=payloads).json()
+        assert len(results) == 3
+        assert "error" not in results[0]
+        assert "error" in results[1]
+        assert "error" not in results[2]
+
+    def test_empty_array(self):
+        resp = client.post("/analyze/bulk", json=[])
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_not_an_array(self):
+        resp = client.post("/analyze/bulk", json={"method": "GET"})
+        assert resp.status_code == 200
+        assert "error" in resp.json()
+
+    def test_non_object_item(self):
+        payloads = [_search_payload(), "not_a_dict", _search_payload()]
+        results = client.post("/analyze/bulk", json=payloads).json()
+        assert len(results) == 3
+        assert "error" not in results[0]
+        assert "error" in results[1]
+        assert "error" not in results[2]
+
+    def test_unparseable_body(self):
+        resp = client.post("/analyze/bulk", content=b"not json",
+                           headers={"content-type": "application/json"})
+        assert resp.status_code == 200
+        assert "error" in resp.json()

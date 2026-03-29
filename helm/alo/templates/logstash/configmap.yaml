@@ -9,6 +9,7 @@ metadata:
 data:
   logstash.yml: |
     http.host: "0.0.0.0"
+    pipeline.workers: {{ .Values.logstash.pipeline.workers }}
     pipeline.batch.size: {{ .Values.logstash.pipeline.batchSize }}
     pipeline.batch.delay: {{ .Values.logstash.pipeline.batchDelay }}
 
@@ -65,7 +66,11 @@ data:
 
               event.set("@timestamp", LogStash::Timestamp.new(ts_str)) if ts_str
               event.set("cluster_name", "{{ .Values.global.clusterName }}")
-              event.set("[@metadata][ds_dataset]", op)
+              if op == "unknown"
+                event.tag("_httprequestfailure")
+              else
+                event.set("[@metadata][ds_dataset]", op)
+              end
             end
           '
         }

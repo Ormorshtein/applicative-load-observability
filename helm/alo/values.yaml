@@ -195,6 +195,7 @@ logstash:
     httpPort: 8080
     monitoringPort: 9600
   pipeline:
+    workers: 4
     batchSize: 125
     batchDelay: 50
   queue:

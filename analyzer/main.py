@@ -40,6 +40,36 @@ async def analyze(request: Request) -> JSONResponse:
     return JSONResponse(status_code=200, content=record)
 
 
+@app.post("/analyze/bulk")
+async def analyze_bulk(request: Request) -> JSONResponse:
+    """Batch-analyze multiple payloads in a single call.
+
+    Accepts a JSON array of payloads (same format as /analyze).
+    Returns a JSON array of results with 1:1 positional correspondence.
+    Individual failures produce partial_error_record for that slot;
+    the rest of the batch is unaffected.
+    """
+    try:
+        payloads = await request.json()
+    except (json.JSONDecodeError, ValueError, UnicodeDecodeError):
+        return JSONResponse(status_code=200, content={"error": "unparseable payload"})
+
+    if not isinstance(payloads, list):
+        return JSONResponse(status_code=200, content={"error": "expected JSON array"})
+
+    results = []
+    for payload in payloads:
+        if not isinstance(payload, dict):
+            results.append({"error": "non-object item"})
+            continue
+        try:
+            results.append(build_record(extract_raw_fields(payload)))
+        except Exception as exc:
+            results.append(partial_error_record(payload, exc))
+
+    return JSONResponse(status_code=200, content=results)
+
+
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
