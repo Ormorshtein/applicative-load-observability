@@ -2,19 +2,29 @@
 
 ```
 tests/
-├── conftest.py                        # shared pytest config (adds analyzer/ to sys.path)
+├── conftest.py                        # shared pytest config (adds project root to sys.path)
 ├── help.md                            # this file
 ├── unit/                              # fast, offline unit tests (pytest)
-│   ├── test_parser.py                 # parser.py — header, path, body, response extraction
-│   ├── test_clause_counting.py        # stress.py — clause counting + aggregation depth
-│   ├── test_cost_indicators.py        # stress.py — cost indicator evaluation + compounding
-│   ├── test_stress_formulas.py        # stress.py — normalize + calc_stress formulas
-│   ├── test_record_builder.py         # record_builder.py — record assembly, raw field extraction
-│   └── test_main.py                   # main.py — FastAPI /analyze and /health endpoints
-└── integration/                       # live gateway tests (require running stack)
-    ├── gateway_resilience.py          # gateway overhead, data integrity, scaling tests
-    ├── _resilience.py                 # internal: LatencyTracker, test runners
-    └── helpers.py                     # shared: rand_*, Stats, http_request
+│   ├── analyzer/                      # analyzer service tests
+│   │   ├── test_parser.py             # header, path, body, response extraction
+│   │   ├── test_clause_counting.py    # clause counting + aggregation depth
+│   │   ├── test_cost_indicators.py    # cost indicator evaluation + compounding
+│   │   ├── test_stress_formulas.py    # normalize + calc_stress formulas
+│   │   ├── test_record_builder.py     # record assembly, raw field extraction
+│   │   ├── test_baselines.py          # dynamic baseline refresh logic
+│   │   └── test_main.py              # FastAPI /analyze, /analyze/bulk, /health
+│   ├── challenges/                    # challenge infrastructure tests
+│   │   └── test_infra.py             # DocIdTracker, HealthMonitor, progress bar
+│   └── shared/                        # shared helper tests
+│       └── test_latency_tracker.py    # LatencyTracker base, percentile math
+├── integration/                       # live gateway tests (require running stack)
+│   ├── gateway_resilience.py          # gateway overhead, data integrity, scaling
+│   ├── _resilience.py                 # timed_request, 3 test runners
+│   └── helpers.py                     # rand_*, Stats, LatencyTracker, http_request
+└── challenges/                        # interactive load challenges (14 total)
+    ├── _challenge_runner.py           # unified runner for all challenges
+    ├── _challenge_infra.py            # DocIdTracker, HealthMonitor, worker
+    └── challenge_*.py                 # thin entry points
 ```
 
 ---

@@ -649,3 +649,9 @@ Override any of the environment variables below. Docker Compose defaults work ou
 - Join queries: `has_child` / `has_parent` clauses (weight 5) — distributed join across parent-child relations, expensive index lookup
 - `function_score` queries (weight 3) — custom scoring functions executed per document
 - Stress score formula weight tuning and cost indicator multiplier calibration based on real production data
+
+---
+
+## Note: Why Not HAProxy?
+
+OpenShift's built-in HAProxy ingress controller **cannot replace the OpenResty gateway**. The gateway needs to capture full request and response bodies and fire async POST notifications after the response is sent — HAProxy Lua lacks reliable response body capture, has no post-response async phase, and doesn't support request body template scrubbing. See the original analysis in git history (`docs/haproxy-gateway-analysis.md`, removed in 1.15.0).

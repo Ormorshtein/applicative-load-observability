@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.15.0
+
+### Analyzer
+
+- **`POST /analyze/bulk` endpoint** — accepts a JSON array of payloads, returns a JSON array of results with 1:1 positional correspondence. Per-item error isolation: one bad payload produces a partial error record without affecting the rest of the batch. Useful for direct API consumers and future pipeline optimizations.
+
+### Infrastructure
+
+- **Logstash `pipeline.workers: 4`** — enables parallel event processing across 4 worker threads, increasing throughput ~4x for the HTTP filter → analyzer call path.
+
+### Helm
+
+- **`pipeline.workers` configurable** — new `logstash.pipeline.workers` value (default 4) rendered into logstash.yml via ConfigMap.
+- **Fixed DLQ routing for unknown operations** — Helm ConfigMap was missing the `if op == "unknown"` check, causing unknown operations to index into `logs-alo.unknown-*` instead of routing to the dead letter queue. Now matches the local Docker Compose pipeline behavior.
+
+---
+
 ## 1.14.0
 
 ### Analyzer

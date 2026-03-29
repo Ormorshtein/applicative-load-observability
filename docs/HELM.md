@@ -214,3 +214,15 @@ All configurable environment variables with their defaults:
 | `logstash.exporter.enabled` | `false` | Logstash | Deploy logstash-exporter sidecar |
 | `elasticsearch.exporter.enabled` | `false` | Elasticsearch | Deploy elasticsearch-exporter sidecar |
 | `serviceMonitors.enabled` | `false` | Prometheus | Deploy ServiceMonitor CRDs |
+
+---
+
+## Grafana Support
+
+ALO supports both Kibana and Grafana dashboards. Set `dashboardUI` in `values.yaml`:
+
+```yaml
+dashboardUI: grafana    # or "kibana" (default)
+```
+
+Grafana connects directly to Elasticsearch using the built-in ES datasource (index pattern `logs-alo.*-*`, time field `@timestamp`). Three dashboards are auto-provisioned on startup via Grafana's file-based provisioning — no manual setup required. To integrate with an **existing Grafana instance**, either mount the provisioning directory from `grafana/provisioning/`, import the JSON files from `grafana/provisioning/dashboards/`, or use `grafana/setup.py --grafana-url <url>` to push dashboards via API.
