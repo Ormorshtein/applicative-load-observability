@@ -325,7 +325,7 @@
       "title": "GC Pressure",
       "description": "Old-gen GC time rate — the #1 cause of Logstash freezes. If old GC runs >5% of wall time, the pipeline is in trouble.",
       "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 7, "w": 6, "x": 0, "y": 27 },
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 27 },
       "fieldConfig": {
         "defaults": {
           "unit": "ms",
@@ -343,7 +343,7 @@
       "title": "Pipelines UP",
       "description": "Number of healthy pipeline instances over time.",
       "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 7, "w": 6, "x": 6, "y": 27 },
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 27 },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
@@ -367,7 +367,7 @@
       "title": "Output Errors",
       "description": "Elasticsearch bulk request errors and non-retryable document failures. Any sustained growth means data loss.",
       "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 7, "w": 6, "x": 12, "y": 27 },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 27 },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
@@ -386,7 +386,7 @@
       "title": "Open FDs",
       "description": "Worst-case file descriptor usage across instances. Approaching max = Logstash will crash.",
       "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 7, "w": 6, "x": 18, "y": 27 },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 27 },
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
@@ -403,11 +403,11 @@
     },
     {
       "type": "row",
-      "title": "Elasticsearch (optional)",
+      "title": "Elasticsearch",
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
-      "collapsed": true,
-      "panels": [
-        {
+      "collapsed": false
+    },
+    {
           "type": "stat",
           "title": "Cluster Health",
           "description": "Green = all shards assigned. Yellow = replicas missing. Red = primary shards missing.",
@@ -476,10 +476,61 @@
             { "expr": "sum(elasticsearch_filesystem_data_size_bytes - elasticsearch_filesystem_data_free_bytes)", "legendFormat": "disk used", "refId": "A" },
             { "expr": "elasticsearch_cluster_health_unassigned_shards", "legendFormat": "unassigned shards", "refId": "B" }
           ]
+        },
+        {
+          "type": "timeseries",
+          "title": "ES CPU Usage",
+          "description": "Elasticsearch process CPU percentage.",
+          "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 43 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "custom": { "fillOpacity": 20, "lineWidth": 2, "spanNulls": false }
+            },
+            "overrides": []
+          },
+          "targets": [
+            { "expr": "elasticsearch_process_cpu_percent", "legendFormat": "cpu %", "refId": "A" }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "DLQ Document Count",
+          "description": "Documents in the dead-letter index. Growth means the analyzer is producing unindexable records.",
+          "datasource": { "uid": "alo-elasticsearch", "type": "elasticsearch" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 43 },
+          "fieldConfig": {
+            "defaults": {
+              "custom": { "fillOpacity": 10, "lineWidth": 2, "thresholdsStyle": { "mode": "line" } },
+              "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }, { "value": 1, "color": "red" }] }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "datasource": { "uid": "alo-elasticsearch", "type": "elasticsearch" },
+              "query": "_index:logs-alo.dead_letter*",
+              "metrics": [{ "type": "count", "id": "1" }],
+              "bucketAggs": [{ "type": "date_histogram", "field": "@timestamp", "id": "2", "settings": { "interval": "auto" } }],
+              "refId": "A",
+              "alias": "DLQ docs"
+            }
+          ],
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom" },
+            "tooltip": { "mode": "single" }
+          }
         }
-      ]
-    }
   ],
   "annotations": { "list": [] },
-  "links": []
+  "links": [
+    {
+      "title": "Stress Analysis",
+      "url": "/d/alo-main",
+      "icon": "dashboard",
+      "tooltip": "Jump to ALO Stress Analysis dashboard",
+      "type": "link"
+    }
+  ]
 }
