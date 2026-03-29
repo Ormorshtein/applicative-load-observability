@@ -992,13 +992,76 @@
       }
     },
     {
+      "type": "table",
+      "title": "DLQ Documents (Recent)",
+      "description": "Recent dead-letter documents. Shows what was rejected and why.",
+      "datasource": {
+        "uid": "alo-elasticsearch",
+        "type": "elasticsearch"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 43
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "@timestamp",
+            "desc": true
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "alo-elasticsearch",
+            "type": "elasticsearch"
+          },
+          "query": "_index:logs-alo.dead_letter*",
+          "metrics": [
+            {
+              "type": "raw_document",
+              "id": "1",
+              "settings": {
+                "size": "20"
+              }
+            }
+          ],
+          "bucketAggs": [],
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "_id": true,
+              "_type": true,
+              "_index": false,
+              "_source": true
+            },
+            "indexByName": {},
+            "renameByName": {}
+          }
+        }
+      ]
+    },
+    {
       "type": "row",
       "title": "Elasticsearch (optional - requires elasticsearch-exporter)",
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 44
+        "y": 54
       },
       "collapsed": true,
       "panels": [
@@ -1014,7 +1077,7 @@
             "h": 4,
             "w": 4,
             "x": 0,
-            "y": 44
+            "y": 55
           },
           "fieldConfig": {
             "defaults": {
@@ -1086,7 +1149,7 @@
             "h": 4,
             "w": 2,
             "x": 4,
-            "y": 44
+            "y": 55
           },
           "fieldConfig": {
             "defaults": {
@@ -1131,7 +1194,7 @@
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 44
+            "y": 55
           },
           "fieldConfig": {
             "defaults": {
@@ -1168,7 +1231,7 @@
             "h": 8,
             "w": 6,
             "x": 12,
-            "y": 44
+            "y": 55
           },
           "fieldConfig": {
             "defaults": {
@@ -1205,7 +1268,7 @@
             "h": 8,
             "w": 6,
             "x": 18,
-            "y": 44
+            "y": 55
           },
           "fieldConfig": {
             "defaults": {},
@@ -1276,7 +1339,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 52
+            "y": 63
           },
           "fieldConfig": {
             "defaults": {
