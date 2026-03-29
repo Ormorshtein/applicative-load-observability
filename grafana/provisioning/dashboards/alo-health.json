@@ -993,7 +993,7 @@
     },
     {
       "type": "row",
-      "title": "Elasticsearch (optional \u00e2\u20ac\u201d requires elasticsearch-exporter)",
+      "title": "Elasticsearch (optional - requires elasticsearch-exporter)",
       "gridPos": {
         "h": 1,
         "w": 24,
