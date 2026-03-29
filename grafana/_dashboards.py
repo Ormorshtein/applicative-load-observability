@@ -114,9 +114,46 @@ def _date_histogram(agg_id="3"):
     }
 
 
+PROMETHEUS_DS = {"type": "prometheus", "uid": "alo-prometheus"}
+
+
 # ---------------------------------------------------------------------------
 # Panel factories
 # ---------------------------------------------------------------------------
+
+def mk_cpu_panel(gridpos):
+    """ES process CPU panel (Prometheus) with drilldown link to Health dashboard."""
+    return {
+        "id": _next_id(),
+        "title": "ES CPU Usage",
+        "description": "Elasticsearch process CPU %. Requires prometheus profile.",
+        "type": "timeseries",
+        "datasource": PROMETHEUS_DS,
+        "gridPos": gridpos,
+        "targets": [{
+            "datasource": PROMETHEUS_DS,
+            "expr": 'elasticsearch_process_cpu_percent{instance=~"$instance"}',
+            "legendFormat": "{{instance}}",
+            "refId": "A",
+        }],
+        "options": {
+            "legend": {"displayMode": "list", "placement": "right"},
+            "tooltip": {"mode": "multi"},
+        },
+        "fieldConfig": {
+            "defaults": {
+                "custom": {"drawStyle": "line", "fillOpacity": 20},
+                "unit": "percent",
+                "noValue": "Enable prometheus profile",
+                "links": [{
+                    "title": "Open ES Health Dashboard",
+                    "url": "/d/alo-health?orgId=1&${__url_time_range}",
+                }],
+            },
+            "overrides": [],
+        },
+    }
+
 
 def mk_text(title, content, gridpos):
     panel = _base_panel(title, "text", gridpos)

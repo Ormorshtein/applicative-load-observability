@@ -10,6 +10,7 @@ from _dashboards import (
     _reset_ids,
     _wrap_dashboard,
     mk_bar,
+    mk_cpu_panel,
     mk_pie,
     mk_stat,
     mk_table,
@@ -45,11 +46,15 @@ def build_main_dashboard() -> dict:
     panels = []
     y = 0
 
+    # ── ES CPU + KPI ─────────────────────────────────────────────────────
+    panels.append(mk_cpu_panel({"x": 0, "y": y, "w": 18, "h": 6}))
+    panels.append(mk_stat("Total Stress Score", "stress.score", "sum",
+                          {"x": 18, "y": y, "w": _QUARTER_W, "h": 6}))
+    y += 6
+
     # ── Overview ────────────────────────────────────────────────────────
     panels.append(mk_text("Dashboard Guide", CHEAT_SHEET,
-                          {"x": 0, "y": y, "w": 18, "h": _PANEL_H}))
-    panels.append(mk_stat("Total Stress Score", "stress.score", "sum",
-                          {"x": 18, "y": y, "w": _QUARTER_W, "h": _PANEL_H}))
+                          {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}))
     y += _PANEL_H
 
     # 5 pie charts

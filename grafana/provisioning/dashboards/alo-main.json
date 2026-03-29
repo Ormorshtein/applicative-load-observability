@@ -17,21 +17,55 @@
   "panels": [
     {
       "id": 1,
-      "title": "Dashboard Guide",
-      "type": "text",
+      "title": "ES CPU Usage",
+      "description": "Elasticsearch process CPU %. Requires prometheus profile.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "alo-prometheus"
+      },
       "gridPos": {
         "x": 0,
         "y": 0,
         "w": 18,
-        "h": 8
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "alo-prometheus"
+          },
+          "expr": "elasticsearch_process_cpu_percent{instance=~\"$instance\"}",
+          "legendFormat": "{{instance}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
       },
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20
+          },
+          "unit": "percent",
+          "noValue": "Enable prometheus profile",
+          "links": [
+            {
+              "title": "Open ES Health Dashboard",
+              "url": "/d/alo-health?orgId=1&${__url_time_range}"
+            }
+          ]
+        },
         "overrides": []
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "## Dashboard Cheat Sheet\n\n**How to examine this dashboard:**\n\n1. **Start with the overview** \u2014 pie charts show which application, target, operation, or template contributes the most stress.\n2. **Review the Top 10 Templates table** \u2014 focus on templates with the highest sum stress and cost indicator counts.\n3. **Look at trends** \u2014 stress over time charts reveal spikes and patterns. Correlate with deployments or traffic changes.\n4. **Review volume & throughput** \u2014 request volume, total hits, docs affected, and request size panels show operational load. Total hits correlates with CPU.\n5. **Examine response times** \u2014 high ES or gateway latency alongside high stress may indicate query optimization opportunities.\n6. **Sanity checks** \u2014 verify if the most recurring templates are also the most stressful; templates with many cost indicators need attention.\n\n**What to focus on:**\n- **High stress slices** in pie charts \u2014 optimization targets\n- **Upward trends** in time series \u2014 growing load or degrading patterns\n- **Templates with many cost indicators** \u2014 query optimization candidates\n- **Latency spikes** correlating with specific operations or templates\n- **Total hits spikes** \u2014 correlate with CPU usage under queue saturation\n"
       }
     },
     {
@@ -46,7 +80,7 @@
         "x": 18,
         "y": 0,
         "w": 6,
-        "h": 8
+        "h": 6
       },
       "targets": [
         {
@@ -94,6 +128,25 @@
     },
     {
       "id": 3,
+      "title": "Dashboard Guide",
+      "type": "text",
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "## Dashboard Cheat Sheet\n\n**How to examine this dashboard:**\n\n1. **Start with the overview** \u2014 pie charts show which application, target, operation, or template contributes the most stress.\n2. **Review the Top 10 Templates table** \u2014 focus on templates with the highest sum stress and cost indicator counts.\n3. **Look at trends** \u2014 stress over time charts reveal spikes and patterns. Correlate with deployments or traffic changes.\n4. **Review volume & throughput** \u2014 request volume, total hits, docs affected, and request size panels show operational load. Total hits correlates with CPU.\n5. **Examine response times** \u2014 high ES or gateway latency alongside high stress may indicate query optimization opportunities.\n6. **Sanity checks** \u2014 verify if the most recurring templates are also the most stressful; templates with many cost indicators need attention.\n\n**What to focus on:**\n- **High stress slices** in pie charts \u2014 optimization targets\n- **Upward trends** in time series \u2014 growing load or degrading patterns\n- **Templates with many cost indicators** \u2014 query optimization candidates\n- **Latency spikes** correlating with specific operations or templates\n- **Total hits spikes** \u2014 correlate with CPU usage under queue saturation\n"
+      }
+    },
+    {
+      "id": 4,
       "title": "Stress by Application (Selected Period)",
       "type": "piechart",
       "datasource": {
@@ -102,7 +155,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 8,
+        "y": 14,
         "w": 8,
         "h": 10
       },
@@ -159,7 +212,7 @@
       }
     },
     {
-      "id": 4,
+      "id": 5,
       "title": "Stress by Target (Selected Period)",
       "type": "piechart",
       "datasource": {
@@ -168,7 +221,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 8,
+        "y": 14,
         "w": 8,
         "h": 10
       },
@@ -225,7 +278,7 @@
       }
     },
     {
-      "id": 5,
+      "id": 6,
       "title": "Stress by Operation (Selected Period)",
       "type": "piechart",
       "datasource": {
@@ -234,7 +287,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 8,
+        "y": 14,
         "w": 8,
         "h": 10
       },
@@ -291,7 +344,7 @@
       }
     },
     {
-      "id": 6,
+      "id": 7,
       "title": "Stress by Cost Indicator (Selected Period)",
       "type": "piechart",
       "datasource": {
@@ -300,7 +353,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 18,
+        "y": 24,
         "w": 12,
         "h": 10
       },
@@ -357,7 +410,7 @@
       }
     },
     {
-      "id": 7,
+      "id": 8,
       "title": "Stress by Template (Selected Period)",
       "type": "piechart",
       "datasource": {
@@ -366,7 +419,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 18,
+        "y": 24,
         "w": 12,
         "h": 10
       },
@@ -423,12 +476,12 @@
       }
     },
     {
-      "id": 8,
+      "id": 9,
       "title": "Highest Impact",
       "type": "text",
       "gridPos": {
         "x": 0,
-        "y": 28,
+        "y": 34,
         "w": 24,
         "h": 2
       },
@@ -442,7 +495,7 @@
       }
     },
     {
-      "id": 9,
+      "id": 10,
       "title": "Top 10 Templates by Stress Score",
       "type": "table",
       "datasource": {
@@ -451,7 +504,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 30,
+        "y": 36,
         "w": 24,
         "h": 8
       },
@@ -597,7 +650,7 @@
       }
     },
     {
-      "id": 10,
+      "id": 11,
       "title": "Top 10 Cost Indicators by Stress Score",
       "type": "table",
       "datasource": {
@@ -606,7 +659,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 38,
+        "y": 44,
         "w": 24,
         "h": 8
       },
@@ -735,12 +788,12 @@
       }
     },
     {
-      "id": 11,
+      "id": 12,
       "title": "Stress Trends",
       "type": "text",
       "gridPos": {
         "x": 0,
-        "y": 46,
+        "y": 52,
         "w": 24,
         "h": 2
       },
@@ -754,7 +807,7 @@
       }
     },
     {
-      "id": 12,
+      "id": 13,
       "title": "Stress Over Time by Application",
       "type": "timeseries",
       "datasource": {
@@ -763,7 +816,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 48,
+        "y": 54,
         "w": 24,
         "h": 8
       },
@@ -825,7 +878,7 @@
       }
     },
     {
-      "id": 13,
+      "id": 14,
       "title": "Stress Over Time by Target",
       "type": "timeseries",
       "datasource": {
@@ -834,7 +887,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 56,
+        "y": 62,
         "w": 24,
         "h": 8
       },
@@ -896,7 +949,7 @@
       }
     },
     {
-      "id": 14,
+      "id": 15,
       "title": "Stress Over Time by Operation",
       "type": "timeseries",
       "datasource": {
@@ -905,7 +958,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 64,
+        "y": 70,
         "w": 24,
         "h": 8
       },
@@ -967,7 +1020,7 @@
       }
     },
     {
-      "id": 15,
+      "id": 16,
       "title": "Stress Over Time by Cost Indicator",
       "type": "timeseries",
       "datasource": {
@@ -976,7 +1029,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 72,
+        "y": 78,
         "w": 24,
         "h": 8
       },
@@ -1038,7 +1091,7 @@
       }
     },
     {
-      "id": 16,
+      "id": 17,
       "title": "Stress Over Time by Template",
       "type": "timeseries",
       "datasource": {
@@ -1047,7 +1100,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 80,
+        "y": 86,
         "w": 24,
         "h": 8
       },
@@ -1109,12 +1162,12 @@
       }
     },
     {
-      "id": 17,
+      "id": 18,
       "title": "Volume & Throughput",
       "type": "text",
       "gridPos": {
         "x": 0,
-        "y": 88,
+        "y": 94,
         "w": 24,
         "h": 2
       },
@@ -1128,7 +1181,7 @@
       }
     },
     {
-      "id": 18,
+      "id": 19,
       "title": "Request Volume Over Time by Template",
       "type": "timeseries",
       "datasource": {
@@ -1137,7 +1190,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 90,
+        "y": 96,
         "w": 24,
         "h": 8
       },
@@ -1198,7 +1251,7 @@
       }
     },
     {
-      "id": 19,
+      "id": 20,
       "title": "Total Hits Over Time",
       "type": "timeseries",
       "datasource": {
@@ -1207,7 +1260,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 98,
+        "y": 104,
         "w": 24,
         "h": 8
       },
@@ -1269,7 +1322,7 @@
       }
     },
     {
-      "id": 20,
+      "id": 21,
       "title": "Docs Affected Over Time",
       "type": "timeseries",
       "datasource": {
@@ -1278,7 +1331,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 106,
+        "y": 112,
         "w": 12,
         "h": 8
       },
@@ -1340,7 +1393,7 @@
       }
     },
     {
-      "id": 21,
+      "id": 22,
       "title": "Request Size Over Time",
       "type": "timeseries",
       "datasource": {
@@ -1349,7 +1402,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 106,
+        "y": 112,
         "w": 12,
         "h": 8
       },
@@ -1411,12 +1464,12 @@
       }
     },
     {
-      "id": 22,
+      "id": 23,
       "title": "Response Times",
       "type": "text",
       "gridPos": {
         "x": 0,
-        "y": 114,
+        "y": 120,
         "w": 24,
         "h": 2
       },
@@ -1430,7 +1483,7 @@
       }
     },
     {
-      "id": 23,
+      "id": 24,
       "title": "Avg ES Response Time by Cost Indicator",
       "type": "timeseries",
       "datasource": {
@@ -1439,7 +1492,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 116,
+        "y": 122,
         "w": 8,
         "h": 8
       },
@@ -1462,126 +1515,6 @@
             {
               "type": "terms",
               "field": "stress.cost_indicator_names",
-              "id": "2",
-              "settings": {
-                "size": "5",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            },
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "3",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ]
-        },
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "B",
-          "metrics": [
-            {
-              "type": "count",
-              "id": "1"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ]
-        }
-      ],
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "right"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 0
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byFrameRefID",
-              "options": "B"
-            },
-            "properties": [
-              {
-                "id": "custom.axisPlacement",
-                "value": "right"
-              },
-              {
-                "id": "custom.drawStyle",
-                "value": "bars"
-              },
-              {
-                "id": "custom.fillOpacity",
-                "value": 20
-              },
-              {
-                "id": "displayName",
-                "value": "Requests"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": 24,
-      "title": "Avg ES Response Time by Operation",
-      "type": "timeseries",
-      "datasource": {
-        "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
-      },
-      "gridPos": {
-        "x": 8,
-        "y": 116,
-        "w": 8,
-        "h": 8
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "A",
-          "metrics": [
-            {
-              "type": "avg",
-              "id": "1",
-              "field": "response.es_took_ms"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "request.operation",
               "id": "2",
               "settings": {
                 "size": "5",
@@ -1671,6 +1604,126 @@
     },
     {
       "id": 25,
+      "title": "Avg ES Response Time by Operation",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 122,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "response.es_took_ms"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.operation",
+              "id": "2",
+              "settings": {
+                "size": "5",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "B",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "bars"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 20
+              },
+              {
+                "id": "displayName",
+                "value": "Requests"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 26,
       "title": "Avg ES Response Time by Template",
       "type": "timeseries",
       "datasource": {
@@ -1679,7 +1732,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 116,
+        "y": 122,
         "w": 8,
         "h": 8
       },
@@ -1790,7 +1843,7 @@
       }
     },
     {
-      "id": 26,
+      "id": 27,
       "title": "Avg Gateway Response Time by Cost Indicator",
       "type": "timeseries",
       "datasource": {
@@ -1799,7 +1852,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 124,
+        "y": 130,
         "w": 8,
         "h": 8
       },
@@ -1910,7 +1963,7 @@
       }
     },
     {
-      "id": 27,
+      "id": 28,
       "title": "Avg Gateway Response Time by Operation",
       "type": "timeseries",
       "datasource": {
@@ -1919,7 +1972,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 124,
+        "y": 130,
         "w": 8,
         "h": 8
       },
@@ -2030,7 +2083,7 @@
       }
     },
     {
-      "id": 28,
+      "id": 29,
       "title": "Avg Gateway Response Time by Template",
       "type": "timeseries",
       "datasource": {
@@ -2039,7 +2092,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 124,
+        "y": 130,
         "w": 8,
         "h": 8
       },
@@ -2150,12 +2203,12 @@
       }
     },
     {
-      "id": 29,
+      "id": 30,
       "title": "Sanity Checks",
       "type": "text",
       "gridPos": {
         "x": 0,
-        "y": 132,
+        "y": 138,
         "w": 24,
         "h": 2
       },
@@ -2169,7 +2222,7 @@
       }
     },
     {
-      "id": 30,
+      "id": 31,
       "title": "Top 10 Most Recurring Templates",
       "type": "table",
       "datasource": {
@@ -2178,7 +2231,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 134,
+        "y": 140,
         "w": 12,
         "h": 8
       },
@@ -2239,7 +2292,7 @@
       }
     },
     {
-      "id": 31,
+      "id": 32,
       "title": "Top 10 Templates with Most Cost Indicators",
       "type": "table",
       "datasource": {
@@ -2248,7 +2301,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 134,
+        "y": 140,
         "w": 12,
         "h": 8
       },
