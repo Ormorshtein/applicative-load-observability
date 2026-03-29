@@ -5,9 +5,8 @@ import random
 import threading
 import time
 
-from _helpers import LOADTEST_MAPPING, http_request, rand_doc, rand_str
+from _helpers import LOADTEST_MAPPING, http_request, ndjson, rand_doc, rand_str
 from _metrics import LatencyTracker
-
 
 # ---------------------------------------------------------------------------
 # Rate limiter
@@ -41,6 +40,9 @@ class RateLimiter:
 # Document ID tracker
 # ---------------------------------------------------------------------------
 
+_BUFFER_TRIM_SIZE = 2000
+
+
 class DocIdTracker:
     """Thread-safe rolling buffer of recent document IDs."""
 
@@ -53,7 +55,7 @@ class DocIdTracker:
         with self._lock:
             self._ids.append(doc_id)
             if len(self._ids) > self._max:
-                self._ids[:] = self._ids[-2000:]
+                self._ids[:] = self._ids[-_BUFFER_TRIM_SIZE:]
 
     def pick(self) -> str | None:
         with self._lock:
@@ -68,10 +70,13 @@ def ensure_index(gateway: str, index: str) -> None:
     http_request(gateway, "PUT", f"/{index}", LOADTEST_MAPPING)
 
 
+_SEED_BATCH_SIZE = 500
+
+
 def seed_data(gateway: str, index: str, tracker: DocIdTracker,
               count: int, app_name: str) -> None:
     print(f"  Seeding {count} documents into {index} ...", end=" ", flush=True)
-    batch_size = 500
+    batch_size = _SEED_BATCH_SIZE
     for start in range(0, count, batch_size):
         end = min(start + batch_size, count)
         actions = []
@@ -80,7 +85,7 @@ def seed_data(gateway: str, index: str, tracker: DocIdTracker,
             actions.append(json.dumps({"index": {"_index": index, "_id": doc_id}}))
             actions.append(json.dumps(rand_doc()))
             tracker.remember(doc_id)
-        body = "\n".join(actions) + "\n"
+        body = ndjson(actions)
         http_request(gateway, "POST", "/_bulk", body,
                      headers={"X-App-Name": app_name},
                      content_type="application/x-ndjson", timeout=60)
@@ -113,4 +118,4 @@ def worker_loop(workload, metrics: LatencyTracker, limiter: RateLimiter,
         except Exception as exc:
             op, status, body = "_error", 0, str(exc).encode()
         latency_ms = (time.monotonic() - t0) * 1000
-        metrics.record(op, latency_ms, status, body)
+        metrics.record_with_status(op, latency_ms, status, body)

@@ -8,8 +8,8 @@ but each one dominates the cluster.
 import json
 import random
 
-from helpers import rand_doc, rand_str
 from _trivial_noise import make_noise
+from helpers import ndjson, rand_doc, rand_str
 
 INDEX = "challenge-mega-bulk"
 APP_NAME = "data-importer"
@@ -44,7 +44,7 @@ def _mega_bulk(gw, tr):
         actions.append(json.dumps(rand_doc()))
         if not capped:
             tr.remember(did)
-    s, _ = _n.send(gw, "POST", "/_bulk", "\n".join(actions) + "\n",
+    s, _ = _n.send(gw, "POST", "/_bulk", ndjson(actions),
                    content_type="application/x-ndjson", timeout=120)
     return "_bulk", s
 

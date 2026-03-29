@@ -20,31 +20,9 @@ SECTIONS = [
     ("request.template", "Template"),
 ]
 
-CHEAT_SHEET = """\
-## Dashboard Cheat Sheet
-
-**How to examine this dashboard:**
-
-1. **Start with the overview** — pie charts show which application, target, \
-operation, or template contributes the most stress.
-2. **Review the Top 10 Templates table** — focus on templates with the highest \
-sum stress and cost indicator counts.
-3. **Look at trends** — stress over time charts reveal spikes and patterns. \
-Correlate with deployments or traffic changes.
-4. **Review volume & throughput** — request volume, total hits, docs affected, \
-and request size panels show operational load. Total hits correlates with CPU.
-5. **Examine response times** — high ES or gateway latency alongside high stress \
-may indicate query optimization opportunities.
-6. **Sanity checks** — verify if the most recurring templates are also the \
-most stressful; templates with many cost indicators need attention.
-
-**What to focus on:**
-- **High stress slices** in pie charts — optimization targets
-- **Upward trends** in time series — growing load or degrading patterns
-- **Templates with many cost indicators** — query optimization candidates
-- **Latency spikes** correlating with specific operations or templates
-- **Total hits spikes** — correlate with CPU usage under queue saturation
-"""
+_CHEAT_SHEET_PATH = os.path.join(SCRIPT_DIR, "cheat_sheet.md")
+with open(_CHEAT_SHEET_PATH, encoding="utf-8") as _f:
+    CHEAT_SHEET = _f.read()
 
 
 # ---------------------------------------------------------------------------
@@ -101,6 +79,10 @@ def _es_target(query="", metrics=None, bucket_aggs=None, ref_id="A"):
 
 
 def _metric(metric_type, field=None, metric_id="1", settings=None):
+    if metric_type.startswith("percentile_"):
+        pct = metric_type.split("_", 1)[1]
+        return {"type": "percentiles", "field": field, "id": metric_id,
+                "settings": {"percents": [pct]}}
     m = {"type": metric_type, "id": metric_id}
     if field:
         m["field"] = field
@@ -132,9 +114,46 @@ def _date_histogram(agg_id="3"):
     }
 
 
+PROMETHEUS_DS = {"type": "prometheus", "uid": "alo-prometheus"}
+
+
 # ---------------------------------------------------------------------------
 # Panel factories
 # ---------------------------------------------------------------------------
+
+def mk_cpu_panel(gridpos):
+    """ES process CPU panel (Prometheus) with drilldown link to Health dashboard."""
+    return {
+        "id": _next_id(),
+        "title": "ES CPU Usage",
+        "description": "Elasticsearch process CPU %. Requires prometheus profile.",
+        "type": "timeseries",
+        "datasource": PROMETHEUS_DS,
+        "gridPos": gridpos,
+        "targets": [{
+            "datasource": PROMETHEUS_DS,
+            "expr": 'elasticsearch_process_cpu_percent{instance=~"$instance"}',
+            "legendFormat": "{{instance}}",
+            "refId": "A",
+        }],
+        "options": {
+            "legend": {"displayMode": "list", "placement": "right"},
+            "tooltip": {"mode": "multi"},
+        },
+        "fieldConfig": {
+            "defaults": {
+                "custom": {"drawStyle": "line", "fillOpacity": 20},
+                "unit": "percent",
+                "noValue": "Enable prometheus profile",
+                "links": [{
+                    "title": "Open ES Health Dashboard",
+                    "url": "/d/alo-health?orgId=1&${__url_time_range}",
+                }],
+            },
+            "overrides": [],
+        },
+    }
+
 
 def mk_text(title, content, gridpos):
     panel = _base_panel(title, "text", gridpos)
@@ -330,215 +349,6 @@ def mk_table(title, bucket_field, bucket_label, metrics_spec, gridpos,
 # Dashboard assembly
 # ---------------------------------------------------------------------------
 
-def build_main_dashboard():
-    _reset_ids()
-    panels = []
-    y = 0
-
-    # Row 0: Cheat sheet + Total Stress Score
-    panels.append(mk_text("Dashboard Guide", CHEAT_SHEET,
-                          {"x": 0, "y": y, "w": 18, "h": 8}))
-    panels.append(mk_stat("Total Stress Score", "stress.score", "sum",
-                          {"x": 18, "y": y, "w": 6, "h": 8}))
-    y += 8
-
-    # Row 1: 5 pie charts — 3 on first row, 2 on second row
-    pie_h = 10
-    # First row: Application, Target, Operation
-    for i, (field, label) in enumerate(SECTIONS[:3]):
-        size = 8
-        panels.append(mk_pie(f"Stress by {label} (Selected Period)", field,
-                             {"x": i * 8, "y": y, "w": 8, "h": pie_h},
-                             size=size))
-    y += pie_h
-    # Second row: Cost Indicator breakdown + Template
-    panels.append(mk_pie("Stress by Cost Indicator (Selected Period)",
-                         "stress.cost_indicator_names",
-                         {"x": 0, "y": y, "w": 12, "h": pie_h}, size=10))
-    panels.append(mk_pie("Stress by Template (Selected Period)",
-                         "request.template",
-                         {"x": 12, "y": y, "w": 12, "h": pie_h}, size=10))
-    y += pie_h
-
-    # Rows 2-6: Stress over time per dimension
-    for field, label in SECTIONS:
-        size = 10 if field == "request.template" else 5
-        panels.append(mk_timeseries(
-            f"Stress Over Time by {label}", field,
-            {"x": 0, "y": y, "w": 24, "h": 8},
-            size=size, series_type="line", fill_opacity=20))
-        y += 8
-
-    # Row 7: Request volume over time by template (count, no scoring)
-    panels.append(mk_timeseries(
-        "Request Volume Over Time by Template", "request.template",
-        {"x": 0, "y": y, "w": 24, "h": 8},
-        metric_field=None, metric_op="count", size=10,
-        series_type="line", fill_opacity=20))
-    y += 8
-
-    # Row 8: Total hits over time (correlates with CPU usage)
-    panels.append(mk_timeseries(
-        "Total Hits Over Time", "request.operation",
-        {"x": 0, "y": y, "w": 24, "h": 8},
-        metric_field="response.hits", metric_op="sum", size=8,
-        series_type="line", fill_opacity=20))
-    y += 8
-
-    # Row 9: Docs affected + request size over time (write pressure + payload size)
-    panels.append(mk_timeseries(
-        "Docs Affected Over Time", "request.operation",
-        {"x": 0, "y": y, "w": 12, "h": 8},
-        metric_field="response.docs_affected", metric_op="sum", size=8,
-        series_type="line", fill_opacity=20))
-    panels.append(mk_timeseries(
-        "Request Size Over Time", "request.operation",
-        {"x": 12, "y": y, "w": 12, "h": 8},
-        metric_field="request.size_bytes", metric_op="sum", size=8,
-        series_type="line", fill_opacity=20))
-    y += 8
-
-    # Row 10: Top 10 Templates table
-    panels.append(mk_table(
-        "Top 10 Templates by Stress Score", "request.template", "Template", [
-            ("Sum Stress", "stress.score", "sum"),
-            ("Avg Stress", "stress.score", "avg"),
-            ("Avg ES Latency (ms)", "response.es_took_ms", "avg"),
-            ("Avg Gateway Latency (ms)", "response.gateway_took_ms", "avg"),
-            ("Avg Cost Indicators", "stress.cost_indicator_count", "avg"),
-            ("Requests", None, "count"),
-        ], {"x": 0, "y": y, "w": 24, "h": 8}, size=10))
-    y += 8
-
-    # Row 9: Top 10 Cost Indicators table
-    panels.append(mk_table(
-        "Top 10 Cost Indicators by Stress Score",
-        "stress.cost_indicator_names", "Cost Indicator", [
-            ("Sum Stress", "stress.score", "sum"),
-            ("Avg Stress", "stress.score", "avg"),
-            ("Avg ES Latency (ms)", "response.es_took_ms", "avg"),
-            ("Avg Gateway Latency (ms)", "response.gateway_took_ms", "avg"),
-            ("Requests", None, "count"),
-        ], {"x": 0, "y": y, "w": 24, "h": 8}, size=10))
-    y += 8
-
-    # Rows 9-10: Response time panels (3 per row)
-    response_breakdowns = [
-        ("stress.cost_indicator_names", "Cost Indicator"),
-        ("request.operation", "Operation"),
-        ("request.template", "Template"),
-    ]
-    for latency_field, latency_label, row_label in [
-        ("response.es_took_ms", "Avg ES Latency (ms)", "ES"),
-        ("response.gateway_took_ms", "Avg Gateway Latency (ms)", "Gateway"),
-    ]:
-        for j, (bd_field, bd_label) in enumerate(response_breakdowns):
-            panels.append(mk_timeseries_response(
-                f"Avg {row_label} Response Time by {bd_label}",
-                bd_field, latency_field, latency_label,
-                {"x": j * 8, "y": y, "w": 8, "h": 8}))
-        y += 8
-
-    # Row 10: Sanity check tables
-    panels.append(mk_table(
-        "Top 10 Most Recurring Templates", "request.template", "Template", [
-            ("Requests", None, "count"),
-        ], {"x": 0, "y": y, "w": 12, "h": 8}, size=10))
-    panels.append(mk_table(
-        "Top 10 Templates with Most Cost Indicators",
-        "request.template", "Template", [
-            ("Avg Cost Indicators", "stress.cost_indicator_count", "avg"),
-            ("Requests", None, "count"),
-        ], {"x": 12, "y": y, "w": 12, "h": 8}, size=10))
-
-    return _wrap_dashboard(
-        uid="alo-main",
-        title="ALO — Stress Analysis",
-        description="Stress analysis by application, target, operation, and "
-                    "template, with overall trend.",
-        panels=panels,
-    )
-
-
-def build_cost_indicators_dashboard():
-    _reset_ids()
-    panels = []
-    y = 0
-
-    # Row 0: KPIs
-    kpis = [
-        ("Flagged Requests", "stress.cost_indicator_count", "count",
-         "stress.cost_indicator_count:[1 TO *]"),
-        ("Avg Indicator Count", "stress.cost_indicator_count", "avg", ""),
-        ("Avg Stress Multiplier", "stress.multiplier", "avg", ""),
-        ("Max Stress Multiplier", "stress.multiplier", "max", ""),
-    ]
-    for i, (title, field, op, query) in enumerate(kpis):
-        panels.append(mk_stat(title, field, op,
-                              {"x": i * 6, "y": y, "w": 6, "h": 5},
-                              query=query))
-    y += 5
-
-    # Row 1: Indicator overview
-    panels.append(mk_bar(
-        "Cost Indicator Types - Frequency",
-        "stress.cost_indicator_names", None, "count", "Count",
-        {"x": 0, "y": y, "w": 10, "h": 10}))
-    panels.append(mk_timeseries_multi(
-        "Flagged vs Total Requests Over Time", [
-            ("Flagged Requests", None, "count",
-             "stress.cost_indicator_count:[1 TO *]"),
-            ("Total Requests", None, "count", ""),
-        ], {"x": 10, "y": y, "w": 14, "h": 10}, series_type="line"))
-    y += 10
-
-    # Row 2: Clause counts
-    panels.append(mk_timeseries_multi(
-        "Clause Count Trends", [
-            ("Avg terms_values", "clause_counts.terms_values", "avg", ""),
-            ("Avg agg", "clause_counts.agg", "avg", ""),
-            ("Avg script", "clause_counts.script", "avg", ""),
-            ("Avg wildcard", "clause_counts.wildcard", "avg", ""),
-        ], {"x": 0, "y": y, "w": 14, "h": 10}, series_type="line"))
-    panels.append(mk_timeseries_multi(
-        "Bool Clause Breakdown Over Time", [
-            ("Avg must", "clause_counts.bool_must", "avg", ""),
-            ("Avg should", "clause_counts.bool_should", "avg", ""),
-            ("Avg filter", "clause_counts.bool_filter", "avg", ""),
-            ("Avg must_not", "clause_counts.bool_must_not", "avg", ""),
-        ], {"x": 14, "y": y, "w": 10, "h": 10},
-        series_type="line", stacked=True))
-    y += 10
-
-    # Row 3: Table
-    panels.append(mk_table(
-        "Top Templates by Cost Indicator Count",
-        "request.template", "Template", [
-            ("Avg Indicators", "stress.cost_indicator_count", "avg"),
-            ("Requests", None, "count"),
-            ("Avg Multiplier", "stress.multiplier", "avg"),
-            ("Avg Stress", "stress.score", "avg"),
-        ], {"x": 0, "y": y, "w": 24, "h": 8}))
-    y += 8
-
-    # Row 4: By dimension
-    panels.append(mk_bar(
-        "Stress Multiplier by Application",
-        "identity.applicative_provider", "stress.multiplier", "avg",
-        "Avg Stress Multiplier", {"x": 0, "y": y, "w": 12, "h": 10}, size=8))
-    panels.append(mk_bar(
-        "Cost Indicator Count by Target Index",
-        "request.target", "stress.cost_indicator_count", "avg",
-        "Avg Indicator Count", {"x": 12, "y": y, "w": 12, "h": 10}, size=8))
-
-    return _wrap_dashboard(
-        uid="alo-cost-indicators",
-        title="Cost Indicators & Query Patterns",
-        description="Cost indicators, clause counts, and query pattern analysis.",
-        panels=panels,
-    )
-
-
 _VARIABLES = [
     ("cluster", "Cluster", "cluster_name"),
     ("application", "Application", "identity.applicative_provider"),
@@ -559,10 +369,11 @@ def _make_query_var(name, label, field):
         "datasource": DATASOURCE,
         "query": json.dumps({"find": "terms", "field": field}),
         "includeAll": True,
-        "allValue": "",
+        "allValue": "*",
         "multi": True,
         "sort": 1,
         "refresh": 2,
+        "current": {"text": "All", "value": "$__all", "selected": True},
     }
 
 
@@ -570,7 +381,7 @@ def _build_var_query():
     """Build a Lucene filter string from the dashboard variables."""
     parts = []
     for name, _, field in _VARIABLES:
-        parts.append(f'{field}:${{{name}}}')
+        parts.append(f'{field}:(${{{name}:lucene}})')
     return " AND ".join(parts)
 
 
@@ -590,7 +401,7 @@ def _wrap_dashboard(uid, title, description, panels):
         "schemaVersion": 39,
         "version": 1,
         "refresh": "30s",
-        "time": {"from": "now-24h", "to": "now"},
+        "time": {"from": "now-15m", "to": "now"},
         "panels": panels,
         "templating": {"list": template_vars},
         "annotations": {"list": []},
@@ -599,21 +410,26 @@ def _wrap_dashboard(uid, title, description, panels):
 
 
 def export_dashboards():
+    from _dashboard_builders import (
+        build_cost_indicators_dashboard,
+        build_main_dashboard,
+        build_usage_dashboard,
+    )
+
     os.makedirs(PROVISION_DIR, exist_ok=True)
 
-    main = build_main_dashboard()
-    main_path = os.path.join(PROVISION_DIR, "alo-main.json")
-    with open(main_path, "w", encoding="utf-8") as f:
-        json.dump(main, f, indent=2)
-    print(f"  Exported: {main_path}")
+    for builder, filename in [
+        (build_main_dashboard, "alo-main.json"),
+        (build_cost_indicators_dashboard, "alo-cost-indicators.json"),
+        (build_usage_dashboard, "alo-usage.json"),
+    ]:
+        dashboard = builder()
+        path = os.path.join(PROVISION_DIR, filename)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(dashboard, f, indent=2)
+        print(f"  Exported: {path}")
 
-    ci = build_cost_indicators_dashboard()
-    ci_path = os.path.join(PROVISION_DIR, "alo-cost-indicators.json")
-    with open(ci_path, "w", encoding="utf-8") as f:
-        json.dump(ci, f, indent=2)
-    print(f"  Exported: {ci_path}")
-
-    return main_path, ci_path
+    return PROVISION_DIR
 
 
 if __name__ == "__main__":

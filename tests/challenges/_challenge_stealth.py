@@ -8,11 +8,25 @@ Red herrings dominate every cost-indicator panel.
 import json
 import random
 
-from helpers import rand_category, rand_color, rand_doc, rand_str, http_request
+from helpers import http_request, ndjson, rand_category, rand_color, rand_doc, rand_str
 
 INDEX = "challenge-stealth"
 APP_NAME = "platform-core"
 CULPRIT = "recommendation"
+DESCRIPTION = "Challenge v3: The Silent Killer — find the task with no fingerprint"
+HINT = (
+    "Cost indicator panels scream scripts, wildcards, deep aggs - but\n"
+    "  the real culprit triggers none of them. It hides behind ordinary queries."
+)
+CULPRIT_EXPLANATION = (
+    "'recommendation' used complex bool queries with 15-25 clauses and\n"
+    "  large terms lists, but triggered zero cost indicators. Pure clause\n"
+    "  volume drove the stress score via continuous bonuses."
+)
+MISS_EXPLANATION = (
+    "The culprit triggered no cost indicators. Look for high bool clause\n"
+    "  counts and large terms_values_count instead of scripts or wildcards."
+)
 
 _TAGS = ["sale", "new", "popular", "limited", "exclusive", "clearance", "premium"]
 
@@ -63,7 +77,7 @@ def _bulk_index(gw, tr, lo=5, hi=15):
         actions.append(json.dumps({"index": {"_index": INDEX, "_id": did}}))
         actions.append(json.dumps(rand_doc()))
         tr.remember(did)
-    s, _ = _send(gw, "POST", "/_bulk", "\n".join(actions) + "\n",
+    s, _ = _send(gw, "POST", "/_bulk", ndjson(actions),
                  content_type="application/x-ndjson", timeout=30)
     return "_bulk", s
 

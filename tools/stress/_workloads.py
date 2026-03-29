@@ -6,6 +6,7 @@ import random
 from _engine import DocIdTracker
 from _helpers import (
     http_request,
+    ndjson,
     rand_category,
     rand_color,
     rand_doc,
@@ -13,7 +14,6 @@ from _helpers import (
     rand_price,
     rand_str,
 )
-
 
 # ---------------------------------------------------------------------------
 # Registry
@@ -59,6 +59,16 @@ class Workload:
         s, resp = http_request(self.gateway, "POST", f"/{self.index}/_search",
                                body, headers=self._h())
         return "_search", s, resp
+
+
+class SingleOpWorkload(Workload):
+    """Workload that runs a single operation — subclass and define ``_op``."""
+
+    def weighted_operations(self) -> list[tuple]:
+        return [(self._op, 1)]
+
+    def _op(self) -> tuple[str, int, bytes]:
+        raise NotImplementedError
 
 
 # ---------------------------------------------------------------------------
@@ -187,9 +197,8 @@ class MixedWorkload(Workload):
             actions.append(json.dumps({"index": {"_index": self.index, "_id": doc_id}}))
             actions.append(json.dumps(rand_doc()))
             self.tracker.remember(doc_id)
-        body = "\n".join(actions) + "\n"
         s, resp = http_request(
-            self.gateway, "POST", "/_bulk", body,
+            self.gateway, "POST", "/_bulk", ndjson(actions),
             headers={**self._h(), "Content-Type": "application/x-ndjson"},
             content_type="application/x-ndjson", timeout=30)
         return "_bulk", s, resp

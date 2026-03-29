@@ -9,8 +9,8 @@ operations — reads included.
 import json
 import random
 
-from helpers import rand_doc, rand_str
 from _trivial_noise import make_noise
+from helpers import ndjson, rand_doc, rand_str
 
 INDEX = "challenge-forced-refresh"
 APP_NAME = "cms-backend"
@@ -54,7 +54,7 @@ def _forced_refresh_bulk(gw, tr):
         if not capped:
             tr.remember(did)
     s, _ = _n.send(gw, "POST", "/_bulk?refresh=true",
-                   "\n".join(actions) + "\n",
+                   ndjson(actions),
                    content_type="application/x-ndjson", timeout=30)
     return "_bulk", s
 

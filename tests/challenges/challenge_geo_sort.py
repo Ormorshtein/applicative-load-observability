@@ -11,7 +11,7 @@ Usage:
 """
 
 import _challenge_geo_sort as _config
-from _trivial_runner import main_cli
+from _challenge_runner import main_cli
 
 if __name__ == "__main__":
     main_cli(_config)

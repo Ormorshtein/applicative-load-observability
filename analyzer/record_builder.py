@@ -4,16 +4,19 @@ No I/O — all functions are pure transformations.
 """
 
 import json
+import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any, TypedDict
 
-from parser import (
+from .parser import (
     parse_applicative_provider,
     parse_docs_affected,
     parse_es_took_ms,
     parse_geo_vertex_count,
     parse_hits,
     parse_labels,
+    parse_msearch_pairs,
     parse_operation,
     parse_shards_total,
     parse_shards_total_bulk,
@@ -24,7 +27,7 @@ from parser import (
     scrub_bulk_template,
     scrub_template,
 )
-from stress import (
+from .stress import (
     _ALL_COUNT_FIELDS,
     StressContext,
     calc_stress,
@@ -32,8 +35,9 @@ from stress import (
     evaluate_cost_indicators,
 )
 
+
 def _utc_timestamp() -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"
 _STRESS_PRECISION = 4
 
@@ -53,12 +57,13 @@ class RawFields:
     response_size_bytes:  int
 
 
-def _parse_json_field(raw: str) -> dict:
+def _parse_json_field(raw: str) -> dict[str, Any]:
     """Safely parse a JSON string; return {} on failure."""
     if not raw:
         return {}
     try:
-        return json.loads(raw)
+        result = json.loads(raw)
+        return result if isinstance(result, dict) else {}
     except json.JSONDecodeError:
         return {}
 
@@ -121,45 +126,91 @@ _CLAUSE_COUNT_OUTPUT_KEYS = {
     "script_clause_count":  "script",
 }
 
-_QUERY_OPS = frozenset({"_search", "_update_by_query", "_delete_by_query", "_count", "_validate"})
+_QUERY_OPS = frozenset({
+    "_search", "_msearch", "_count", "_explain", "_validate",
+    "_update_by_query", "_delete_by_query",
+})
+_ES_NANOSECOND_BUG_RATIO = 1000
 
 
-def _output_clause_counts(counts: dict) -> dict:
+# ---------------------------------------------------------------------------
+# Output TypedDicts — schema-as-code for the observability record
+# ---------------------------------------------------------------------------
+
+class IdentitySection(TypedDict):
+    username: str
+    applicative_provider: str
+    user_agent: str
+    client_host: str
+    labels: list[str]
+
+
+class RequestSection(TypedDict, total=False):
+    method: str
+    path: str
+    operation: str
+    target: str
+    template: str
+    body: str
+    size_bytes: int
+    size: int
+    geo_vertex_count: int
+
+
+class ResponseSection(TypedDict):
+    status: int
+    es_took_ms: float
+    gateway_took_ms: float
+    hits: int
+    shards_total: int
+    docs_affected: int
+    size_bytes: int
+
+
+class StressSection(TypedDict):
+    score: float
+    base: float
+    multiplier: float
+    components: dict[str, float]
+    bonuses: dict[str, float]
+    cost_indicator_count: int
+    cost_indicator_names: list[str]
+
+
+class ObservabilityRecord(TypedDict):
+    """The full record indexed into Elasticsearch."""
+
+    timestamp: str  # key is "@timestamp" in output
+    identity: IdentitySection
+    request: RequestSection
+    response: ResponseSection
+    clause_counts: dict[str, int]
+    cost_indicators: dict[str, int]
+    stress: StressSection
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _output_clause_counts(counts: dict[str, int]) -> dict[str, int]:
     return {out: counts[internal] for internal, out in _CLAUSE_COUNT_OUTPUT_KEYS.items()}
 
 
-def build_record(raw: RawFields) -> dict:
-    operation = parse_operation(raw.method, raw.path)
-    target    = parse_target(raw.path)
-    if operation == "_bulk":
-        template, bulk_target = scrub_bulk_template(raw.request_body_raw)
-        if target == "_all":
-            target = bulk_target
-    else:
-        template = scrub_template(raw.request_body) if raw.request_body else ""
-
-    username             = parse_username(raw.headers)
-    applicative_provider = parse_applicative_provider(raw.headers)
-    user_agent           = parse_user_agent(raw.headers)
-    labels               = parse_labels(raw.headers)
-
-    hits, hits_lower_bound = parse_hits(raw.response_body)
-    if operation == "_bulk":
-        shards_total     = parse_shards_total_bulk(raw.response_body)
-    else:
-        shards_total     = parse_shards_total(raw.response_body)
-    docs_affected        = parse_docs_affected(operation, raw.response_body)
-    size                 = parse_size(raw.request_body)
-    es_took_ms           = parse_es_took_ms(raw.response_body)
-
-    # ES 8.13–8.15 bulk bug: took sometimes reported in nanoseconds.
-    # es_took can never exceed gateway_took, so if it's 1000x+ larger
-    # the value is in the wrong unit and needs conversion.
+def _fix_es_nanosecond_bug(operation: str, es_took_ms: float, gateway_took_ms: float) -> float:
+    """ES 8.13-8.15 bulk bug: took sometimes reported in nanoseconds."""
     if (operation == "_bulk"
-            and es_took_ms > raw.gateway_took_ms > 0
-            and es_took_ms / raw.gateway_took_ms > 1000):
-        es_took_ms /= 1_000_000
+            and es_took_ms > gateway_took_ms > 0
+            and es_took_ms / gateway_took_ms > _ES_NANOSECOND_BUG_RATIO):
+        return es_took_ms / 1_000_000
+    return es_took_ms
 
+
+def _compute_stress(
+    operation: str, raw: RawFields, es_took_ms: float,
+    hits: int, hits_lower_bound: bool, shards_total: int, docs_affected: int,
+) -> tuple[dict[str, int], dict[str, int], float, int, float, dict[str, float], dict[str, float]]:
+    """Compute clause counts, cost indicators, and stress score."""
     geo_vertex_count = 0
     if operation in _QUERY_OPS:
         clause_counts = count_clauses(raw.request_body)
@@ -172,65 +223,209 @@ def build_record(raw: RawFields) -> dict:
         cost_indicators, stress_multiplier = {}, 1.0
 
     ctx = StressContext(
-        es_took_ms=       es_took_ms,
-        gateway_took_ms=  raw.gateway_took_ms,
-        hits=             hits,
-        shards_total=     shards_total,
-        docs_affected=    docs_affected,
+        es_took_ms=es_took_ms,
+        gateway_took_ms=raw.gateway_took_ms,
+        hits=hits,
+        shards_total=shards_total,
+        docs_affected=docs_affected,
     )
-    score, bonuses, components = calc_stress(operation, ctx, stress_multiplier, clause_counts)
+    score, bonuses, components = calc_stress(
+        operation, ctx, stress_multiplier, clause_counts,
+    )
+    return (clause_counts, cost_indicators, stress_multiplier,
+            geo_vertex_count, score, bonuses, components)
 
-    request = {
-        "method":     raw.method,
-        "path":       raw.path,
-        "operation":  operation,
-        "target":     target,
-        "template":   template,
-        "body":       raw.request_body_raw,
+
+def _build_request_section(
+    raw: RawFields, operation: str, target: str, template: str,
+    size: int, geo_vertex_count: int,
+) -> dict[str, Any]:
+    """Assemble the request section of the observability record."""
+    request: dict[str, Any] = {
+        "method": raw.method,
+        "path": raw.path,
+        "operation": operation,
+        "target": target,
+        "template": template,
+        "body": json.dumps(raw.request_body, ensure_ascii=False) if raw.request_body
+               else raw.request_body_raw,
         "size_bytes": raw.request_size_bytes,
     }
     if geo_vertex_count > 0:
         request["geo_vertex_count"] = geo_vertex_count
     if operation == "_search":
         request["size"] = size
+    return request
 
-    return {
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+def build_record(raw: RawFields) -> dict[str, Any] | list[dict[str, Any]]:
+    """Build observability record(s) from parsed raw fields.
+
+    Returns a single dict for most operations, or a list of dicts
+    for _msearch (one record per sub-query).
+    """
+    operation = parse_operation(raw.method, raw.path)
+
+    if operation == "_msearch":
+        return {"_msearch_records": _build_msearch_records(raw)}
+
+    target = parse_target(raw.path)
+    if operation == "_bulk":
+        template, bulk_target = scrub_bulk_template(raw.request_body_raw)
+        if target == "_all":
+            target = bulk_target
+    else:
+        template = scrub_template(raw.request_body) if raw.request_body else ""
+
+    hits, hits_lower_bound = parse_hits(raw.response_body)
+    shards_total = (parse_shards_total_bulk(raw.response_body) if operation == "_bulk"
+                    else parse_shards_total(raw.response_body))
+    docs_affected = parse_docs_affected(operation, raw.response_body)
+    es_took_ms = _fix_es_nanosecond_bug(
+        operation, parse_es_took_ms(raw.response_body), raw.gateway_took_ms,
+    )
+
+    (clause_counts, cost_indicators, stress_multiplier,
+     geo_vertex_count, score, bonuses, components) = _compute_stress(
+        operation, raw, es_took_ms, hits, hits_lower_bound,
+        shards_total, docs_affected,
+    )
+
+    return _assemble_record(
+        raw, operation, target, template, es_took_ms,
+        hits, shards_total, docs_affected, clause_counts,
+        cost_indicators, stress_multiplier, geo_vertex_count,
+        score, bonuses, components,
+    )
+
+
+def _assemble_record(
+    raw: RawFields, operation: str, target: str, template: str,
+    es_took_ms: float, hits: int, shards_total: int, docs_affected: int,
+    clause_counts: dict[str, int], cost_indicators: dict[str, int],
+    stress_multiplier: float, geo_vertex_count: int,
+    score: float, bonuses: dict[str, float], components: dict[str, float],
+    extra: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Assemble a single observability record dict."""
+    record: dict[str, Any] = {
         "@timestamp": _utc_timestamp(),
         "identity": {
-            "username":             username,
-            "applicative_provider": applicative_provider,
-            "user_agent":           user_agent,
-            "client_host":          raw.client_host,
-            "labels":              labels,
+            "username": parse_username(raw.headers),
+            "applicative_provider": parse_applicative_provider(raw.headers),
+            "user_agent": parse_user_agent(raw.headers),
+            "client_host": raw.client_host,
+            "labels": parse_labels(raw.headers),
         },
-        "request":  request,
+        "request": _build_request_section(
+            raw, operation, target, template, parse_size(raw.request_body),
+            geo_vertex_count,
+        ),
         "response": {
-            "status":        raw.response_status,
-            "es_took_ms":    es_took_ms,
+            "status": raw.response_status,
+            "es_took_ms": es_took_ms,
             "gateway_took_ms": raw.gateway_took_ms,
-            "hits":          hits,
-            "shards_total":  shards_total,
+            "hits": hits,
+            "shards_total": shards_total,
             "docs_affected": docs_affected,
-            "size_bytes":    raw.response_size_bytes,
+            "size_bytes": raw.response_size_bytes,
         },
-        "clause_counts":    _output_clause_counts(clause_counts),
-        "cost_indicators":  cost_indicators,
+        "clause_counts": _output_clause_counts(clause_counts),
+        "cost_indicators": cost_indicators,
         "stress": {
-            "score":                round(score, _STRESS_PRECISION),
-            "base":                 round(sum(components.values()), _STRESS_PRECISION),
-            "multiplier":           stress_multiplier,
-            "components":           {k: round(v, _STRESS_PRECISION) for k, v in components.items()},
-            "bonuses":              {k: round(v, _STRESS_PRECISION) for k, v in bonuses.items()},
+            "score": round(score, _STRESS_PRECISION),
+            "base": round(sum(components.values()), _STRESS_PRECISION),
+            "multiplier": stress_multiplier,
+            "components": {k: round(v, _STRESS_PRECISION)
+                           for k, v in components.items()},
+            "bonuses": {k: round(v, _STRESS_PRECISION)
+                        for k, v in bonuses.items()},
             "cost_indicator_count": len(cost_indicators),
-            "cost_indicator_names": list(cost_indicators.keys()) or ["unflagged"],
+            "cost_indicator_names": (list(cost_indicators.keys())
+                                     or ["unflagged"]),
         },
     }
+    if extra:
+        record.update(extra)
+    return record
 
 
-def partial_error_record(payload: dict, exc: Exception) -> dict:
+def _build_msearch_records(raw: RawFields) -> list[dict[str, Any]]:
+    """Fan out an _msearch request into one record per sub-query."""
+    pairs = parse_msearch_pairs(raw.request_body_raw)
+    responses = raw.response_body.get("responses", [])
+    batch_size = len(pairs)
+    request_id = uuid.uuid4().hex[:12]
+    records: list[dict[str, Any]] = []
+
+    for i, (header, body) in enumerate(pairs):
+        sub_resp = responses[i] if i < len(responses) else {}
+
+        hits, hits_lower_bound = parse_hits(sub_resp)
+        shards_total = parse_shards_total(sub_resp)
+        es_took_ms = parse_es_took_ms(sub_resp)
+
+        clause_counts = count_clauses(body)
+        clause_counts["hits_lower_bound"] = int(hits_lower_bound)
+        geo_vertex_count = parse_geo_vertex_count(body)
+        clause_counts["geo_vertex_count"] = geo_vertex_count
+        cost_indicators, stress_multiplier = evaluate_cost_indicators(clause_counts)
+
+        ctx = StressContext(
+            es_took_ms=es_took_ms,
+            gateway_took_ms=raw.gateway_took_ms,
+            hits=hits,
+            shards_total=shards_total,
+            docs_affected=0,
+        )
+        score, bonuses, components = calc_stress(
+            "_msearch", ctx, stress_multiplier, clause_counts,
+        )
+
+        idx = header.get("index", "")
+        if isinstance(idx, list):
+            target = ",".join(idx) if idx else "_all"
+        else:
+            target = idx or parse_target(raw.path)
+
+        template = scrub_template(body) if body else ""
+        body_str = json.dumps(body, ensure_ascii=False) if body else ""
+
+        # Override per-query body in the request section
+        sub_raw = RawFields(
+            method=raw.method, path=raw.path, headers=raw.headers,
+            request_body=body, request_body_raw=body_str,
+            response_body=sub_resp, client_host=raw.client_host,
+            response_status=raw.response_status,
+            gateway_took_ms=raw.gateway_took_ms,
+            request_size_bytes=raw.request_size_bytes,
+            response_size_bytes=raw.response_size_bytes,
+        )
+
+        record = _assemble_record(
+            sub_raw, "_msearch", target, template, es_took_ms,
+            hits, shards_total, 0, clause_counts,
+            cost_indicators, stress_multiplier, geo_vertex_count,
+            score, bonuses, components,
+            extra={"msearch": {
+                "request_id": request_id,
+                "batch_size": batch_size,
+                "sub_query_index": i,
+            }},
+        )
+        records.append(record)
+
+    return records
+
+
+def partial_error_record(payload: dict[str, Any], exc: Exception) -> dict[str, Any]:
     return {
         "@timestamp": _utc_timestamp(),
-        "error":     str(exc),
-        "path":      payload.get("path", ""),
-        "method":    payload.get("method", ""),
+        "error": str(exc),
+        "path": payload.get("path", ""),
+        "method": payload.get("method", ""),
     }

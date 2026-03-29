@@ -7,19 +7,15 @@ Each profile targets a specific clause type or volume pattern.
 import json
 import random
 
-from _helpers import http_request, rand_doc, rand_str
-from _workloads import Workload, workload
-
+from _helpers import http_request, ndjson, rand_doc, rand_str
+from _workloads import SingleOpWorkload, workload
 
 # ---------------------------------------------------------------------------
 # Script-heavy
 # ---------------------------------------------------------------------------
 
 @workload("script", "Script-heavy: script_fields + script_score (clause weight 6)")
-class ScriptStress(Workload):
-    def weighted_operations(self):
-        return [(self._op, 1)]
-
+class ScriptStress(SingleOpWorkload):
     def _op(self):
         return self._post_search({
             "query": {"script_score": {
@@ -39,10 +35,7 @@ class ScriptStress(Workload):
 # ---------------------------------------------------------------------------
 
 @workload("nested", "Nested clauses: 4-5 stacked nested queries (clause weight 5)")
-class NestedStress(Workload):
-    def weighted_operations(self):
-        return [(self._op, 1)]
-
+class NestedStress(SingleOpWorkload):
     def _op(self):
         return self._post_search({
             "query": {"bool": {"must": [
@@ -63,10 +56,7 @@ class NestedStress(Workload):
 # ---------------------------------------------------------------------------
 
 @workload("wildcard", "Wildcard/regexp/prefix swarm: 6-7 clauses (clause weight 4)")
-class WildcardStress(Workload):
-    def weighted_operations(self):
-        return [(self._op, 1)]
-
+class WildcardStress(SingleOpWorkload):
     def _op(self):
         return self._post_search({
             "query": {"bool": {"should": [
@@ -87,10 +77,7 @@ class WildcardStress(Workload):
 # ---------------------------------------------------------------------------
 
 @workload("agg", "Deep aggregations: 3-level nested aggs (clause weight 3)")
-class AggStress(Workload):
-    def weighted_operations(self):
-        return [(self._op, 1)]
-
+class AggStress(SingleOpWorkload):
     def _op(self):
         return self._post_search({
             "size": 0,
@@ -117,10 +104,7 @@ class AggStress(Workload):
 # ---------------------------------------------------------------------------
 
 @workload("runtime", "Runtime mappings + scripts (clause weight 5+6)")
-class RuntimeStress(Workload):
-    def weighted_operations(self):
-        return [(self._op, 1)]
-
+class RuntimeStress(SingleOpWorkload):
     def _op(self):
         return self._post_search({
             "runtime_mappings": {
@@ -144,10 +128,7 @@ class RuntimeStress(Workload):
 # ---------------------------------------------------------------------------
 
 @workload("geo", "Geo queries: geo_distance + geo_bounding_box")
-class GeoStress(Workload):
-    def weighted_operations(self):
-        return [(self._op, 1)]
-
+class GeoStress(SingleOpWorkload):
     def _op(self):
         return self._post_search({
             "query": {"bool": {"must": [
@@ -172,10 +153,7 @@ class GeoStress(Workload):
 # ---------------------------------------------------------------------------
 
 @workload("bulk", "Bulk write flood: 300-500 docs per _bulk batch")
-class BulkStress(Workload):
-    def weighted_operations(self):
-        return [(self._op, 1)]
-
+class BulkStress(SingleOpWorkload):
     def _op(self):
         batch = random.randint(300, 500)
         actions = []
@@ -184,9 +162,8 @@ class BulkStress(Workload):
             actions.append(json.dumps({"index": {"_index": self.index, "_id": doc_id}}))
             actions.append(json.dumps(rand_doc()))
             self.tracker.remember(doc_id)
-        body = "\n".join(actions) + "\n"
         s, resp = http_request(
-            self.gateway, "POST", "/_bulk", body,
+            self.gateway, "POST", "/_bulk", ndjson(actions),
             headers={**self._h(), "Content-Type": "application/x-ndjson"},
             content_type="application/x-ndjson", timeout=30)
         return "_bulk", s, resp
@@ -197,10 +174,7 @@ class BulkStress(Workload):
 # ---------------------------------------------------------------------------
 
 @workload("ubq", "Update-by-query carpet bomb: script + match_all on all docs")
-class UbqStress(Workload):
-    def weighted_operations(self):
-        return [(self._op, 1)]
-
+class UbqStress(SingleOpWorkload):
     def _op(self):
         body = {
             "query": {"bool": {"must": [

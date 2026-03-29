@@ -5,7 +5,8 @@ Pure extraction functions — no I/O, no side effects.
 import base64
 import json
 import re
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 _BASIC_AUTH_PREFIX = "Basic "
 _ES_DEFAULT_SIZE   = 10
@@ -27,31 +28,32 @@ def parse_username(headers: dict) -> str:
     auth = headers.get("authorization", "")
     if auth.startswith(_BASIC_AUTH_PREFIX):
         try:
-            decoded = base64.b64decode(auth[len(_BASIC_AUTH_PREFIX):]).decode("utf-8", errors="replace")
+            raw = base64.b64decode(auth[len(_BASIC_AUTH_PREFIX):])
+            decoded = raw.decode("utf-8", errors="replace")
             return decoded.split(":")[0]
         except ValueError:
             pass
     return ""
 
 
-def parse_applicative_provider(headers: dict) -> str:
-    opaque = headers.get("x-opaque-id", "")
+def parse_applicative_provider(headers: dict[str, str]) -> str:
+    opaque: str = headers.get("x-opaque-id", "")
     if opaque:
         return opaque.split("/")[0]
 
-    app_name = headers.get("x-app-name", "")
+    app_name: str = headers.get("x-app-name", "")
     if app_name:
         return app_name
 
-    user_agent = headers.get("user-agent", "")
+    user_agent: str = headers.get("user-agent", "")
     if user_agent:
         return re.split(r"[/ ]", user_agent)[0]
 
     return ""
 
 
-def parse_user_agent(headers: dict) -> str:
-    return headers.get("user-agent", "")
+def parse_user_agent(headers: dict[str, str]) -> str:
+    return str(headers.get("user-agent", ""))
 
 
 _LABEL_PREFIX = "x-alo-"
@@ -102,7 +104,7 @@ def parse_operation(method: str, path: str) -> str:
 # ---------------------------------------------------------------------------
 
 def parse_size(body: dict) -> int:
-    return body.get("size", _ES_DEFAULT_SIZE)
+    return int(body.get("size", _ES_DEFAULT_SIZE))
 
 
 def _scrub(node: Any) -> Any:
@@ -152,6 +154,25 @@ def scrub_bulk_template(raw_body: str) -> tuple[str, str]:
         "target": sorted_targets,
     }, sort_keys=True)
     return template, target_str
+
+
+def parse_msearch_pairs(raw_body: str) -> list[tuple[dict, dict]]:
+    """Extract (header, search_body) pairs from an _msearch NDJSON request.
+
+    _msearch alternates: header line, search body line, header line, ...
+    Returns [(header_dict, body_dict), ...].
+    """
+    pairs: list[tuple[dict, dict]] = []
+    lines = [ln for ln in raw_body.splitlines() if ln.strip()]
+    for i in range(0, len(lines) - 1, 2):
+        try:
+            header = json.loads(lines[i])
+            body = json.loads(lines[i + 1])
+        except (json.JSONDecodeError, IndexError):
+            continue
+        if isinstance(header, dict) and isinstance(body, dict):
+            pairs.append((header, body))
+    return pairs
 
 
 # ---------------------------------------------------------------------------
@@ -212,7 +233,7 @@ def parse_hits(response_body: dict) -> tuple[int, bool]:
 
 
 def parse_shards_total(response_body: dict) -> int:
-    return response_body.get("_shards", {}).get("total", 0)
+    return int(response_body.get("_shards", {}).get("total", 0))
 
 
 def parse_shards_total_bulk(response_body: dict) -> int:

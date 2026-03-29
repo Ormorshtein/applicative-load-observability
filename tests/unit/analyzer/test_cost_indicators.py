@@ -2,7 +2,7 @@
 
 import pytest
 
-from stress import evaluate_cost_indicators, count_clauses
+from analyzer.stress import count_clauses, evaluate_cost_indicators
 
 
 def _zero_counts() -> dict[str, int]:

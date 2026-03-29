@@ -2,26 +2,26 @@
 
 import base64
 import json
+
 import pytest
 
-from parser import (
-    parse_username,
+from analyzer.parser import (
     parse_applicative_provider,
-    parse_user_agent,
-    parse_labels,
-    parse_target,
-    parse_operation,
-    parse_size,
-    scrub_template,
-    scrub_bulk_template,
-    parse_hits,
-    parse_shards_total,
-    parse_shards_total_bulk,
     parse_docs_affected,
     parse_es_took_ms,
     parse_geo_vertex_count,
+    parse_hits,
+    parse_labels,
+    parse_operation,
+    parse_shards_total,
+    parse_shards_total_bulk,
+    parse_size,
+    parse_target,
+    parse_user_agent,
+    parse_username,
+    scrub_bulk_template,
+    scrub_template,
 )
-
 
 # ---------------------------------------------------------------------------
 # Header extraction: parse_username
@@ -144,35 +144,23 @@ class TestParseLabels:
 # ---------------------------------------------------------------------------
 
 class TestParseTarget:
-    def test_single_index(self):
-        assert parse_target("/products/_search") == "products"
-
-    def test_wildcard_index(self):
-        assert parse_target("/logs-*/_search") == "logs-*"
-
-    def test_multi_index(self):
-        assert parse_target("/index1,index2/_search") == "index1,index2"
-
-    def test_no_index_all_underscore(self):
-        assert parse_target("/_search") == "_all"
-
-    def test_doc_path(self):
-        assert parse_target("/myindex/_doc/123") == "myindex"
-
-    def test_bulk_no_index(self):
-        assert parse_target("/_bulk") == "_all"
-
-    def test_nested_path(self):
-        assert parse_target("/myindex/_update_by_query") == "myindex"
-
-    def test_root_path(self):
-        assert parse_target("/") == "_all"
-
-    def test_empty_path(self):
-        assert parse_target("") == "_all"
-
-    def test_create_path(self):
-        assert parse_target("/myindex/_create/abc") == "myindex"
+    @pytest.mark.parametrize("path, expected", [
+        ("/products/_search",           "products"),
+        ("/logs-*/_search",             "logs-*"),
+        ("/index1,index2/_search",      "index1,index2"),
+        ("/_search",                    "_all"),
+        ("/myindex/_doc/123",           "myindex"),
+        ("/_bulk",                      "_all"),
+        ("/myindex/_update_by_query",   "myindex"),
+        ("/",                           "_all"),
+        ("",                            "_all"),
+        ("/myindex/_create/abc",        "myindex"),
+    ], ids=[
+        "single_index", "wildcard", "multi_index", "no_index",
+        "doc_path", "bulk_no_index", "nested_path", "root", "empty", "create",
+    ])
+    def test_parse_target(self, path, expected):
+        assert parse_target(path) == expected
 
 
 # ---------------------------------------------------------------------------
@@ -180,56 +168,34 @@ class TestParseTarget:
 # ---------------------------------------------------------------------------
 
 class TestParseOperation:
-    def test_search(self):
-        assert parse_operation("POST", "/products/_search") == "_search"
-
-    def test_bulk(self):
-        assert parse_operation("POST", "/_bulk") == "_bulk"
-
-    def test_doc_put_is_index(self):
-        assert parse_operation("PUT", "/myindex/_doc/123") == "index"
-
-    def test_doc_delete(self):
-        assert parse_operation("DELETE", "/myindex/_doc/123") == "delete"
-
-    def test_create(self):
-        assert parse_operation("PUT", "/myindex/_create/abc") == "_create"
-
-    def test_update(self):
-        assert parse_operation("POST", "/myindex/_update/abc") == "_update"
-
-    def test_update_by_query(self):
-        assert parse_operation("POST", "/myindex/_update_by_query") == "_update_by_query"
-
-    def test_delete_by_query(self):
-        assert parse_operation("POST", "/myindex/_delete_by_query") == "_delete_by_query"
-
-    def test_no_underscore_segment_dispatches_on_method(self):
-        assert parse_operation("GET", "/myindex") == "get"
-        assert parse_operation("PUT", "/myindex") == "index"
-        assert parse_operation("DELETE", "/myindex") == "delete"
-
-    def test_root_dispatches_on_method(self):
-        assert parse_operation("GET", "/") == "get"
-        assert parse_operation("POST", "/") == "index"
-
-    def test_doc_get(self):
-        assert parse_operation("GET", "/myindex/_doc/123") == "get"
-
-    def test_head_is_get(self):
-        assert parse_operation("HEAD", "/myindex/_doc/123") == "get"
-
-    def test_post_doc_is_index(self):
-        assert parse_operation("POST", "/myindex/_doc") == "index"
-
-    def test_count(self):
-        assert parse_operation("POST", "/myindex/_count") == "_count"
-
-    def test_validate(self):
-        assert parse_operation("POST", "/myindex/_validate/query") == "_validate"
-
-    def test_msearch(self):
-        assert parse_operation("POST", "/_msearch") == "_msearch"
+    @pytest.mark.parametrize("method, path, expected", [
+        ("POST",   "/products/_search",          "_search"),
+        ("POST",   "/_bulk",                     "_bulk"),
+        ("PUT",    "/myindex/_doc/123",           "index"),
+        ("DELETE", "/myindex/_doc/123",           "delete"),
+        ("PUT",    "/myindex/_create/abc",        "_create"),
+        ("POST",   "/myindex/_update/abc",        "_update"),
+        ("POST",   "/myindex/_update_by_query",   "_update_by_query"),
+        ("POST",   "/myindex/_delete_by_query",   "_delete_by_query"),
+        ("GET",    "/myindex",                    "get"),
+        ("PUT",    "/myindex",                    "index"),
+        ("DELETE", "/myindex",                    "delete"),
+        ("GET",    "/",                           "get"),
+        ("POST",   "/",                           "index"),
+        ("GET",    "/myindex/_doc/123",            "get"),
+        ("HEAD",   "/myindex/_doc/123",            "get"),
+        ("POST",   "/myindex/_doc",               "index"),
+        ("POST",   "/myindex/_count",             "_count"),
+        ("POST",   "/myindex/_validate/query",    "_validate"),
+        ("POST",   "/_msearch",                   "_msearch"),
+    ], ids=[
+        "search", "bulk", "doc_put_index", "doc_delete", "create",
+        "update", "update_by_query", "delete_by_query",
+        "get_index", "put_index", "delete_index", "root_get", "root_post",
+        "doc_get", "head_is_get", "post_doc_index", "count", "validate", "msearch",
+    ])
+    def test_parse_operation(self, method, path, expected):
+        assert parse_operation(method, path) == expected
 
 
 # ---------------------------------------------------------------------------

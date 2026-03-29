@@ -106,6 +106,14 @@ COMPONENT_TEMPLATE: dict = {
                         "bonuses":              {"type": "object", "enabled": False},
                     }
                 },
+                # _msearch fan-out metadata
+                "msearch": {
+                    "properties": {
+                        "request_id":      {"type": "keyword"},
+                        "batch_size":      {"type": "integer"},
+                        "sub_query_index": {"type": "integer"},
+                    }
+                },
                 # Infrastructure
                 "cluster_name": {"type": "constant_keyword"},
                 # Error records (partial)

@@ -1,6 +1,6 @@
 """Unit tests for clause counting logic in analyzer/stress.py."""
 
-from stress import count_clauses
+from analyzer.stress import count_clauses
 
 
 class TestCountClauses:

@@ -1,19 +1,10 @@
 """Latency tracking and live reporting for the stress engine."""
 
-import math
-import threading
 import time
 from collections import defaultdict
 
-
-def _percentile(sorted_vals: list[float], pct: float) -> float:
-    if not sorted_vals:
-        return 0.0
-    k = (pct / 100) * (len(sorted_vals) - 1)
-    lo, hi = int(math.floor(k)), int(math.ceil(k))
-    if lo == hi:
-        return sorted_vals[lo]
-    return sorted_vals[lo] + (k - lo) * (sorted_vals[hi] - sorted_vals[lo])
+from _helpers import LatencyTracker as _BaseTracker
+from _helpers import _percentile
 
 
 def _fmt_ms(ms: float) -> str:
@@ -23,17 +14,16 @@ def _fmt_ms(ms: float) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Tracker
+# Extended tracker with error tracking and snapshots
 # ---------------------------------------------------------------------------
 
-class LatencyTracker:
+class LatencyTracker(_BaseTracker):
     """Thread-safe per-operation latency and error tracker."""
 
     MAX_ERROR_SAMPLES = 10
 
     def __init__(self) -> None:
-        self._lock = threading.Lock()
-        self._latencies: dict[str, list[float]] = defaultdict(list)
+        super().__init__()
         self._counts: dict[str, int] = defaultdict(int)
         self._errors: dict[str, int] = defaultdict(int)
         self._error_samples: list[tuple[str, int, str]] = []
@@ -43,7 +33,7 @@ class LatencyTracker:
 
     def reset(self) -> None:
         with self._lock:
-            self._latencies.clear()
+            self._samples.clear()
             self._counts.clear()
             self._errors.clear()
             self._error_samples.clear()
@@ -64,25 +54,27 @@ class LatencyTracker:
         e = self.elapsed
         return self._total / e if e > 0.01 else 0.0
 
-    def record(self, op: str, latency_ms: float, status: int,
-               body: bytes = b"") -> None:
-        is_err = (status == 0 or status >= 400)
+    def record_with_status(
+        self, op: str, latency_ms: float, status: int, body: bytes = b"",
+    ) -> None:
+        """Record latency plus status/error tracking."""
+        is_err = status == 0 or status >= 400
         with self._lock:
-            self._latencies[op].append(latency_ms)
+            self._samples[op].append(latency_ms)
             self._counts[op] += 1
             self._total += 1
             if is_err:
                 self._errors[op] += 1
                 self._total_errors += 1
                 if len(self._error_samples) < self.MAX_ERROR_SAMPLES:
-                    snippet = body[:512].decode("utf-8", errors="replace") if body else ""
+                    snippet = body.decode("utf-8", errors="replace")[:512] if body else ""
                     self._error_samples.append((op, status, snippet))
 
     def snapshot(self) -> dict:
         with self._lock:
             ops = {}
             for op in sorted(self._counts):
-                lats = sorted(self._latencies[op])
+                lats = sorted(self._samples.get(op, []))
                 ops[op] = {
                     "count": self._counts[op],
                     "errors": self._errors[op],
