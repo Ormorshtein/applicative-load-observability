@@ -643,7 +643,9 @@ Override any of the environment variables below. Docker Compose defaults work ou
 - Auto-generated vs user-provided `_id` — `POST /<index>/_doc` (no ID in path) lets ES generate a UUID and skip the existence check entirely, making it a pure write. `PUT /<index>/_doc/<id>` (user-provided ID) requires an existence check before writing to handle version conflicts. Detectable by checking whether the path segment after `_doc` is present. The `index` operation formula should weight user-provided-ID writes higher once this is implemented.
 - Bulk action breakdown — `_bulk` requests can mix `index`, `create`, `update`, and `delete` actions. Counting each action type within the bulk would allow a more precise stress signal than `docs_affected` alone.
 - `has_highlight` — extra CPU cost per result document
-- `is_deep_pagination` — `from > 1000`, significant heap pressure
+- **Depth-weighted agg scoring** — instead of flat agg node count, weight by nesting depth (depth 1 = 3, depth 2 = 5, depth 3+ = 8). Deeper aggs multiply bucket cardinality exponentially. Formula: walk the agg tree recursively, sum depth-weighted scores.
+- **Deep pagination scoring** — `pagination_score = log10(1 + from) * 4`. Penalizes queries with `from > 0` since ES must score and discard all preceding docs. Example: from=100 produces 8.0, from=10000 produces 16.0. (Originally from Guy Mainfeld's `feature/nested_agg` branch.)
+- **Scroll detection** — `has_scroll` cost indicator (weight 3) for requests using the scroll API, which holds long-lived shard-level search contexts across requests. (Originally from Guy Mainfeld's `feature/nested_agg` branch.)
 - `timed_out` — query hit ES timeout threshold
 - Separate `cpu_stress_score` and `memory_stress_score` — once real data allows accurate resource-type attribution
 - Join queries: `has_child` / `has_parent` clauses (weight 5) — distributed join across parent-child relations, expensive index lookup
