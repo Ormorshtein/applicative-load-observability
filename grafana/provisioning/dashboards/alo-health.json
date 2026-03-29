@@ -1,13 +1,20 @@
 {
   "uid": "alo-health",
-  "title": "ALO — Stack Health",
+  "title": "ALO \u00e2\u20ac\u201d Stack Health",
   "description": "Operational health of the ALO pipeline: gateway, analyzer, and logstash.",
-  "tags": ["alo", "health", "prometheus"],
+  "tags": [
+    "alo",
+    "health",
+    "prometheus"
+  ],
   "editable": true,
   "graphTooltip": 1,
   "refresh": "15s",
   "schemaVersion": 39,
-  "time": { "from": "now-30m", "to": "now" },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
   "timezone": "browser",
   "templating": {
     "list": [
@@ -15,39 +22,60 @@
         "name": "gateway_instance",
         "label": "Gateway",
         "type": "query",
-        "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
+        "datasource": {
+          "uid": "alo-prometheus",
+          "type": "prometheus"
+        },
         "definition": "label_values(nginx_up, instance)",
         "query": "label_values(nginx_up, instance)",
         "includeAll": true,
         "allValue": ".*",
         "multi": true,
-        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
         "refresh": 2
       },
       {
         "name": "analyzer_instance",
         "label": "Analyzer",
         "type": "query",
-        "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
+        "datasource": {
+          "uid": "alo-prometheus",
+          "type": "prometheus"
+        },
         "definition": "label_values(http_requests_total{job=\"analyzer\"}, instance)",
         "query": "label_values(http_requests_total{job=\"analyzer\"}, instance)",
         "includeAll": true,
         "allValue": ".*",
         "multi": true,
-        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
         "refresh": 2
       },
       {
         "name": "logstash_instance",
         "label": "Logstash",
         "type": "query",
-        "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
+        "datasource": {
+          "uid": "alo-prometheus",
+          "type": "prometheus"
+        },
         "definition": "label_values(logstash_info_up, instance)",
         "query": "label_values(logstash_info_up, instance)",
         "includeAll": true,
         "allValue": ".*",
         "multi": true,
-        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
         "refresh": 2
       }
     ]
@@ -56,134 +84,309 @@
     {
       "type": "row",
       "title": "Gateway (Nginx)",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
       "collapsed": false
     },
     {
       "type": "timeseries",
       "title": "Gateways UP",
       "description": "Number of healthy gateway instances over time. A drop means instances went down.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 1 },
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
           "decimals": 0,
-          "custom": { "fillOpacity": 20, "lineWidth": 2, "spanNulls": false },
-          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }] }
+          "custom": {
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              }
+            ]
+          }
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "total" },
-            "properties": [{ "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } }, { "id": "color", "value": { "fixedColor": "white", "mode": "fixed" } }]
+            "matcher": {
+              "id": "byName",
+              "options": "total"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "white",
+                  "mode": "fixed"
+                }
+              }
+            ]
           }
         ]
       },
       "targets": [
-        { "expr": "count(nginx_up{instance=~\"$gateway_instance\"} == 1)", "legendFormat": "up", "refId": "A" },
-        { "expr": "count(nginx_up{instance=~\"$gateway_instance\"})", "legendFormat": "total", "refId": "B" }
+        {
+          "expr": "count(nginx_up{instance=~\"$gateway_instance\"} == 1)",
+          "legendFormat": "up",
+          "refId": "A"
+        },
+        {
+          "expr": "count(nginx_up{instance=~\"$gateway_instance\"})",
+          "legendFormat": "total",
+          "refId": "B"
+        }
       ]
     },
     {
       "type": "timeseries",
       "title": "Request Rate",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 1 },
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "reqps",
-          "custom": { "fillOpacity": 15, "lineWidth": 2, "spanNulls": false }
+          "custom": {
+            "fillOpacity": 15,
+            "lineWidth": 2,
+            "spanNulls": false
+          }
         },
         "overrides": []
       },
       "targets": [
-        { "expr": "sum(rate(nginx_http_requests_total{instance=~\"$gateway_instance\"}[$__rate_interval]))", "legendFormat": "total req/s", "refId": "A" }
+        {
+          "expr": "rate(nginx_http_requests_total{instance=~\"$gateway_instance\"}[$__rate_interval])",
+          "legendFormat": "{{instance}} total req/s",
+          "refId": "A"
+        }
       ]
     },
     {
       "type": "timeseries",
       "title": "Connection States",
       "description": "Aggregated across selected instances. High 'reading' may indicate slow clients; high 'writing' may indicate slow upstream.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 1 },
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "custom": { "fillOpacity": 30, "lineWidth": 1, "stacking": { "mode": "normal" }, "spanNulls": false }
+          "custom": {
+            "fillOpacity": 30,
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "normal"
+            },
+            "spanNulls": false
+          }
         },
         "overrides": []
       },
       "targets": [
-        { "expr": "sum(nginx_connections_reading{instance=~\"$gateway_instance\"})", "legendFormat": "reading", "refId": "A" },
-        { "expr": "sum(nginx_connections_writing{instance=~\"$gateway_instance\"})", "legendFormat": "writing", "refId": "B" },
-        { "expr": "sum(nginx_connections_waiting{instance=~\"$gateway_instance\"})", "legendFormat": "waiting", "refId": "C" }
+        {
+          "expr": "nginx_connections_reading{instance=~\"$gateway_instance\"}",
+          "legendFormat": "{{instance}} reading",
+          "refId": "A"
+        },
+        {
+          "expr": "nginx_connections_writing{instance=~\"$gateway_instance\"}",
+          "legendFormat": "{{instance}} writing",
+          "refId": "B"
+        },
+        {
+          "expr": "nginx_connections_waiting{instance=~\"$gateway_instance\"}",
+          "legendFormat": "{{instance}} waiting",
+          "refId": "C"
+        }
       ]
     },
     {
       "type": "timeseries",
       "title": "Dropped Connections",
       "description": "Sum of (accepted - handled) across all instances. Should always be zero. Non-zero means worker_connections limit was hit on one or more instances.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 1 },
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "custom": { "fillOpacity": 10, "lineWidth": 2, "spanNulls": false, "thresholdsStyle": { "mode": "line" } },
-          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }, { "value": 1, "color": "red" }] }
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": false,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "red"
+              }
+            ]
+          }
         },
         "overrides": []
       },
       "targets": [
-        { "expr": "sum(rate(nginx_connections_accepted{instance=~\"$gateway_instance\"}[$__rate_interval]) - rate(nginx_connections_handled{instance=~\"$gateway_instance\"}[$__rate_interval]))", "legendFormat": "dropped/s", "refId": "A" }
+        {
+          "expr": "rate(nginx_connections_accepted{instance=~\"$gateway_instance\"}[$__rate_interval]) - rate(nginx_connections_handled{instance=~\"$gateway_instance\"}[$__rate_interval])",
+          "legendFormat": "{{instance}} dropped/s",
+          "refId": "A"
+        }
       ]
     },
-
     {
       "type": "row",
       "title": "Analyzer (FastAPI)",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
       "collapsed": false
     },
     {
       "type": "timeseries",
       "title": "Request Rate",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 10 },
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 10
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "reqps",
-          "custom": { "fillOpacity": 15, "lineWidth": 2, "spanNulls": false }
+          "custom": {
+            "fillOpacity": 15,
+            "lineWidth": 2,
+            "spanNulls": false
+          }
         },
         "overrides": []
       },
       "targets": [
-        { "expr": "sum(rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\"}[$__rate_interval]))", "legendFormat": "analyze req/s", "refId": "A" }
+        {
+          "expr": "rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\"}[$__rate_interval])",
+          "legendFormat": "{{instance}} analyze req/s",
+          "refId": "A"
+        }
       ]
     },
     {
       "type": "timeseries",
       "title": "Error Rate",
-      "description": "Percentage of non-2xx responses on /analyze. The analyzer is designed to always return 200 — any errors here indicate a real issue.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 10 },
+      "description": "Percentage of non-2xx responses on /analyze. The analyzer is designed to always return 200 \u00e2\u20ac\u201d any errors here indicate a real issue.",
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 10
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
           "min": 0,
-          "custom": { "fillOpacity": 10, "lineWidth": 2, "spanNulls": false, "thresholdsStyle": { "mode": "line" } },
-          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }, { "value": 0.01, "color": "red" }] }
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": false,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 0.01,
+                "color": "red"
+              }
+            ]
+          }
         },
         "overrides": []
       },
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\",status=~\"4xx\"}[$__rate_interval])) / sum(rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\"}[$__rate_interval]))",
-          "legendFormat": "4xx %",
+          "expr": "rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\",status=~\"4xx\"}[$__rate_interval])) / sum(rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\"}[$__rate_interval])",
+          "legendFormat": "{{instance}} 4xx %",
           "refId": "A"
         },
         {
-          "expr": "sum(rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\",status=~\"5xx\"}[$__rate_interval])) / sum(rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\"}[$__rate_interval]))",
-          "legendFormat": "5xx %",
+          "expr": "rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\",status=~\"5xx\"}[$__rate_interval])) / sum(rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\"}[$__rate_interval])",
+          "legendFormat": "{{instance}} 5xx %",
           "refId": "B"
         }
       ]
@@ -192,340 +395,914 @@
       "type": "timeseries",
       "title": "Latency (P50 / P95 / P99)",
       "description": "Request duration percentiles aggregated across selected instances.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 10 },
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 10
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "s",
-          "custom": { "fillOpacity": 0, "lineWidth": 2, "spanNulls": false }
+          "custom": {
+            "fillOpacity": 0,
+            "lineWidth": 2,
+            "spanNulls": false
+          }
         },
         "overrides": []
       },
       "targets": [
-        { "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_highr_seconds_bucket{instance=~\"$analyzer_instance\"}[$__rate_interval])) by (le))", "legendFormat": "p50", "refId": "A" },
-        { "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_highr_seconds_bucket{instance=~\"$analyzer_instance\"}[$__rate_interval])) by (le))", "legendFormat": "p95", "refId": "B" },
-        { "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_highr_seconds_bucket{instance=~\"$analyzer_instance\"}[$__rate_interval])) by (le))", "legendFormat": "p99", "refId": "C" }
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_highr_seconds_bucket{instance=~\"$analyzer_instance\"}[$__rate_interval])) by (le, instance))",
+          "legendFormat": "{{instance}} p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_highr_seconds_bucket{instance=~\"$analyzer_instance\"}[$__rate_interval])) by (le, instance))",
+          "legendFormat": "{{instance}} p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_highr_seconds_bucket{instance=~\"$analyzer_instance\"}[$__rate_interval])) by (le, instance))",
+          "legendFormat": "{{instance}} p99",
+          "refId": "C"
+        }
       ]
     },
     {
       "type": "timeseries",
-      "title": "Process Resources",
-      "description": "Aggregated analyzer memory (RSS) and average CPU usage across selected instances.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 10 },
+      "title": "CPU Usage",
+      "description": "Analyzer process CPU usage per instance.",
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 10
+      },
       "fieldConfig": {
-        "defaults": {},
-        "overrides": [
-          {
-            "matcher": { "id": "byName", "options": "memory" },
-            "properties": [{ "id": "unit", "value": "bytes" }, { "id": "custom.axisPlacement", "value": "left" }]
-          },
-          {
-            "matcher": { "id": "byName", "options": "avg cpu %" },
-            "properties": [{ "id": "unit", "value": "percent" }, { "id": "custom.axisPlacement", "value": "right" }]
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "fillOpacity": 15,
+            "lineWidth": 2,
+            "spanNulls": false
           }
-        ]
+        },
+        "overrides": []
       },
       "targets": [
-        { "expr": "sum(process_resident_memory_bytes{job=\"analyzer\",instance=~\"$analyzer_instance\"})", "legendFormat": "memory", "refId": "A" },
-        { "expr": "avg(rate(process_cpu_seconds_total{job=\"analyzer\",instance=~\"$analyzer_instance\"}[$__rate_interval]) * 100)", "legendFormat": "avg cpu %", "refId": "B" }
+        {
+          "expr": "rate(process_cpu_seconds_total{job=\"analyzer\",instance=~\"$analyzer_instance\"}[$__rate_interval]) * 100",
+          "legendFormat": "{{instance}}",
+          "refId": "A"
+        }
       ]
     },
-
     {
       "type": "row",
       "title": "Logstash Pipeline",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
       "collapsed": false
     },
     {
       "type": "timeseries",
       "title": "Events In / Out Rate",
       "description": "Aggregated throughput. Output should track input; a growing gap means events are backing up.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 19 },
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 19
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "custom": { "fillOpacity": 15, "lineWidth": 2, "spanNulls": false }
+          "custom": {
+            "fillOpacity": 15,
+            "lineWidth": 2,
+            "spanNulls": false
+          }
         },
         "overrides": []
       },
       "targets": [
-        { "expr": "sum(logstash_stats_flow_input_current{instance=~\"$logstash_instance\"})", "legendFormat": "events in/s", "refId": "A" },
-        { "expr": "sum(logstash_stats_flow_output_current{instance=~\"$logstash_instance\"})", "legendFormat": "events out/s", "refId": "B" }
+        {
+          "expr": "logstash_stats_flow_input_current{instance=~\"$logstash_instance\"}",
+          "legendFormat": "{{instance}} events in/s",
+          "refId": "A"
+        },
+        {
+          "expr": "logstash_stats_flow_output_current{instance=~\"$logstash_instance\"}",
+          "legendFormat": "{{instance}} events out/s",
+          "refId": "B"
+        }
       ]
     },
     {
       "type": "gauge",
       "title": "Avg Worker Utilization",
       "description": "Average worker utilization across selected instances. Near 100% = saturated.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 4, "x": 8, "y": 19 },
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 8,
+        "y": 19
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
           "min": 0,
           "max": 100,
-          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }, { "value": 70, "color": "yellow" }, { "value": 90, "color": "red" }] }
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 70,
+                "color": "yellow"
+              },
+              {
+                "value": 90,
+                "color": "red"
+              }
+            ]
+          }
         },
         "overrides": []
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
       "targets": [
-        { "expr": "avg(logstash_stats_pipeline_flow_worker_utilization_current{instance=~\"$logstash_instance\"})", "legendFormat": "", "refId": "A" }
+        {
+          "expr": "avg(logstash_stats_pipeline_flow_worker_utilization_current{instance=~\"$logstash_instance\"})",
+          "legendFormat": "",
+          "refId": "A"
+        }
       ]
     },
     {
       "type": "gauge",
       "title": "Max JVM Heap Used",
       "description": "Worst-case JVM heap across selected instances. Alert at >85%.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 4, "x": 12, "y": 19 },
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 12,
+        "y": 19
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
           "min": 0,
           "max": 100,
-          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }, { "value": 70, "color": "yellow" }, { "value": 85, "color": "red" }] }
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 70,
+                "color": "yellow"
+              },
+              {
+                "value": 85,
+                "color": "red"
+              }
+            ]
+          }
         },
         "overrides": []
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
       "targets": [
-        { "expr": "max(logstash_stats_jvm_mem_heap_used_percent{instance=~\"$logstash_instance\"})", "legendFormat": "", "refId": "A" }
+        {
+          "expr": "max(logstash_stats_jvm_mem_heap_used_percent{instance=~\"$logstash_instance\"})",
+          "legendFormat": "",
+          "refId": "A"
+        }
       ]
     },
     {
       "type": "timeseries",
       "title": "CPU & Queue Backpressure",
       "description": "Average CPU and sum of queue backpressure across selected instances.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 19 },
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 19
+      },
       "fieldConfig": {
         "defaults": {},
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "avg cpu %" },
-            "properties": [{ "id": "unit", "value": "percent" }, { "id": "custom.axisPlacement", "value": "left" }]
+            "matcher": {
+              "id": "byName",
+              "options": "avg cpu %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "backpressure" },
-            "properties": [{ "id": "unit", "value": "short" }, { "id": "custom.axisPlacement", "value": "right" }, { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } }]
+            "matcher": {
+              "id": "byName",
+              "options": "backpressure"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              }
+            ]
           }
         ]
       },
       "targets": [
-        { "expr": "avg(logstash_stats_process_cpu_percent{instance=~\"$logstash_instance\"})", "legendFormat": "avg cpu %", "refId": "A" },
-        { "expr": "sum(logstash_stats_flow_queue_backpressure_current{instance=~\"$logstash_instance\"})", "legendFormat": "backpressure", "refId": "B" }
+        {
+          "expr": "logstash_stats_process_cpu_percent{instance=~\"$logstash_instance\"}",
+          "legendFormat": "{{instance}} avg cpu %",
+          "refId": "A"
+        },
+        {
+          "expr": "logstash_stats_flow_queue_backpressure_current{instance=~\"$logstash_instance\"}",
+          "legendFormat": "{{instance}} backpressure",
+          "refId": "B"
+        }
       ]
     },
     {
       "type": "timeseries",
       "title": "GC Pressure",
-      "description": "Old-gen GC time rate — the #1 cause of Logstash freezes. If old GC runs >5% of wall time, the pipeline is in trouble.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 27 },
+      "description": "Old-gen GC time rate \u00e2\u20ac\u201d the #1 cause of Logstash freezes. If old GC runs >5% of wall time, the pipeline is in trouble.",
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 27
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "ms",
-          "custom": { "fillOpacity": 15, "lineWidth": 2, "spanNulls": false }
+          "custom": {
+            "fillOpacity": 15,
+            "lineWidth": 2,
+            "spanNulls": false
+          }
         },
         "overrides": []
       },
       "targets": [
-        { "expr": "sum(rate(logstash_stats_jvm_gc_collection_time_millis_total{type=\"old\",instance=~\"$logstash_instance\"}[$__rate_interval]))", "legendFormat": "old gc ms/s", "refId": "A" },
-        { "expr": "sum(rate(logstash_stats_jvm_gc_collection_time_millis_total{type=\"young\",instance=~\"$logstash_instance\"}[$__rate_interval]))", "legendFormat": "young gc ms/s", "refId": "B" }
+        {
+          "expr": "rate(logstash_stats_jvm_gc_collection_time_millis_total{type=\"old\",instance=~\"$logstash_instance\"}[$__rate_interval])",
+          "legendFormat": "{{instance}} old gc ms/s",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(logstash_stats_jvm_gc_collection_time_millis_total{type=\"young\",instance=~\"$logstash_instance\"}[$__rate_interval])",
+          "legendFormat": "{{instance}} young gc ms/s",
+          "refId": "B"
+        }
       ]
     },
     {
       "type": "timeseries",
       "title": "Pipelines UP",
       "description": "Number of healthy pipeline instances over time.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 27 },
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 27
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
           "decimals": 0,
-          "custom": { "fillOpacity": 20, "lineWidth": 2, "spanNulls": false }
+          "custom": {
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "spanNulls": false
+          }
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "total" },
-            "properties": [{ "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } }, { "id": "color", "value": { "fixedColor": "white", "mode": "fixed" } }]
+            "matcher": {
+              "id": "byName",
+              "options": "total"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "white",
+                  "mode": "fixed"
+                }
+              }
+            ]
           }
         ]
       },
       "targets": [
-        { "expr": "count(logstash_stats_pipeline_up{instance=~\"$logstash_instance\"} == 1)", "legendFormat": "up", "refId": "A" },
-        { "expr": "count(logstash_stats_pipeline_up{instance=~\"$logstash_instance\"})", "legendFormat": "total", "refId": "B" }
+        {
+          "expr": "count(logstash_stats_pipeline_up{instance=~\"$logstash_instance\"} == 1)",
+          "legendFormat": "up",
+          "refId": "A"
+        },
+        {
+          "expr": "count(logstash_stats_pipeline_up{instance=~\"$logstash_instance\"})",
+          "legendFormat": "total",
+          "refId": "B"
+        }
       ]
     },
     {
       "type": "timeseries",
       "title": "Output Errors",
       "description": "Elasticsearch bulk request errors and non-retryable document failures. Any sustained growth means data loss.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 27 },
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 27
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "custom": { "fillOpacity": 10, "lineWidth": 2, "spanNulls": false, "thresholdsStyle": { "mode": "line" } },
-          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }, { "value": 1, "color": "red" }] }
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": false,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "red"
+              }
+            ]
+          }
         },
         "overrides": []
       },
       "targets": [
-        { "expr": "sum(rate(logstash_stats_pipeline_plugin_bulk_requests_errors{instance=~\"$logstash_instance\"}[$__rate_interval]))", "legendFormat": "bulk errors/s", "refId": "A" },
-        { "expr": "sum(rate(logstash_stats_pipeline_plugin_documents_non_retryable_failures{instance=~\"$logstash_instance\"}[$__rate_interval]))", "legendFormat": "non-retryable/s", "refId": "B" }
+        {
+          "expr": "rate(logstash_stats_pipeline_plugin_bulk_requests_errors{instance=~\"$logstash_instance\"}[$__rate_interval])",
+          "legendFormat": "{{instance}} bulk errors/s",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(logstash_stats_pipeline_plugin_documents_non_retryable_failures{instance=~\"$logstash_instance\"}[$__rate_interval])",
+          "legendFormat": "{{instance}} non-retryable/s",
+          "refId": "B"
+        }
       ]
     },
     {
       "type": "gauge",
       "title": "Open FDs",
       "description": "Worst-case file descriptor usage across instances. Approaching max = Logstash will crash.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 27 },
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 27
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
           "min": 0,
           "max": 1,
-          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }, { "value": 0.7, "color": "yellow" }, { "value": 0.9, "color": "red" }] }
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 0.7,
+                "color": "yellow"
+              },
+              {
+                "value": 0.9,
+                "color": "red"
+              }
+            ]
+          }
         },
         "overrides": []
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
       "targets": [
-        { "expr": "max(logstash_stats_process_open_file_descriptors{instance=~\"$logstash_instance\"} / logstash_stats_process_max_file_descriptors{instance=~\"$logstash_instance\"})", "legendFormat": "", "refId": "A" }
+        {
+          "expr": "max(logstash_stats_process_open_file_descriptors{instance=~\"$logstash_instance\"} / logstash_stats_process_max_file_descriptors{instance=~\"$logstash_instance\"})",
+          "legendFormat": "",
+          "refId": "A"
+        }
       ]
     },
     {
       "type": "row",
-      "title": "Elasticsearch (optional — requires elasticsearch-exporter)",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
+      "title": "Elasticsearch (optional \u00e2\u20ac\u201d requires elasticsearch-exporter)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      },
       "collapsed": true,
       "panels": [
         {
           "type": "stat",
           "title": "Cluster Health",
           "description": "Green = all shards assigned. Yellow = replicas missing. Red = primary shards missing.",
-          "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-          "gridPos": { "h": 4, "w": 4, "x": 0, "y": 35 },
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 0,
+            "y": 35
+          },
           "fieldConfig": {
             "defaults": {
               "mappings": [
-                { "type": "value", "options": { "1": { "text": "GREEN", "color": "green" }, "2": { "text": "YELLOW", "color": "yellow" }, "3": { "text": "RED", "color": "red" } } }
+                {
+                  "type": "value",
+                  "options": {
+                    "1": {
+                      "text": "GREEN",
+                      "color": "green"
+                    },
+                    "2": {
+                      "text": "YELLOW",
+                      "color": "yellow"
+                    },
+                    "3": {
+                      "text": "RED",
+                      "color": "red"
+                    }
+                  }
+                }
               ],
-              "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }, { "value": 2, "color": "yellow" }, { "value": 3, "color": "red" }] }
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "value": null,
+                    "color": "green"
+                  },
+                  {
+                    "value": 2,
+                    "color": "yellow"
+                  },
+                  {
+                    "value": 3,
+                    "color": "red"
+                  }
+                ]
+              }
             },
             "overrides": []
           },
-          "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
           "targets": [
-            { "expr": "elasticsearch_cluster_health_status{color=\"green\"} * 1 + elasticsearch_cluster_health_status{color=\"yellow\"} * 2 + elasticsearch_cluster_health_status{color=\"red\"} * 3", "legendFormat": "", "refId": "A", "instant": true }
+            {
+              "expr": "elasticsearch_cluster_health_status{color=\"green\"} * 1 + elasticsearch_cluster_health_status{color=\"yellow\"} * 2 + elasticsearch_cluster_health_status{color=\"red\"} * 3",
+              "legendFormat": "",
+              "refId": "A",
+              "instant": true
+            }
           ]
         },
         {
           "type": "stat",
           "title": "Nodes",
-          "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-          "gridPos": { "h": 4, "w": 2, "x": 4, "y": 35 },
-          "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }] } }, "overrides": [] },
-          "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 2,
+            "x": 4,
+            "y": 35
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "value": null,
+                    "color": "green"
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
           "targets": [
-            { "expr": "elasticsearch_cluster_health_number_of_nodes", "legendFormat": "", "refId": "A" }
+            {
+              "expr": "elasticsearch_cluster_health_number_of_nodes",
+              "legendFormat": "",
+              "refId": "A"
+            }
           ]
         },
         {
           "type": "timeseries",
           "title": "Search & Index Rate",
-          "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-          "gridPos": { "h": 8, "w": 6, "x": 6, "y": 35 },
-          "fieldConfig": { "defaults": { "unit": "ops", "custom": { "fillOpacity": 15, "lineWidth": 2, "spanNulls": false } }, "overrides": [] },
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 6,
+            "y": 35
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops",
+              "custom": {
+                "fillOpacity": 15,
+                "lineWidth": 2,
+                "spanNulls": false
+              }
+            },
+            "overrides": []
+          },
           "targets": [
-            { "expr": "sum(rate(elasticsearch_indices_search_query_total[$__rate_interval]))", "legendFormat": "search/s", "refId": "A" },
-            { "expr": "sum(rate(elasticsearch_indices_indexing_index_total[$__rate_interval]))", "legendFormat": "index/s", "refId": "B" }
+            {
+              "expr": "rate(elasticsearch_indices_search_query_total[$__rate_interval])",
+              "legendFormat": "{{instance}} search/s",
+              "refId": "A"
+            },
+            {
+              "expr": "rate(elasticsearch_indices_indexing_index_total[$__rate_interval])",
+              "legendFormat": "{{instance}} index/s",
+              "refId": "B"
+            }
           ]
         },
         {
           "type": "timeseries",
           "title": "JVM Heap Used",
-          "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-          "gridPos": { "h": 8, "w": 6, "x": 12, "y": 35 },
-          "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "fillOpacity": 15, "lineWidth": 2, "spanNulls": false } }, "overrides": [] },
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 12,
+            "y": 35
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "custom": {
+                "fillOpacity": 15,
+                "lineWidth": 2,
+                "spanNulls": false
+              }
+            },
+            "overrides": []
+          },
           "targets": [
-            { "expr": "sum(elasticsearch_jvm_memory_used_bytes{area=\"heap\"})", "legendFormat": "used", "refId": "A" },
-            { "expr": "sum(elasticsearch_jvm_memory_max_bytes{area=\"heap\"})", "legendFormat": "max", "refId": "B" }
+            {
+              "expr": "elasticsearch_jvm_memory_used_bytes{area=\"heap\"}",
+              "legendFormat": "{{instance}} used",
+              "refId": "A"
+            },
+            {
+              "expr": "elasticsearch_jvm_memory_max_bytes{area=\"heap\"}",
+              "legendFormat": "{{instance}} max",
+              "refId": "B"
+            }
           ]
         },
         {
           "type": "timeseries",
           "title": "Disk & Shards",
-          "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-          "gridPos": { "h": 8, "w": 6, "x": 18, "y": 35 },
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 18,
+            "y": 35
+          },
           "fieldConfig": {
             "defaults": {},
             "overrides": [
-              { "matcher": { "id": "byName", "options": "disk used" }, "properties": [{ "id": "unit", "value": "bytes" }, { "id": "custom.axisPlacement", "value": "left" }] },
-              { "matcher": { "id": "byName", "options": "unassigned shards" }, "properties": [{ "id": "unit", "value": "short" }, { "id": "custom.axisPlacement", "value": "right" }, { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] }
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "disk used"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "bytes"
+                  },
+                  {
+                    "id": "custom.axisPlacement",
+                    "value": "left"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "unassigned shards"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "custom.axisPlacement",
+                    "value": "right"
+                  },
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "red",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
             ]
           },
           "targets": [
-            { "expr": "sum(elasticsearch_filesystem_data_size_bytes - elasticsearch_filesystem_data_free_bytes)", "legendFormat": "disk used", "refId": "A" },
-            { "expr": "elasticsearch_cluster_health_unassigned_shards", "legendFormat": "unassigned shards", "refId": "B" }
+            {
+              "expr": "elasticsearch_filesystem_data_size_bytes - elasticsearch_filesystem_data_free_bytes",
+              "legendFormat": "{{instance}} disk used",
+              "refId": "A"
+            },
+            {
+              "expr": "elasticsearch_cluster_health_unassigned_shards",
+              "legendFormat": "unassigned shards",
+              "refId": "B"
+            }
           ]
         },
         {
           "type": "timeseries",
           "title": "ES CPU Usage",
           "description": "Elasticsearch process CPU percentage.",
-          "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 43 },
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 43
+          },
           "fieldConfig": {
             "defaults": {
               "unit": "percent",
-              "custom": { "fillOpacity": 20, "lineWidth": 2, "spanNulls": false }
+              "custom": {
+                "fillOpacity": 20,
+                "lineWidth": 2,
+                "spanNulls": false
+              }
             },
             "overrides": []
           },
           "targets": [
-            { "expr": "elasticsearch_process_cpu_percent", "legendFormat": "cpu %", "refId": "A" }
+            {
+              "expr": "elasticsearch_process_cpu_percent",
+              "legendFormat": "cpu %",
+              "refId": "A"
+            }
           ]
         },
         {
           "type": "timeseries",
           "title": "DLQ Document Count",
           "description": "Documents in the dead-letter index. Growth means the analyzer is producing unindexable records.",
-          "datasource": { "uid": "alo-elasticsearch", "type": "elasticsearch" },
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 43 },
+          "datasource": {
+            "uid": "alo-elasticsearch",
+            "type": "elasticsearch"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 43
+          },
           "fieldConfig": {
             "defaults": {
-              "custom": { "fillOpacity": 10, "lineWidth": 2, "thresholdsStyle": { "mode": "line" } },
-              "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }, { "value": 1, "color": "red" }] }
+              "custom": {
+                "fillOpacity": 10,
+                "lineWidth": 2,
+                "thresholdsStyle": {
+                  "mode": "line"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "value": null,
+                    "color": "green"
+                  },
+                  {
+                    "value": 1,
+                    "color": "red"
+                  }
+                ]
+              }
             },
             "overrides": []
           },
           "targets": [
             {
-              "datasource": { "uid": "alo-elasticsearch", "type": "elasticsearch" },
+              "datasource": {
+                "uid": "alo-elasticsearch",
+                "type": "elasticsearch"
+              },
               "query": "_index:logs-alo.dead_letter*",
-              "metrics": [{ "type": "count", "id": "1" }],
-              "bucketAggs": [{ "type": "date_histogram", "field": "@timestamp", "id": "2", "settings": { "interval": "auto" } }],
+              "metrics": [
+                {
+                  "type": "count",
+                  "id": "1"
+                }
+              ],
+              "bucketAggs": [
+                {
+                  "type": "date_histogram",
+                  "field": "@timestamp",
+                  "id": "2",
+                  "settings": {
+                    "interval": "auto"
+                  }
+                }
+              ],
               "refId": "A",
               "alias": "DLQ docs"
             }
           ],
           "options": {
-            "legend": { "displayMode": "list", "placement": "bottom" },
-            "tooltip": { "mode": "single" }
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
           }
         }
       ]
     }
   ],
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "links": [
     {
       "title": "Stress Analysis",
