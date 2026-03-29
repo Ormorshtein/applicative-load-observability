@@ -403,11 +403,11 @@
     },
     {
       "type": "row",
-      "title": "Elasticsearch",
+      "title": "Elasticsearch (optional — requires elasticsearch-exporter)",
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
-      "collapsed": false
-    },
-    {
+      "collapsed": true,
+      "panels": [
+        {
           "type": "stat",
           "title": "Cluster Health",
           "description": "Green = all shards assigned. Yellow = replicas missing. Red = primary shards missing.",
@@ -522,6 +522,8 @@
             "tooltip": { "mode": "single" }
           }
         }
+      ]
+    }
   ],
   "annotations": { "list": [] },
   "links": [
