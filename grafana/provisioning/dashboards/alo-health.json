@@ -395,12 +395,12 @@
       },
       "targets": [
         {
-          "expr": "rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\",status=~\"4xx\"}[$__rate_interval])) / sum(rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\"}[$__rate_interval])",
+          "expr": "rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\",status=~\"4xx\"}[$__rate_interval]) / sum(rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\"}[$__rate_interval]))",
           "legendFormat": "{{instance}} 4xx %",
           "refId": "A"
         },
         {
-          "expr": "rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\",status=~\"5xx\"}[$__rate_interval])) / sum(rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\"}[$__rate_interval])",
+          "expr": "rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\",status=~\"5xx\"}[$__rate_interval]) / sum(rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\"}[$__rate_interval]))",
           "legendFormat": "{{instance}} 5xx %",
           "refId": "B"
         }
