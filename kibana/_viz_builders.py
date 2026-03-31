@@ -299,7 +299,7 @@ def mk_datatable(vis_id: str, title: str, bucket_field: str,
                  bucket_label: str, metrics: list[tuple],
                  size: int = 10) -> tuple[str, dict]:
     cols = {
-        "bucket": {"label": bucket_label, "dataType": "string",
+        "bucket": {"label": bucket_label, "customLabel": True, "dataType": "string",
                    "operationType": "terms", "sourceField": bucket_field, "isBucketed": True,
                    "params": {"size": size, "orderBy": {"type": "column", "columnId": metrics[0][0]},
                               "orderDirection": "desc", "otherBucket": False}},
@@ -307,7 +307,8 @@ def mk_datatable(vis_id: str, title: str, bucket_field: str,
     col_order = ["bucket"]
     vis_columns = [{"columnId": "bucket"}]
     for col_id, label, field, op in metrics:
-        c = {"label": label, "dataType": "number", "operationType": op, "isBucketed": False}
+        c = {"label": label, "customLabel": True, "dataType": "number",
+             "operationType": op, "isBucketed": False}
         c["sourceField"] = "___records___" if op == "count" else field
         cols[col_id] = c
         col_order.append(col_id)
