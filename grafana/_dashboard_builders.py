@@ -12,6 +12,7 @@ from _dashboards import (
     mk_bar,
     mk_cpu_panel,
     mk_pie,
+    mk_stacked_bar,
     mk_stat,
     mk_table,
     mk_text,
@@ -207,20 +208,62 @@ def build_cost_indicators_dashboard() -> dict:
                               query=query))
     y += _KPI_H
 
-    # Score Breakdown by Template
+    # ── Section 2: Score Composition ──────────────────────────────────
+    panels.append(_section_header("Score Composition", y))
+    y += _HDR_H
+
+    # Stacked bar: what drives the base score per template
+    panels.append(mk_stacked_bar(
+        "Score Composition by Template", "request.template", [
+            ("Took", "stress.components.took", "avg"),
+            ("Shards", "stress.components.shards", "avg"),
+            ("Hits", "stress.components.hits", "avg"),
+            ("Bonus", "stress.components.bonus", "avg"),
+        ], {"x": 0, "y": y, "w": _FULL_W, "h": _BAR_H}))
+    y += _BAR_H
+
+    # Base vs Final score + Multiplier breakdown
+    panels.append(mk_table(
+        "Base vs Final Score by Template", "request.template", "Template", [
+            ("Requests", None, "count"),
+            ("Avg Base", "stress.base", "avg"),
+            ("Avg Multiplier", "stress.multiplier", "avg"),
+            ("Avg Final Score", "stress.score", "avg"),
+            ("Avg Indicators", "stress.cost_indicator_count", "avg"),
+        ], {"x": 0, "y": y, "w": _HALF_W, "h": _BAR_H}))
+    panels.append(mk_table(
+        "Top Templates by Cost Indicator Count",
+        "request.template", "Template", [
+            ("Avg Indicators", "stress.cost_indicator_count", "avg"),
+            ("Avg Multiplier", "stress.multiplier", "avg"),
+            ("Avg Stress", "stress.score", "avg"),
+            ("Requests", None, "count"),
+        ], {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _BAR_H}))
+    y += _BAR_H
+
+    # ── Section 3: Score Breakdown Table ────────────────────────────
+    panels.append(_section_header("Score Breakdown", y))
+    y += _HDR_H
+
     panels.append(mk_table(
         "Score Breakdown by Template", "request.template", "Template", [
-            ("Avg Score", "stress.score", "avg"),
-            ("Avg Took", "stress.components.took", "avg"),
-            ("Avg Shards", "stress.components.shards", "avg"),
-            ("Avg Hits", "stress.components.hits", "avg"),
-            ("Avg Bonus", "stress.components.bonus", "avg"),
-            ("Multiplier", "stress.multiplier", "avg"),
             ("Requests", None, "count"),
-        ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}))
-    y += _PANEL_H
+            ("Avg Score", "stress.score", "avg"),
+            ("Multiplier", "stress.multiplier", "avg"),
+            ("Took (weighted)", "stress.components.took", "avg"),
+            ("ES Latency (ms)", "response.es_took_ms", "avg"),
+            ("Shards (weighted)", "stress.components.shards", "avg"),
+            ("Shards (raw)", "response.shards_total", "avg"),
+            ("Hits (weighted)", "stress.components.hits", "avg"),
+            ("Hits (raw)", "response.hits", "avg"),
+            ("Bonus", "stress.components.bonus", "avg"),
+        ], {"x": 0, "y": y, "w": _FULL_W, "h": _BAR_H}))
+    y += _BAR_H
 
-    # Score Components Over Time
+    # ── Section 4: Trends ───────────────────────────────────────────
+    panels.append(_section_header("Trends", y))
+    y += _HDR_H
+
     panels.append(mk_timeseries_multi(
         "Score Components Over Time", [
             ("Avg Took", "stress.components.took", "avg", ""),
@@ -231,59 +274,62 @@ def build_cost_indicators_dashboard() -> dict:
         series_type="line", stacked=True))
     y += _PANEL_H
 
-    # Indicator overview
-    panels.append(mk_bar(
-        "Cost Indicator Types - Frequency",
-        "stress.cost_indicator_names", None, "count", "Count",
-        {"x": 0, "y": y, "w": 10, "h": _BAR_H}))
     panels.append(mk_timeseries_multi(
         "Flagged vs Total Requests Over Time", [
             ("Flagged Requests", None, "count",
              "stress.cost_indicator_count:[1 TO *]"),
             ("Total Requests", None, "count", ""),
-        ], {"x": 10, "y": y, "w": 14, "h": _BAR_H}, series_type="line"))
+        ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
+        series_type="line"))
+    y += _PANEL_H
+
+    # ── Section 5: Cost Indicator Deep Dive ─────────────────────────
+    panels.append(_section_header("Cost Indicator Deep Dive", y))
+    y += _HDR_H
+
+    panels.append(mk_bar(
+        "Cost Indicator Types - Frequency",
+        "stress.cost_indicator_names", None, "count", "Count",
+        {"x": 0, "y": y, "w": _HALF_W, "h": _BAR_H}))
+    panels.append(mk_bar(
+        "Stress Multiplier by Application",
+        "identity.applicative_provider", "stress.multiplier", "avg",
+        "Avg Stress Multiplier",
+        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _BAR_H}, size=8))
     y += _BAR_H
 
-    # Clause counts
+    panels.append(mk_bar(
+        "Cost Indicator Count by Target Index",
+        "request.target", "stress.cost_indicator_count", "avg",
+        "Avg Indicator Count",
+        {"x": 0, "y": y, "w": _HALF_W, "h": _BAR_H}, size=8))
+    panels.append(mk_bar(
+        "Stress Multiplier by Target Index",
+        "request.target", "stress.multiplier", "avg",
+        "Avg Multiplier",
+        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _BAR_H}, size=8))
+    y += _BAR_H
+
+    # ── Section 6: Clause Patterns ──────────────────────────────────
+    panels.append(_section_header("Clause Patterns", y))
+    y += _HDR_H
+
     panels.append(mk_timeseries_multi(
         "Clause Count Trends", [
             ("Avg terms_values", "clause_counts.terms_values", "avg", ""),
             ("Avg agg", "clause_counts.agg", "avg", ""),
             ("Avg script", "clause_counts.script", "avg", ""),
             ("Avg wildcard", "clause_counts.wildcard", "avg", ""),
-        ], {"x": 0, "y": y, "w": 14, "h": _BAR_H}, series_type="line"))
+        ], {"x": 0, "y": y, "w": _HALF_W + 2, "h": _BAR_H},
+        series_type="line"))
     panels.append(mk_timeseries_multi(
         "Bool Clause Breakdown Over Time", [
             ("Avg must", "clause_counts.bool_must", "avg", ""),
             ("Avg should", "clause_counts.bool_should", "avg", ""),
             ("Avg filter", "clause_counts.bool_filter", "avg", ""),
             ("Avg must_not", "clause_counts.bool_must_not", "avg", ""),
-        ], {"x": 14, "y": y, "w": 10, "h": _BAR_H},
+        ], {"x": _HALF_W + 2, "y": y, "w": _HALF_W - 2, "h": _BAR_H},
         series_type="line", stacked=True))
-    y += _BAR_H
-
-    # Template table
-    panels.append(mk_table(
-        "Top Templates by Cost Indicator Count",
-        "request.template", "Template", [
-            ("Avg Indicators", "stress.cost_indicator_count", "avg"),
-            ("Requests", None, "count"),
-            ("Avg Multiplier", "stress.multiplier", "avg"),
-            ("Avg Stress", "stress.score", "avg"),
-        ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}))
-    y += _PANEL_H
-
-    # By dimension
-    panels.append(mk_bar(
-        "Stress Multiplier by Application",
-        "identity.applicative_provider", "stress.multiplier", "avg",
-        "Avg Stress Multiplier",
-        {"x": 0, "y": y, "w": _HALF_W, "h": _BAR_H}, size=8))
-    panels.append(mk_bar(
-        "Cost Indicator Count by Target Index",
-        "request.target", "stress.cost_indicator_count", "avg",
-        "Avg Indicator Count",
-        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _BAR_H}, size=8))
 
     return _wrap_dashboard(
         uid="alo-cost-indicators",

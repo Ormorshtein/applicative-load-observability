@@ -194,13 +194,16 @@ def build_ci_visualizations() -> list[tuple[str, dict]]:
 
         mk_datatable("alo-ci-table-breakdown", "Score Breakdown by Template",
                      "request.template", "Template", [
-                         ("avg_score",  "Avg Score",     "stress.score",             "average"),
-                         ("avg_took",   "Avg Took",      "stress.components.took",   "average"),
-                         ("avg_shards", "Avg Shards",    "stress.components.shards", "average"),
-                         ("avg_hits",   "Avg Hits",      "stress.components.hits",   "average"),
-                         ("avg_bonus",  "Avg Bonus",     "stress.components.bonus",  "average"),
-                         ("avg_mult",   "Multiplier",    "stress.multiplier",        "average"),
-                         ("count",      "Requests",      None,                       "count"),
+                         ("count",          "Requests",          None,                       "count"),
+                         ("avg_score",      "Avg Score",         "stress.score",             "average"),
+                         ("avg_mult",       "Multiplier",        "stress.multiplier",        "average"),
+                         ("avg_took_w",     "Took (weighted)",   "stress.components.took",   "average"),
+                         ("avg_took_raw",   "ES Latency (ms)",   "response.es_took_ms",      "average"),
+                         ("avg_shards_w",   "Shards (weighted)", "stress.components.shards", "average"),
+                         ("avg_shards_raw", "Shards (raw)",      "response.shards_total",    "average"),
+                         ("avg_hits_w",     "Hits (weighted)",   "stress.components.hits",   "average"),
+                         ("avg_hits_raw",   "Hits (raw)",        "response.hits",            "average"),
+                         ("avg_bonus",      "Bonus",             "stress.components.bonus",  "average"),
                      ]),
 
         mk_ts_multi("alo-ci-ts-components", "Score Components Over Time", [

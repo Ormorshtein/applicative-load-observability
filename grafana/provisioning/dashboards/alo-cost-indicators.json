@@ -249,17 +249,36 @@
     },
     {
       "id": 5,
-      "title": "Score Breakdown by Template",
-      "type": "table",
+      "title": "Score Composition",
+      "type": "text",
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 2
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### Score Composition"
+      }
+    },
+    {
+      "id": 6,
+      "title": "Score Composition by Template",
+      "type": "barchart",
       "datasource": {
         "type": "elasticsearch",
         "uid": "alo-elasticsearch"
       },
       "gridPos": {
         "x": 0,
-        "y": 5,
+        "y": 7,
         "w": 24,
-        "h": 8
+        "h": 10
       },
       "targets": [
         {
@@ -273,36 +292,151 @@
             {
               "type": "avg",
               "id": "1",
-              "field": "stress.score"
-            },
-            {
-              "type": "avg",
-              "id": "2",
               "field": "stress.components.took"
             },
             {
               "type": "avg",
-              "id": "3",
+              "id": "2",
               "field": "stress.components.shards"
             },
             {
               "type": "avg",
-              "id": "4",
+              "id": "3",
               "field": "stress.components.hits"
             },
             {
               "type": "avg",
-              "id": "5",
+              "id": "4",
               "field": "stress.components.bonus"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.template",
+              "id": "99",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "stacking": "normal",
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average stress.components.took"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Took"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average stress.components.shards"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Shards"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average stress.components.hits"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Hits"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average stress.components.bonus"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Bonus"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "title": "Base vs Final Score by Template",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 17,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
             },
             {
               "type": "avg",
-              "id": "6",
+              "id": "2",
+              "field": "stress.base"
+            },
+            {
+              "type": "avg",
+              "id": "3",
               "field": "stress.multiplier"
             },
             {
-              "type": "count",
-              "id": "7"
+              "type": "avg",
+              "id": "4",
+              "field": "stress.score"
+            },
+            {
+              "type": "avg",
+              "id": "5",
+              "field": "stress.cost_indicator_count"
             }
           ],
           "bucketAggs": [
@@ -324,7 +458,7 @@
         "showHeader": true,
         "sortBy": [
           {
-            "displayName": "Avg Score",
+            "displayName": "Requests",
             "desc": true
           }
         ]
@@ -335,60 +469,24 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Average stress.score"
+              "options": "Count"
             },
             "properties": [
               {
                 "id": "displayName",
-                "value": "Avg Score"
+                "value": "Requests"
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "Average stress.components.took"
+              "options": "Average stress.base"
             },
             "properties": [
               {
                 "id": "displayName",
-                "value": "Avg Took"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Average stress.components.shards"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Avg Shards"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Average stress.components.hits"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Avg Hits"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Average stress.components.bonus"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Avg Bonus"
+                "value": "Avg Base"
               }
             ]
           },
@@ -400,7 +498,140 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Multiplier"
+                "value": "Avg Multiplier"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average stress.score"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Avg Final Score"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average stress.cost_indicator_count"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Avg Indicators"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "title": "Top Templates by Cost Indicator Count",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 17,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "stress.cost_indicator_count"
+            },
+            {
+              "type": "avg",
+              "id": "2",
+              "field": "stress.multiplier"
+            },
+            {
+              "type": "avg",
+              "id": "3",
+              "field": "stress.score"
+            },
+            {
+              "type": "count",
+              "id": "4"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.template",
+              "id": "99",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Avg Indicators",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average stress.cost_indicator_count"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Avg Indicators"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average stress.multiplier"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Avg Multiplier"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average stress.score"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Avg Stress"
               }
             ]
           },
@@ -420,7 +651,268 @@
       }
     },
     {
-      "id": 6,
+      "id": 9,
+      "title": "Score Breakdown",
+      "type": "text",
+      "gridPos": {
+        "x": 0,
+        "y": 27,
+        "w": 24,
+        "h": 2
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### Score Breakdown"
+      }
+    },
+    {
+      "id": 10,
+      "title": "Score Breakdown by Template",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 29,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            },
+            {
+              "type": "avg",
+              "id": "2",
+              "field": "stress.score"
+            },
+            {
+              "type": "avg",
+              "id": "3",
+              "field": "stress.multiplier"
+            },
+            {
+              "type": "avg",
+              "id": "4",
+              "field": "stress.components.took"
+            },
+            {
+              "type": "avg",
+              "id": "5",
+              "field": "response.es_took_ms"
+            },
+            {
+              "type": "avg",
+              "id": "6",
+              "field": "stress.components.shards"
+            },
+            {
+              "type": "avg",
+              "id": "7",
+              "field": "response.shards_total"
+            },
+            {
+              "type": "avg",
+              "id": "8",
+              "field": "stress.components.hits"
+            },
+            {
+              "type": "avg",
+              "id": "9",
+              "field": "response.hits"
+            },
+            {
+              "type": "avg",
+              "id": "10",
+              "field": "stress.components.bonus"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.template",
+              "id": "99",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Requests",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Count"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Requests"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average stress.score"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Avg Score"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average stress.multiplier"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Multiplier"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average stress.components.took"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Took (weighted)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average response.es_took_ms"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "ES Latency (ms)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average stress.components.shards"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Shards (weighted)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average response.shards_total"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Shards (raw)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average stress.components.hits"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Hits (weighted)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average response.hits"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Hits (raw)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average stress.components.bonus"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Bonus"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "title": "Trends",
+      "type": "text",
+      "gridPos": {
+        "x": 0,
+        "y": 39,
+        "w": 24,
+        "h": 2
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### Trends"
+      }
+    },
+    {
+      "id": 12,
       "title": "Score Components Over Time",
       "type": "timeseries",
       "datasource": {
@@ -429,7 +921,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 13,
+        "y": 41,
         "w": 24,
         "h": 8
       },
@@ -562,65 +1054,7 @@
       }
     },
     {
-      "id": 7,
-      "title": "Cost Indicator Types - Frequency",
-      "type": "barchart",
-      "datasource": {
-        "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 21,
-        "w": 10,
-        "h": 10
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "A",
-          "metrics": [
-            {
-              "type": "count",
-              "id": "1"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "stress.cost_indicator_names",
-              "id": "2",
-              "settings": {
-                "size": "10",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            }
-          ]
-        }
-      ],
-      "options": {
-        "orientation": "horizontal",
-        "showValue": "always",
-        "legend": {
-          "displayMode": "hidden"
-        },
-        "tooltip": {
-          "mode": "single"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      }
-    },
-    {
-      "id": 8,
+      "id": 13,
       "title": "Flagged vs Total Requests Over Time",
       "type": "timeseries",
       "datasource": {
@@ -628,10 +1062,10 @@
         "uid": "alo-elasticsearch"
       },
       "gridPos": {
-        "x": 10,
-        "y": 21,
-        "w": 14,
-        "h": 10
+        "x": 0,
+        "y": 49,
+        "w": 24,
+        "h": 8
       },
       "targets": [
         {
@@ -705,7 +1139,280 @@
       }
     },
     {
-      "id": 9,
+      "id": 14,
+      "title": "Cost Indicator Deep Dive",
+      "type": "text",
+      "gridPos": {
+        "x": 0,
+        "y": 57,
+        "w": 24,
+        "h": 2
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### Cost Indicator Deep Dive"
+      }
+    },
+    {
+      "id": 15,
+      "title": "Cost Indicator Types - Frequency",
+      "type": "barchart",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 59,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "stress.cost_indicator_names",
+              "id": "2",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "showValue": "always",
+        "legend": {
+          "displayMode": "hidden"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 16,
+      "title": "Stress Multiplier by Application",
+      "type": "barchart",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 59,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "stress.multiplier"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "identity.applicative_provider",
+              "id": "2",
+              "settings": {
+                "size": "8",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "showValue": "always",
+        "legend": {
+          "displayMode": "hidden"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 17,
+      "title": "Cost Indicator Count by Target Index",
+      "type": "barchart",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 69,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "stress.cost_indicator_count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.target",
+              "id": "2",
+              "settings": {
+                "size": "8",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "showValue": "always",
+        "legend": {
+          "displayMode": "hidden"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 18,
+      "title": "Stress Multiplier by Target Index",
+      "type": "barchart",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 69,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "stress.multiplier"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.target",
+              "id": "2",
+              "settings": {
+                "size": "8",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "showValue": "always",
+        "legend": {
+          "displayMode": "hidden"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 19,
+      "title": "Clause Patterns",
+      "type": "text",
+      "gridPos": {
+        "x": 0,
+        "y": 79,
+        "w": 24,
+        "h": 2
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### Clause Patterns"
+      }
+    },
+    {
+      "id": 20,
       "title": "Clause Count Trends",
       "type": "timeseries",
       "datasource": {
@@ -714,7 +1421,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 31,
+        "y": 81,
         "w": 14,
         "h": 10
       },
@@ -844,7 +1551,7 @@
       }
     },
     {
-      "id": 10,
+      "id": 21,
       "title": "Bool Clause Breakdown Over Time",
       "type": "timeseries",
       "datasource": {
@@ -853,7 +1560,7 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 31,
+        "y": 81,
         "w": 10,
         "h": 10
       },
@@ -982,245 +1689,6 @@
             }
           }
         },
-        "overrides": []
-      }
-    },
-    {
-      "id": 11,
-      "title": "Top Templates by Cost Indicator Count",
-      "type": "table",
-      "datasource": {
-        "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 41,
-        "w": 24,
-        "h": 8
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "A",
-          "metrics": [
-            {
-              "type": "avg",
-              "id": "1",
-              "field": "stress.cost_indicator_count"
-            },
-            {
-              "type": "count",
-              "id": "2"
-            },
-            {
-              "type": "avg",
-              "id": "3",
-              "field": "stress.multiplier"
-            },
-            {
-              "type": "avg",
-              "id": "4",
-              "field": "stress.score"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "request.template",
-              "id": "99",
-              "settings": {
-                "size": "10",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            }
-          ]
-        }
-      ],
-      "options": {
-        "showHeader": true,
-        "sortBy": [
-          {
-            "displayName": "Avg Indicators",
-            "desc": true
-          }
-        ]
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Average stress.cost_indicator_count"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Avg Indicators"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Count"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Requests"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Average stress.multiplier"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Avg Multiplier"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Average stress.score"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Avg Stress"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": 12,
-      "title": "Stress Multiplier by Application",
-      "type": "barchart",
-      "datasource": {
-        "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 49,
-        "w": 12,
-        "h": 10
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "A",
-          "metrics": [
-            {
-              "type": "avg",
-              "id": "1",
-              "field": "stress.multiplier"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "identity.applicative_provider",
-              "id": "2",
-              "settings": {
-                "size": "8",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            }
-          ]
-        }
-      ],
-      "options": {
-        "orientation": "horizontal",
-        "showValue": "always",
-        "legend": {
-          "displayMode": "hidden"
-        },
-        "tooltip": {
-          "mode": "single"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      }
-    },
-    {
-      "id": 13,
-      "title": "Cost Indicator Count by Target Index",
-      "type": "barchart",
-      "datasource": {
-        "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 49,
-        "w": 12,
-        "h": 10
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "A",
-          "metrics": [
-            {
-              "type": "avg",
-              "id": "1",
-              "field": "stress.cost_indicator_count"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "request.target",
-              "id": "2",
-              "settings": {
-                "size": "8",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            }
-          ]
-        }
-      ],
-      "options": {
-        "orientation": "horizontal",
-        "showValue": "always",
-        "legend": {
-          "displayMode": "hidden"
-        },
-        "tooltip": {
-          "mode": "single"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {},
         "overrides": []
       }
     }

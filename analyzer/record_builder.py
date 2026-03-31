@@ -217,10 +217,10 @@ def _compute_stress(
         clause_counts["hits_lower_bound"] = int(hits_lower_bound)
         geo_vertex_count = parse_geo_vertex_count(raw.request_body)
         clause_counts["geo_vertex_count"] = geo_vertex_count
-        cost_indicators, stress_multiplier = evaluate_cost_indicators(clause_counts)
+        cost_indicators, stress_multiplier, indicator_multipliers = evaluate_cost_indicators(clause_counts)
     else:
         clause_counts = {k: 0 for k in _ALL_COUNT_FIELDS}
-        cost_indicators, stress_multiplier = {}, 1.0
+        cost_indicators, stress_multiplier, indicator_multipliers = {}, 1.0, {}
 
     ctx = StressContext(
         es_took_ms=es_took_ms,
@@ -233,7 +233,7 @@ def _compute_stress(
         operation, ctx, stress_multiplier, clause_counts,
     )
     return (clause_counts, cost_indicators, stress_multiplier,
-            geo_vertex_count, score, bonuses, components)
+            indicator_multipliers, geo_vertex_count, score, bonuses, components)
 
 
 def _build_request_section(
@@ -290,7 +290,7 @@ def build_record(raw: RawFields) -> dict[str, Any] | list[dict[str, Any]]:
     )
 
     (clause_counts, cost_indicators, stress_multiplier,
-     geo_vertex_count, score, bonuses, components) = _compute_stress(
+     indicator_multipliers, geo_vertex_count, score, bonuses, components) = _compute_stress(
         operation, raw, es_took_ms, hits, hits_lower_bound,
         shards_total, docs_affected,
     )
@@ -298,8 +298,8 @@ def build_record(raw: RawFields) -> dict[str, Any] | list[dict[str, Any]]:
     return _assemble_record(
         raw, operation, target, template, es_took_ms,
         hits, shards_total, docs_affected, clause_counts,
-        cost_indicators, stress_multiplier, geo_vertex_count,
-        score, bonuses, components,
+        cost_indicators, stress_multiplier, indicator_multipliers,
+        geo_vertex_count, score, bonuses, components,
     )
 
 
@@ -307,7 +307,8 @@ def _assemble_record(
     raw: RawFields, operation: str, target: str, template: str,
     es_took_ms: float, hits: int, shards_total: int, docs_affected: int,
     clause_counts: dict[str, int], cost_indicators: dict[str, int],
-    stress_multiplier: float, geo_vertex_count: int,
+    stress_multiplier: float, indicator_multipliers: dict[str, float],
+    geo_vertex_count: int,
     score: float, bonuses: dict[str, float], components: dict[str, float],
     extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -347,6 +348,7 @@ def _assemble_record(
             "cost_indicator_count": len(cost_indicators),
             "cost_indicator_names": (list(cost_indicators.keys())
                                      or ["unflagged"]),
+            "cost_indicator_multipliers": indicator_multipliers,
         },
     }
     if extra:
@@ -373,7 +375,7 @@ def _build_msearch_records(raw: RawFields) -> list[dict[str, Any]]:
         clause_counts["hits_lower_bound"] = int(hits_lower_bound)
         geo_vertex_count = parse_geo_vertex_count(body)
         clause_counts["geo_vertex_count"] = geo_vertex_count
-        cost_indicators, stress_multiplier = evaluate_cost_indicators(clause_counts)
+        cost_indicators, stress_multiplier, indicator_multipliers = evaluate_cost_indicators(clause_counts)
 
         ctx = StressContext(
             es_took_ms=es_took_ms,
@@ -409,8 +411,8 @@ def _build_msearch_records(raw: RawFields) -> list[dict[str, Any]]:
         record = _assemble_record(
             sub_raw, "_msearch", target, template, es_took_ms,
             hits, shards_total, 0, clause_counts,
-            cost_indicators, stress_multiplier, geo_vertex_count,
-            score, bonuses, components,
+            cost_indicators, stress_multiplier, indicator_multipliers,
+            geo_vertex_count, score, bonuses, components,
             extra={"msearch": {
                 "request_id": request_id,
                 "batch_size": batch_size,

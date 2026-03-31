@@ -18,14 +18,14 @@ def _zero_counts() -> dict[str, int]:
 
 class TestEvaluateCostIndicators:
     def test_no_indicators(self):
-        indicators, mult = evaluate_cost_indicators(_zero_counts())
+        indicators, mult, _mults = evaluate_cost_indicators(_zero_counts())
         assert indicators == {}
         assert mult == 1.0
 
     def test_has_script(self):
         c = _zero_counts()
         c["script_clause_count"] = 3
-        indicators, mult = evaluate_cost_indicators(c)
+        indicators, mult, _mults = evaluate_cost_indicators(c)
         assert "has_script" in indicators
         assert indicators["has_script"] == 3
         assert mult == pytest.approx(1.5)
@@ -33,7 +33,7 @@ class TestEvaluateCostIndicators:
     def test_has_runtime_mapping(self):
         c = _zero_counts()
         c["runtime_mapping_count"] = 2
-        indicators, mult = evaluate_cost_indicators(c)
+        indicators, mult, _mults = evaluate_cost_indicators(c)
         assert "has_runtime_mapping" in indicators
         assert indicators["has_runtime_mapping"] == 2
         assert mult == pytest.approx(1.5)
@@ -41,7 +41,7 @@ class TestEvaluateCostIndicators:
     def test_has_wildcard(self):
         c = _zero_counts()
         c["wildcard_clause_count"] = 4
-        indicators, mult = evaluate_cost_indicators(c)
+        indicators, mult, _mults = evaluate_cost_indicators(c)
         assert "has_wildcard" in indicators
         assert indicators["has_wildcard"] == 4
         assert mult == pytest.approx(1.3)
@@ -49,7 +49,7 @@ class TestEvaluateCostIndicators:
     def test_has_nested(self):
         c = _zero_counts()
         c["nested_clause_count"] = 1
-        indicators, mult = evaluate_cost_indicators(c)
+        indicators, mult, _mults = evaluate_cost_indicators(c)
         assert "has_nested" in indicators
         assert indicators["has_nested"] == 1
         assert mult == pytest.approx(1.3)
@@ -57,7 +57,7 @@ class TestEvaluateCostIndicators:
     def test_has_fuzzy(self):
         c = _zero_counts()
         c["fuzzy_clause_count"] = 1
-        indicators, mult = evaluate_cost_indicators(c)
+        indicators, mult, _mults = evaluate_cost_indicators(c)
         assert "has_fuzzy" in indicators
         assert indicators["has_fuzzy"] == 1
         assert mult == pytest.approx(1.2)
@@ -65,7 +65,7 @@ class TestEvaluateCostIndicators:
     def test_has_geo_distance(self):
         c = _zero_counts()
         c["geo_distance_count"] = 2
-        indicators, mult = evaluate_cost_indicators(c)
+        indicators, mult, _mults = evaluate_cost_indicators(c)
         assert "has_geo" in indicators
         assert indicators["has_geo"] == 2
         assert mult == pytest.approx(1.2)
@@ -73,7 +73,7 @@ class TestEvaluateCostIndicators:
     def test_has_geo_shape(self):
         c = _zero_counts()
         c["geo_shape_count"] = 1
-        indicators, mult = evaluate_cost_indicators(c)
+        indicators, mult, _mults = evaluate_cost_indicators(c)
         assert "has_geo" in indicators
         assert indicators["has_geo"] == 1
 
@@ -81,20 +81,20 @@ class TestEvaluateCostIndicators:
         c = _zero_counts()
         c["geo_distance_count"] = 2
         c["geo_shape_count"] = 3
-        indicators, _ = evaluate_cost_indicators(c)
+        indicators, _, _m = evaluate_cost_indicators(c)
         assert indicators["has_geo"] == 5
 
     def test_geo_bbox_alone_no_indicator(self):
         """geo_bounding_box is cheap — should NOT trigger has_geo."""
         c = _zero_counts()
         c["geo_bbox_count"] = 5
-        indicators, _ = evaluate_cost_indicators(c)
+        indicators, _, _m = evaluate_cost_indicators(c)
         assert "has_geo" not in indicators
 
     def test_has_knn(self):
         c = _zero_counts()
         c["knn_clause_count"] = 1
-        indicators, mult = evaluate_cost_indicators(c)
+        indicators, mult, _mults = evaluate_cost_indicators(c)
         assert "has_knn" in indicators
         assert indicators["has_knn"] == 1
         assert mult == pytest.approx(1.2)
@@ -103,7 +103,7 @@ class TestEvaluateCostIndicators:
         c = _zero_counts()
         c["bool_must_count"] = 25
         c["bool_should_count"] = 25
-        indicators, mult = evaluate_cost_indicators(c)
+        indicators, mult, _mults = evaluate_cost_indicators(c)
         assert "excessive_bool" in indicators
         assert indicators["excessive_bool"] == 50
         assert mult == pytest.approx(1.3)
@@ -113,13 +113,13 @@ class TestEvaluateCostIndicators:
         c["bool_must_count"] = 20
         c["bool_should_count"] = 20
         c["bool_filter_count"] = 9
-        indicators, _ = evaluate_cost_indicators(c)
+        indicators, _, _m = evaluate_cost_indicators(c)
         assert "excessive_bool" not in indicators
 
     def test_large_terms_list(self):
         c = _zero_counts()
         c["terms_values_count"] = 500
-        indicators, mult = evaluate_cost_indicators(c)
+        indicators, mult, _mults = evaluate_cost_indicators(c)
         assert "large_terms_list" in indicators
         assert indicators["large_terms_list"] == 500
         assert mult == pytest.approx(1.2)
@@ -127,13 +127,13 @@ class TestEvaluateCostIndicators:
     def test_large_terms_below_threshold(self):
         c = _zero_counts()
         c["terms_values_count"] = 499
-        indicators, _ = evaluate_cost_indicators(c)
+        indicators, _, _m = evaluate_cost_indicators(c)
         assert "large_terms_list" not in indicators
 
     def test_deep_aggs(self):
         c = _zero_counts()
         c["agg_clause_count"] = 10
-        indicators, mult = evaluate_cost_indicators(c)
+        indicators, mult, _mults = evaluate_cost_indicators(c)
         assert "deep_aggs" in indicators
         assert indicators["deep_aggs"] == 10
         assert mult == pytest.approx(1.3)
@@ -141,13 +141,13 @@ class TestEvaluateCostIndicators:
     def test_deep_aggs_below_threshold(self):
         c = _zero_counts()
         c["agg_clause_count"] = 9
-        indicators, _ = evaluate_cost_indicators(c)
+        indicators, _, _m = evaluate_cost_indicators(c)
         assert "deep_aggs" not in indicators
 
     def test_unbound_hits(self):
         c = _zero_counts()
         c["hits_lower_bound"] = 1
-        indicators, mult = evaluate_cost_indicators(c)
+        indicators, mult, _mults = evaluate_cost_indicators(c)
         assert "unbound_hits" in indicators
         assert indicators["unbound_hits"] == 1
         assert mult == pytest.approx(1.3)
@@ -155,12 +155,12 @@ class TestEvaluateCostIndicators:
     def test_unbound_hits_below_threshold(self):
         c = _zero_counts()
         c["hits_lower_bound"] = 0
-        indicators, _ = evaluate_cost_indicators(c)
+        indicators, _, _m = evaluate_cost_indicators(c)
         assert "unbound_hits" not in indicators
 
     def test_unbound_hits_absent_key(self):
         """hits_lower_bound missing from counts dict — should not trigger."""
-        indicators, _ = evaluate_cost_indicators(_zero_counts())
+        indicators, _, _m = evaluate_cost_indicators(_zero_counts())
         assert "unbound_hits" not in indicators
 
     def test_multiple_indicators_multiplicative(self):
@@ -168,7 +168,7 @@ class TestEvaluateCostIndicators:
         c = _zero_counts()
         c["script_clause_count"] = 2
         c["wildcard_clause_count"] = 3
-        indicators, mult = evaluate_cost_indicators(c)
+        indicators, mult, _mults = evaluate_cost_indicators(c)
         assert "has_script" in indicators
         assert "has_wildcard" in indicators
         assert indicators["has_script"] == 2
@@ -180,7 +180,7 @@ class TestEvaluateCostIndicators:
         c = _zero_counts()
         c["hits_lower_bound"] = 1
         c["wildcard_clause_count"] = 2
-        indicators, mult = evaluate_cost_indicators(c)
+        indicators, mult, _mults = evaluate_cost_indicators(c)
         assert "unbound_hits" in indicators
         assert "has_wildcard" in indicators
         assert mult == pytest.approx(1.3 * 1.3)
@@ -191,7 +191,7 @@ class TestEvaluateCostIndicators:
         c["script_clause_count"] = 1
         c["nested_clause_count"] = 2
         c["geo_distance_count"] = 1
-        indicators, mult = evaluate_cost_indicators(c)
+        indicators, mult, _mults = evaluate_cost_indicators(c)
         assert len(indicators) == 3
         assert indicators == {"has_script": 1, "has_nested": 2, "has_geo": 1}
         assert mult == pytest.approx(1.5 * 1.3 * 1.2)
@@ -212,7 +212,7 @@ class TestClauseCountToCostIndicators:
             },
         }
         counts = count_clauses(body)
-        indicators, mult = evaluate_cost_indicators(counts)
+        indicators, mult, _mults = evaluate_cost_indicators(counts)
         assert "has_script" in indicators
         assert indicators["has_script"] == 3
 
@@ -225,7 +225,7 @@ class TestClauseCountToCostIndicators:
             "runtime_mappings": {"x": {"type": "keyword", "script": {}}},
         }
         counts = count_clauses(body)
-        indicators, mult = evaluate_cost_indicators(counts)
+        indicators, mult, _mults = evaluate_cost_indicators(counts)
         assert "has_wildcard" in indicators
         assert "has_nested" in indicators
         assert "has_runtime_mapping" in indicators
@@ -242,7 +242,7 @@ class TestClauseCountToCostIndicators:
         ]}}}
         counts = count_clauses(body)
         assert counts["terms_values_count"] == 600
-        indicators, mult = evaluate_cost_indicators(counts)
+        indicators, mult, _mults = evaluate_cost_indicators(counts)
         assert "large_terms_list" in indicators
         assert indicators["large_terms_list"] == 600
         assert mult == pytest.approx(1.2)

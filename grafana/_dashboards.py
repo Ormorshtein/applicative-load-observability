@@ -314,6 +314,42 @@ def mk_bar(title, field, metric_field, metric_op, metric_label, gridpos,
     })
 
 
+def mk_stacked_bar(title, bucket_field, metrics_spec, gridpos, size=10):
+    """Stacked horizontal bar chart with multiple metrics per bucket.
+
+    metrics_spec: [(label, field, op), ...]
+    """
+    metrics = []
+    overrides = []
+    _GRAFANA_NAMES = {"sum": "Sum", "avg": "Average", "count": "Count", "max": "Max"}
+    for i, (label, field, op) in enumerate(metrics_spec):
+        metrics.append(_metric(op, field, metric_id=str(i + 1)))
+        default = _GRAFANA_NAMES.get(op, op)
+        if field:
+            default = f"{default} {field}"
+        overrides.append({
+            "matcher": {"id": "byName", "options": default},
+            "properties": [{"id": "displayName", "value": label}],
+        })
+    target = _es_target(
+        metrics=metrics,
+        bucket_aggs=[_terms_agg(bucket_field, agg_id="99", size=size,
+                                order_by="1")],
+    )
+    return _base_panel(title, "barchart", gridpos, targets=[target],
+                       options={
+                           "orientation": "horizontal",
+                           "showValue": "auto",
+                           "stacking": "normal",
+                           "legend": {"displayMode": "list", "placement": "right"},
+                           "tooltip": {"mode": "multi"},
+                       },
+                       field_config={
+                           "defaults": {},
+                           "overrides": overrides,
+                       })
+
+
 def mk_table(title, bucket_field, bucket_label, metrics_spec, gridpos,
              size=10):
     metrics = []

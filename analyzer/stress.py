@@ -161,14 +161,16 @@ _COST_INDICATORS: list[CostIndicator] = [
 
 def evaluate_cost_indicators(
     counts: dict[str, int],
-) -> tuple[dict[str, int], float]:
+) -> tuple[dict[str, int], float, dict[str, float]]:
     indicators: dict[str, int] = {}
+    indicator_multipliers: dict[str, float] = {}
     multiplier = 1.0
     for indicator in _COST_INDICATORS:
         if indicator.condition(counts):
             indicators[indicator.name] = indicator.extractor(counts)
+            indicator_multipliers[indicator.name] = indicator.multiplier
             multiplier *= indicator.multiplier
-    return indicators, multiplier
+    return indicators, multiplier, indicator_multipliers
 
 
 # ---------------------------------------------------------------------------

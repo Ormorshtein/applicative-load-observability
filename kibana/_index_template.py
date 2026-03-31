@@ -103,6 +103,7 @@ COMPONENT_TEMPLATE: dict = {
                         },
                         "cost_indicator_count": {"type": "integer"},
                         "cost_indicator_names": {"type": "keyword"},
+                        "cost_indicator_multipliers": {"type": "flattened"},
                         "bonuses":              {"type": "object", "enabled": False},
                     }
                 },
