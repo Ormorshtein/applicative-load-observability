@@ -235,7 +235,7 @@ def do_rebuild(cfg: StackConfig) -> bool:
 
     print()
     ci_vis = build_ci_visualizations()
-    ci_ids = _upsert_visualizations(cfg, ci_vis)
+    ci_ids = _upsert_visualizations(cfg, ci_vis, all_lens=False)
     ok2 = build_dashboard(cfg, CI_DASHBOARD_ID, "Cost Indicators & Query Patterns",
                           "Cost indicators, clause counts, and query pattern analysis.",
                           ci_ids, layout_cost_indicators)
