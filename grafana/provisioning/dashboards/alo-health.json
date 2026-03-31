@@ -97,13 +97,419 @@
   },
   "panels": [
     {
+      "type": "text",
+      "title": "Pipeline Bottleneck",
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 2
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### Pipeline Bottleneck"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Pipeline Flow Rates",
+      "description": "Events/sec at each pipeline stage. If input >> output, the pipeline is bottlenecked.",
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 2,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "expr": "logstash_stats_pipeline_flow_input_current{instance=~\"$logstash_instance\"}",
+          "legendFormat": "Input",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "expr": "logstash_stats_pipeline_flow_filter_current{instance=~\"$logstash_instance\"}",
+          "legendFormat": "Filter",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "expr": "logstash_stats_pipeline_flow_output_current{instance=~\"$logstash_instance\"}",
+          "legendFormat": "Output",
+          "refId": "C"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Queue Depth",
+      "description": "Events waiting in Logstash queue. Growing = input faster than processing capacity.",
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 2,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "expr": "logstash_stats_pipeline_queue_events_count{instance=~\"$logstash_instance\"}",
+          "legendFormat": "Queue depth",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Plugin Time per Event",
+      "description": "Avg ms per event by plugin type. Shows whether the HTTP filter (analyzer) or ES output is the bottleneck.",
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "expr": "rate(logstash_stats_pipeline_plugin_events_duration{plugin=\"http\",instance=~\"$logstash_instance\"}[5m]) / rate(logstash_stats_pipeline_plugin_events_out{plugin=\"http\",instance=~\"$logstash_instance\"}[5m])",
+          "legendFormat": "HTTP filter (analyzer)",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "expr": "rate(logstash_stats_pipeline_plugin_events_duration{plugin=\"elasticsearch\",instance=~\"$logstash_instance\"}[5m]) / rate(logstash_stats_pipeline_plugin_events_out{plugin=\"elasticsearch\",instance=~\"$logstash_instance\"}[5m])",
+          "legendFormat": "ES output",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "expr": "rate(logstash_stats_pipeline_plugin_events_duration{plugin=\"ruby\",instance=~\"$logstash_instance\"}[5m]) / rate(logstash_stats_pipeline_plugin_events_out{plugin=\"ruby\",instance=~\"$logstash_instance\"}[5m])",
+          "legendFormat": "Ruby filters",
+          "refId": "C"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Analyzer In-Progress & Latency",
+      "description": "Concurrent requests to analyzer + avg response time. High in-progress = analyzer is saturated.",
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 10,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "expr": "http_requests_inprogress{instance=~\"$analyzer_instance\"}",
+          "legendFormat": "In-progress",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "expr": "rate(http_request_duration_seconds_sum{instance=~\"$analyzer_instance\"}[5m]) / rate(http_request_duration_seconds_count{instance=~\"$analyzer_instance\"}[5m]) * 1000",
+          "legendFormat": "Avg latency (ms)",
+          "refId": "B"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "type": "gauge",
+      "title": "Worker Util",
+      "description": "Logstash pipeline worker utilization %",
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 26,
+        "w": 6,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "expr": "logstash_stats_pipeline_flow_worker_utilization_current{instance=~\"$logstash_instance\"}",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 50.0,
+                "color": "yellow"
+              },
+              {
+                "value": 80.0,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "gauge",
+      "title": "Backpressure",
+      "description": "Queue backpressure (0 = healthy, >0 = input blocked)",
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 26,
+        "w": 6,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "expr": "logstash_stats_flow_queue_backpressure_current{instance=~\"$logstash_instance\"}",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "yellow"
+              },
+              {
+                "value": 10,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "gauge",
+      "title": "Analyzer Load",
+      "description": "In-progress requests to analyzer",
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 26,
+        "w": 6,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "expr": "http_requests_inprogress{instance=~\"$analyzer_instance\"}",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 50,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 10,
+                "color": "yellow"
+              },
+              {
+                "value": 30,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
       "type": "row",
       "title": "Gateway (Nginx)",
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 0
+        "y": 32
       },
       "collapsed": false
     },
@@ -119,7 +525,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 1
+        "y": 33
       },
       "fieldConfig": {
         "defaults": {
@@ -192,7 +598,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 1
+        "y": 33
       },
       "fieldConfig": {
         "defaults": {
@@ -225,7 +631,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 1
+        "y": 33
       },
       "fieldConfig": {
         "defaults": {
@@ -271,7 +677,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 1
+        "y": 33
       },
       "fieldConfig": {
         "defaults": {
@@ -315,7 +721,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 9
+        "y": 41
       },
       "collapsed": false
     },
@@ -330,7 +736,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 10
+        "y": 42
       },
       "fieldConfig": {
         "defaults": {
@@ -363,7 +769,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 10
+        "y": 42
       },
       "fieldConfig": {
         "defaults": {
@@ -418,7 +824,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 10
+        "y": 42
       },
       "fieldConfig": {
         "defaults": {
@@ -461,7 +867,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 18
+        "y": 50
       },
       "fieldConfig": {
         "defaults": {
@@ -494,7 +900,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 18
+        "y": 50
       },
       "fieldConfig": {
         "defaults": {
@@ -534,7 +940,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 58
       },
       "collapsed": false
     },
@@ -548,7 +954,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 27,
+        "y": 59,
         "w": 12,
         "h": 8
       },
@@ -586,7 +992,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 27,
+        "y": 59,
         "w": 12,
         "h": 8
       },
@@ -631,7 +1037,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 35,
+        "y": 67,
         "w": 12,
         "h": 8
       },
@@ -675,7 +1081,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 35,
+        "y": 67,
         "w": 12,
         "h": 8
       },
@@ -729,7 +1135,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 43,
+        "y": 75,
         "w": 12,
         "h": 8
       },
@@ -792,7 +1198,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 43,
+        "y": 75,
         "w": 12,
         "h": 8
       },
@@ -837,7 +1243,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 51,
+        "y": 83,
         "w": 12,
         "h": 8
       },
@@ -882,7 +1288,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 51,
+        "y": 83,
         "w": 12,
         "h": 8
       },
@@ -920,7 +1326,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 59,
+        "y": 91,
         "w": 6,
         "h": 6
       },
@@ -976,7 +1382,7 @@
       },
       "gridPos": {
         "x": 6,
-        "y": 59,
+        "y": 91,
         "w": 6,
         "h": 6
       },
@@ -1032,7 +1438,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 59,
+        "y": 91,
         "w": 6,
         "h": 6
       },
@@ -1088,7 +1494,7 @@
       },
       "gridPos": {
         "x": 18,
-        "y": 59,
+        "y": 91,
         "w": 6,
         "h": 6
       },
@@ -1153,7 +1559,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 65,
+        "y": 97,
         "w": 24,
         "h": 8
       },
@@ -1206,7 +1612,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 73,
+        "y": 105,
         "w": 24,
         "h": 8
       },
@@ -1282,7 +1688,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 81,
+        "y": 113,
         "w": 24,
         "h": 10
       },
@@ -1422,7 +1828,7 @@
       "title": "Elasticsearch (optional - requires elasticsearch-exporter)",
       "gridPos": {
         "x": 0,
-        "y": 91,
+        "y": 123,
         "w": 24,
         "h": 1
       },
@@ -1440,7 +1846,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 79
+            "y": 111
           },
           "fieldConfig": {
             "defaults": {
@@ -1485,7 +1891,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 79
+            "y": 111
           },
           "fieldConfig": {
             "defaults": {
@@ -1539,7 +1945,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 87
+            "y": 119
           },
           "fieldConfig": {
             "defaults": {
@@ -1583,7 +1989,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 87
+            "y": 119
           },
           "fieldConfig": {
             "defaults": {
@@ -1614,6 +2020,167 @@
             "tooltip": {
               "mode": "single"
             }
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "ES Thread Pool Queues",
+          "description": "Queued operations in Elasticsearch. Growing queues = ES is the bottleneck.",
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 127,
+            "w": 12,
+            "h": 8
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 10,
+                "lineWidth": 2
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "datasource": {
+                "uid": "alo-prometheus",
+                "type": "prometheus"
+              },
+              "expr": "elasticsearch_thread_pool_queue_count{type=\"search\",instance=~\"$es_instance\"}",
+              "legendFormat": "Search",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "uid": "alo-prometheus",
+                "type": "prometheus"
+              },
+              "expr": "elasticsearch_thread_pool_queue_count{type=\"write\",instance=~\"$es_instance\"}",
+              "legendFormat": "Write",
+              "refId": "B"
+            }
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "ES Rejected Operations",
+          "description": "Rejected thread pool tasks per second. Non-zero = ES is overloaded and dropping work.",
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 127,
+            "w": 12,
+            "h": 8
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 10,
+                "lineWidth": 2
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "datasource": {
+                "uid": "alo-prometheus",
+                "type": "prometheus"
+              },
+              "expr": "rate(elasticsearch_thread_pool_rejected_count{type=\"search\",instance=~\"$es_instance\"}[5m])",
+              "legendFormat": "Search rejected/s",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "uid": "alo-prometheus",
+                "type": "prometheus"
+              },
+              "expr": "rate(elasticsearch_thread_pool_rejected_count{type=\"write\",instance=~\"$es_instance\"}[5m])",
+              "legendFormat": "Write rejected/s",
+              "refId": "B"
+            }
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          }
+        },
+        {
+          "type": "gauge",
+          "title": "ES Write Queue",
+          "description": "Elasticsearch write thread pool queue",
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 135,
+            "w": 12,
+            "h": 6
+          },
+          "targets": [
+            {
+              "datasource": {
+                "uid": "alo-prometheus",
+                "type": "prometheus"
+              },
+              "expr": "elasticsearch_thread_pool_queue_count{type=\"write\",instance=~\"$es_instance\"}",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "orientation": "auto",
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true
+          },
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 1000,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "value": null,
+                    "color": "green"
+                  },
+                  {
+                    "value": 100,
+                    "color": "yellow"
+                  },
+                  {
+                    "value": 500,
+                    "color": "red"
+                  }
+                ]
+              }
+            },
+            "overrides": []
           }
         }
       ]
