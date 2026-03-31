@@ -182,6 +182,7 @@ def build_main_visualizations() -> list[tuple[str, dict]]:
 
 def build_ci_visualizations() -> list[tuple[str, dict]]:
     return [
+        # ── KPIs ────────────────────────────────────────────────────────
         mk_ci_metric("alo-ci-kpi-flagged",   "Flagged Requests",
                       "stress.cost_indicator_count", "count",
                       "stress.cost_indicator_count >= 1"),
@@ -191,6 +192,9 @@ def build_ci_visualizations() -> list[tuple[str, dict]]:
                       "stress.multiplier", "average"),
         mk_ci_metric("alo-ci-kpi-max-mult",   "Max Stress Multiplier",
                       "stress.multiplier", "max"),
+
+        # ── Score Breakdown ─────────────────────────────────────────────
+        _section_header("alo-ci-hdr-breakdown", "Score Breakdown"),
 
         mk_datatable("alo-ci-table-breakdown", "Score Breakdown by Template",
                      "request.template", "Template", [
@@ -206,6 +210,9 @@ def build_ci_visualizations() -> list[tuple[str, dict]]:
                          ("avg_bonus",      "Bonus",             "stress.components.bonus",  "average"),
                      ]),
 
+        # ── Trends ──────────────────────────────────────────────────────
+        _section_header("alo-ci-hdr-trends", "Trends"),
+
         mk_ts_multi("alo-ci-ts-components", "Score Components Over Time", [
             ("took",   "Avg Took",   "stress.components.took",   "average"),
             ("shards", "Avg Shards", "stress.components.shards", "average"),
@@ -213,25 +220,17 @@ def build_ci_visualizations() -> list[tuple[str, dict]]:
             ("bonus",  "Avg Bonus",  "stress.components.bonus",  "average"),
         ], "area_stacked"),
 
-        mk_horizontal_bar("alo-ci-bar-indicator-types",
-                          "Cost Indicator Types - Frequency",
-                          "stress.cost_indicator_names", None, "count", "Count"),
         mk_ts_multi("alo-ci-ts-flag-rate", "Flagged vs Total Requests Over Time", [
             ("flagged", "Flagged Requests", "stress.cost_indicator_count >= 1", "count"),
             ("total",   "Total Requests",   "",                                  "count"),
         ], "area"),
-        mk_ts_multi("alo-ci-ts-clause-counts", "Clause Count Trends", [
-            ("terms_avg",    "Avg terms_values", "clause_counts.terms_values", "average"),
-            ("aggs_avg",     "Avg agg",          "clause_counts.agg",          "average"),
-            ("script_avg",   "Avg script",       "clause_counts.script",       "average"),
-            ("wildcard_avg", "Avg wildcard",     "clause_counts.wildcard",     "average"),
-        ], "line"),
-        mk_ts_multi("alo-ci-ts-bool", "Bool Clause Breakdown Over Time", [
-            ("must",     "Avg must",     "clause_counts.bool_must",     "average"),
-            ("should",   "Avg should",   "clause_counts.bool_should",   "average"),
-            ("filter_c", "Avg filter",   "clause_counts.bool_filter",   "average"),
-            ("must_not", "Avg must_not", "clause_counts.bool_must_not", "average"),
-        ], "area_stacked"),
+
+        # ── Cost Indicator Deep Dive ────────────────────────────────────
+        _section_header("alo-ci-hdr-indicators", "Cost Indicator Deep Dive"),
+
+        mk_horizontal_bar("alo-ci-bar-indicator-types",
+                          "Cost Indicator Types - Frequency",
+                          "stress.cost_indicator_names", None, "count", "Count"),
         mk_datatable("alo-ci-table-templates",
                      "Top Templates by Cost Indicator Count",
                      "request.template", "Template", [
@@ -248,6 +247,22 @@ def build_ci_visualizations() -> list[tuple[str, dict]]:
                           "Cost Indicator Count by Target Index",
                           "request.target", "stress.cost_indicator_count",
                           "average", "Avg Indicator Count", 8),
+
+        # ── Clause Patterns ─────────────────────────────────────────────
+        _section_header("alo-ci-hdr-clauses", "Clause Patterns"),
+
+        mk_ts_multi("alo-ci-ts-clause-counts", "Clause Count Trends", [
+            ("terms_avg",    "Avg terms_values", "clause_counts.terms_values", "average"),
+            ("aggs_avg",     "Avg agg",          "clause_counts.agg",          "average"),
+            ("script_avg",   "Avg script",       "clause_counts.script",       "average"),
+            ("wildcard_avg", "Avg wildcard",     "clause_counts.wildcard",     "average"),
+        ], "line"),
+        mk_ts_multi("alo-ci-ts-bool", "Bool Clause Breakdown Over Time", [
+            ("must",     "Avg must",     "clause_counts.bool_must",     "average"),
+            ("should",   "Avg should",   "clause_counts.bool_should",   "average"),
+            ("filter_c", "Avg filter",   "clause_counts.bool_filter",   "average"),
+            ("must_not", "Avg must_not", "clause_counts.bool_must_not", "average"),
+        ], "area_stacked"),
     ]
 
 
