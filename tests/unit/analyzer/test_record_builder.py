@@ -420,7 +420,7 @@ class TestBuildRecord:
         rec = build_record(raw)
         assert rec["response"]["es_took_ms"] == 5_000_000.0
 
-    def test_zero_es_took_still_scores_from_shards(self):
+    def test_score_nonzero_when_es_took_is_zero(self):
         """When es_took_ms is 0, shards component still contributes to score."""
         raw = _make_raw(
             response_body={"hits": {"total": {"value": 0}, "hits": []}, "_shards": {"total": 1}},
@@ -428,7 +428,7 @@ class TestBuildRecord:
         )
         rec = build_record(raw)
         assert rec["response"]["es_took_ms"] == 0
-        assert rec["stress"]["score"] > 0  # gateway_took_ms drives score
+        assert rec["stress"]["score"] > 0  # shards component contributes
 
 
 # ---------------------------------------------------------------------------
