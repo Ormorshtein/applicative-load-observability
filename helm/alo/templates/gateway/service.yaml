@@ -12,6 +12,10 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    - port: 9145
+      targetPort: lua-metrics
+      protocol: TCP
+      name: lua-metrics
     {{- if .Values.gateway.exporter.enabled }}
     - port: {{ .Values.gateway.exporter.port }}
       targetPort: metrics

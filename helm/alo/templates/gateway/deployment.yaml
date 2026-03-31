@@ -93,6 +93,9 @@ spec:
             - name: http
               containerPort: {{ .Values.gateway.port }}
               protocol: TCP
+            - name: lua-metrics
+              containerPort: 9145
+              protocol: TCP
           volumeMounts:
             - name: nginx-tmp
               mountPath: /tmp/nginx
