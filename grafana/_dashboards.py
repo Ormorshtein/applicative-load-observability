@@ -503,6 +503,7 @@ def _wrap_dashboard(uid, title, description, panels):
 def export_dashboards():
     from _dashboard_builders import (
         build_cost_indicators_dashboard,
+        build_historical_dashboard,
         build_main_dashboard,
         build_usage_dashboard,
     )
@@ -513,6 +514,7 @@ def export_dashboards():
         (build_main_dashboard, "alo-main.json"),
         (build_cost_indicators_dashboard, "alo-cost-indicators.json"),
         (build_usage_dashboard, "alo-usage.json"),
+        (build_historical_dashboard, "alo-historical.json"),
     ]:
         dashboard = builder()
         path = os.path.join(PROVISION_DIR, filename)
