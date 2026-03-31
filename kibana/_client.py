@@ -17,6 +17,9 @@ from _index_template import (
     COMPONENT_TEMPLATE_NAME,
     ILM_POLICIES,
     INDEX_TEMPLATES,
+    SUMMARY_INDEX_TEMPLATE,
+    SUMMARY_TRANSFORM,
+    SUMMARY_TRANSFORM_ID,
 )
 
 
@@ -176,5 +179,26 @@ def ensure_es_resources(cfg: StackConfig) -> bool:
 
     # Clean up the legacy single template if it exists
     es_request(cfg, "DELETE", "/_index_template/alo-template")
+
+    # 4. Summary index template (long-term retention)
+    status, _ = es_request(
+        cfg, "PUT", "/_index_template/alo-summary", SUMMARY_INDEX_TEMPLATE,
+    )
+    ok = _put_ok(status)
+    print(f"  {_status_label(ok)}: Summary index template (alo-summary)")
+    all_ok &= ok
+
+    # 5. Continuous transform for summary aggregation
+    # Stop existing transform before updating (PUT requires it stopped)
+    es_request(cfg, "POST", f"/_transform/{SUMMARY_TRANSFORM_ID}/_stop")
+    status, _ = es_request(
+        cfg, "PUT", f"/_transform/{SUMMARY_TRANSFORM_ID}",
+        SUMMARY_TRANSFORM,
+    )
+    ok = _put_ok(status)
+    print(f"  {_status_label(ok)}: Summary transform ({SUMMARY_TRANSFORM_ID})")
+    all_ok &= ok
+    if ok:
+        es_request(cfg, "POST", f"/_transform/{SUMMARY_TRANSFORM_ID}/_start")
 
     return all_ok

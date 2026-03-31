@@ -173,6 +173,104 @@ ILM_POLICIES: dict[str, dict] = {
     "alo-dead-letter-lifecycle": _ilm_policy("7d"),
 }
 
+# ── Summary index (long-term retention) ────────────────────────────────────
+
+SUMMARY_INDEX = "alo-summary"
+SUMMARY_TRANSFORM_ID = "alo-summary-transform"
+
+SUMMARY_INDEX_TEMPLATE: dict = {
+    "index_patterns": ["alo-summary"],
+    "priority": 200,
+    "template": {
+        "settings": {
+            "number_of_shards": 1,
+            "number_of_replicas": 0,
+        },
+        "mappings": {
+            "dynamic": "strict",
+            "properties": {
+                "@timestamp":              {"type": "date"},
+                "template":                {"type": "keyword"},
+                "operation":               {"type": "keyword"},
+                "applicative_provider":    {"type": "keyword"},
+                "target":                  {"type": "keyword"},
+                "cluster_name":            {"type": "keyword"},
+                "count":                   {"type": "long"},
+                "avg_score":               {"type": "float"},
+                "sum_score":               {"type": "float"},
+                "avg_es_took_ms":          {"type": "float"},
+                "avg_gateway_took_ms":     {"type": "float"},
+                "avg_hits":                {"type": "float"},
+                "avg_shards":              {"type": "float"},
+                "avg_docs_affected":       {"type": "float"},
+                "avg_multiplier":          {"type": "float"},
+                "avg_cost_indicator_count": {"type": "float"},
+            },
+        },
+    },
+}
+
+SUMMARY_TRANSFORM: dict = {
+    "source": {
+        "index": ["logs-alo.*-*"],
+        "query": {
+            "bool": {
+                "must_not": [
+                    {"term": {"request.operation": "unknown"}},
+                ],
+            },
+        },
+    },
+    "dest": {
+        "index": SUMMARY_INDEX,
+    },
+    "pivot": {
+        "group_by": {
+            "@timestamp": {
+                "date_histogram": {
+                    "field": "@timestamp",
+                    "calendar_interval": "1h",
+                },
+            },
+            "template": {
+                "terms": {"field": "request.template"},
+            },
+            "operation": {
+                "terms": {"field": "request.operation"},
+            },
+            "applicative_provider": {
+                "terms": {"field": "identity.applicative_provider"},
+            },
+            "target": {
+                "terms": {"field": "request.target"},
+            },
+            "cluster_name": {
+                "terms": {"field": "cluster_name"},
+            },
+        },
+        "aggregations": {
+            "count":                   {"value_count": {"field": "@timestamp"}},
+            "avg_score":               {"avg": {"field": "stress.score"}},
+            "sum_score":               {"sum": {"field": "stress.score"}},
+            "avg_es_took_ms":          {"avg": {"field": "response.es_took_ms"}},
+            "avg_gateway_took_ms":     {"avg": {"field": "response.gateway_took_ms"}},
+            "avg_hits":                {"avg": {"field": "response.hits"}},
+            "avg_shards":              {"avg": {"field": "response.shards_total"}},
+            "avg_docs_affected":       {"avg": {"field": "response.docs_affected"}},
+            "avg_multiplier":          {"avg": {"field": "stress.multiplier"}},
+            "avg_cost_indicator_count": {"avg": {"field": "stress.cost_indicator_count"}},
+        },
+    },
+    "sync": {
+        "time": {
+            "field": "@timestamp",
+            "delay": "5m",
+        },
+    },
+    "frequency": "5m",
+    "description": "ALO long-term summary: hourly aggregates per template/operation/app/target.",
+}
+
 # ── Composable index templates ──────────────────────────────────────────────
 
 INDEX_TEMPLATES: dict[str, dict] = {
