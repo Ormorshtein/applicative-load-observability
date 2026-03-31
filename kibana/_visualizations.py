@@ -185,32 +185,48 @@ def layout_main(vis_ids: list[str], panels: list[dict],
 
 def layout_cost_indicators(vis_ids: list[str], panels: list[dict],
                            refs: list[dict]) -> None:
-    grid = [
-        # Row 0: KPIs (h=6)
-        (vis_ids[0],  0,  0, 12, 6),
-        (vis_ids[1], 12,  0, 12, 6),
-        (vis_ids[2], 24,  0, 12, 6),
-        (vis_ids[3], 36,  0, 12, 6),
-        # Row 1: Score breakdown table (h=14)
-        (vis_ids[4],  0,  6, GRID_WIDTH, 14),
-        # Row 2: Component trends (h=14)
-        (vis_ids[5],  0, 20, GRID_WIDTH, 14),
-        # Row 3: Indicator overview (h=14)
-        (vis_ids[6],  0, 34, 20, 14),
-        (vis_ids[7], 20, 34, 28, 14),
-        # Row 4: Clause counts (h=14)
-        (vis_ids[8],  0, 48, 28, 14),
-        (vis_ids[9], 28, 48, 20, 14),
-        # Row 5: Table (h=12)
-        (vis_ids[10], 0, 62, GRID_WIDTH, 12),
-        # Row 6: By dimension (h=14)
-        (vis_ids[11],  0, 74, 24, 14),
-        (vis_ids[12], 24, 74, 24, 14),
-    ]
-    for vid, x, y, w, h in grid:
-        panels.append({"panelIndex": vid, "gridData": {"x": x, "y": y, "w": w, "h": h, "i": vid},
-                       "type": "lens", "panelRefName": f"panel_{vid}"})
-        refs.append({"type": "lens", "id": vid, "name": f"panel_{vid}"})
+    HDR_H = 3
+    y = 0
+
+    # KPIs (4 metrics)
+    for j in range(4):
+        _add_panel(panels, refs, vis_ids[j], j * 12, y, 12, 6)
+    y += 6
+
+    # Score Breakdown header + table
+    _add_panel(panels, refs, vis_ids[4], 0, y, GRID_WIDTH, HDR_H,
+               panel_type="visualization")
+    y += HDR_H
+    _add_panel(panels, refs, vis_ids[5], 0, y, GRID_WIDTH, 14)
+    y += 14
+
+    # Trends header + components + flagged
+    _add_panel(panels, refs, vis_ids[6], 0, y, GRID_WIDTH, HDR_H,
+               panel_type="visualization")
+    y += HDR_H
+    _add_panel(panels, refs, vis_ids[7], 0, y, GRID_WIDTH, 14)
+    y += 14
+    _add_panel(panels, refs, vis_ids[8], 0, y, GRID_WIDTH, 14)
+    y += 14
+
+    # Cost Indicator Deep Dive header + bar + table + bars
+    _add_panel(panels, refs, vis_ids[9], 0, y, GRID_WIDTH, HDR_H,
+               panel_type="visualization")
+    y += HDR_H
+    _add_panel(panels, refs, vis_ids[10], 0, y, GRID_WIDTH, 14)
+    y += 14
+    _add_panel(panels, refs, vis_ids[11], 0, y, GRID_WIDTH, 12)
+    y += 12
+    _add_panel(panels, refs, vis_ids[12], 0, y, 24, 14)
+    _add_panel(panels, refs, vis_ids[13], 24, y, 24, 14)
+    y += 14
+
+    # Clause Patterns header + trends + bool
+    _add_panel(panels, refs, vis_ids[14], 0, y, GRID_WIDTH, HDR_H,
+               panel_type="visualization")
+    y += HDR_H
+    _add_panel(panels, refs, vis_ids[15], 0, y, 28, 14)
+    _add_panel(panels, refs, vis_ids[16], 28, y, 20, 14)
 
 
 # ---------------------------------------------------------------------------
