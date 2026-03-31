@@ -14,9 +14,21 @@ http {
     uwsgi_temp_path       /tmp/nginx/uwsgi;
     scgi_temp_path        /tmp/nginx/scgi;
     lua_package_path "/usr/local/openresty/site/lualib/?.lua;/usr/local/openresty/lualib/?.lua;;";
+    lua_shared_dict prometheus_metrics 1M;
     lua_need_request_body on;
     lua_max_pending_timers 65536;
     lua_max_running_timers 4096;
+
+    init_worker_by_lua_block {
+        prometheus = require("prometheus").init("prometheus_metrics")
+        metric_events_total = prometheus:counter(
+            "alo_gateway_events_total",
+            "Total events processed by the gateway")
+        metric_events_dropped = prometheus:counter(
+            "alo_gateway_events_dropped_total",
+            "Events dropped due to pipeline notification failure",
+            {"reason"})
+    }
     client_body_buffer_size 10m;
     client_max_body_size 0;
     resolver ${DNS_RESOLVER} valid=10s ipv6=off;
@@ -68,6 +80,8 @@ http {
                 }
                 ngx.ctx.resp_body = nil
 
+                metric_events_total:inc(1)
+
                 local function notify_logstash(premature, ctx)
                     if premature then return end
 
@@ -86,19 +100,23 @@ http {
                         })
                         if not res then
                             ngx.log(ngx.WARN, "observability: logstash unreachable: ", err)
+                            metric_events_dropped:inc(1, {"logstash_unreachable"})
                         elseif res.status >= 300 then
                             ngx.log(ngx.WARN, "observability: logstash returned ", res.status)
+                            metric_events_dropped:inc(1, {"logstash_error_" .. res.status})
                         end
                     end)
 
                     if not ok then
                         ngx.log(ngx.WARN, "observability: dropped (pcall): ", err)
+                        metric_events_dropped:inc(1, {"pcall_error"})
                     end
                 end
 
                 local ok, err = ngx.timer.at(0, notify_logstash, ctx)
                 if not ok then
                     ngx.log(ngx.WARN, "observability: timer failed: ", err)
+                    metric_events_dropped:inc(1, {"timer_failed"})
                 end
             }
 
@@ -113,11 +131,16 @@ http {
         }
     }
 
-    # Internal stub_status for Prometheus nginx-exporter (port not mapped by default)
+    # Internal metrics server for Prometheus (port not mapped by default)
     server {
         listen 9145;
         location /stub_status {
             stub_status;
+        }
+        location /metrics {
+            content_by_lua_block {
+                prometheus:collect()
+            }
         }
         location / {
             return 404;

@@ -8,6 +8,7 @@ RUN apk add --no-cache curl gettext perl \
     && curl -fsSL https://raw.githubusercontent.com/ledgetech/lua-resty-http/v0.17.2/lib/resty/http_connect.lua \
          -o /usr/local/openresty/site/lualib/resty/http_connect.lua \
     && /usr/local/openresty/bin/opm get fffonion/lua-resty-openssl \
+    && /usr/local/openresty/bin/opm get knyar/nginx-lua-prometheus \
     && apk del curl perl
 COPY nginx.conf.template /etc/nginx/nginx.conf.template
 COPY entrypoint.sh /entrypoint.sh

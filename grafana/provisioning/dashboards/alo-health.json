@@ -27,7 +27,7 @@
           "type": "prometheus"
         },
         "definition": "label_values(nginx_up, instance)",
-        "query": "label_values(nginx_up, instance)",
+        "query": "label_values(alo_gateway_events_total, instance)",
         "includeAll": true,
         "allValue": ".*",
         "multi": true,
@@ -721,7 +721,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 41
+        "y": 49
       },
       "collapsed": false
     },
@@ -736,7 +736,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 42
+        "y": 50
       },
       "fieldConfig": {
         "defaults": {
@@ -769,7 +769,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 42
+        "y": 50
       },
       "fieldConfig": {
         "defaults": {
@@ -824,7 +824,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 42
+        "y": 50
       },
       "fieldConfig": {
         "defaults": {
@@ -867,7 +867,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 50
+        "y": 58
       },
       "fieldConfig": {
         "defaults": {
@@ -900,7 +900,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 50
+        "y": 58
       },
       "fieldConfig": {
         "defaults": {
@@ -940,7 +940,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 58
+        "y": 66
       },
       "collapsed": false
     },
@@ -954,7 +954,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 59,
+        "y": 67,
         "w": 12,
         "h": 8
       },
@@ -992,7 +992,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 59,
+        "y": 67,
         "w": 12,
         "h": 8
       },
@@ -1037,7 +1037,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 67,
+        "y": 75,
         "w": 12,
         "h": 8
       },
@@ -1081,7 +1081,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 67,
+        "y": 75,
         "w": 12,
         "h": 8
       },
@@ -1135,7 +1135,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 75,
+        "y": 83,
         "w": 12,
         "h": 8
       },
@@ -1198,7 +1198,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 75,
+        "y": 83,
         "w": 12,
         "h": 8
       },
@@ -1243,7 +1243,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 83,
+        "y": 91,
         "w": 12,
         "h": 8
       },
@@ -1288,7 +1288,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 83,
+        "y": 91,
         "w": 12,
         "h": 8
       },
@@ -1326,7 +1326,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 91,
+        "y": 99,
         "w": 6,
         "h": 6
       },
@@ -1382,7 +1382,7 @@
       },
       "gridPos": {
         "x": 6,
-        "y": 91,
+        "y": 99,
         "w": 6,
         "h": 6
       },
@@ -1438,7 +1438,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 91,
+        "y": 99,
         "w": 6,
         "h": 6
       },
@@ -1494,7 +1494,7 @@
       },
       "gridPos": {
         "x": 18,
-        "y": 91,
+        "y": 99,
         "w": 6,
         "h": 6
       },
@@ -1559,7 +1559,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 97,
+        "y": 105,
         "w": 24,
         "h": 8
       },
@@ -1612,7 +1612,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 105,
+        "y": 113,
         "w": 24,
         "h": 8
       },
@@ -1688,7 +1688,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 113,
+        "y": 121,
         "w": 24,
         "h": 10
       },
@@ -1828,7 +1828,7 @@
       "title": "Elasticsearch (optional - requires elasticsearch-exporter)",
       "gridPos": {
         "x": 0,
-        "y": 123,
+        "y": 131,
         "w": 24,
         "h": 1
       },
@@ -1846,7 +1846,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 111
+            "y": 119
           },
           "fieldConfig": {
             "defaults": {
@@ -1891,7 +1891,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 111
+            "y": 119
           },
           "fieldConfig": {
             "defaults": {
@@ -1945,7 +1945,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 119
+            "y": 127
           },
           "fieldConfig": {
             "defaults": {
@@ -1989,7 +1989,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 119
+            "y": 127
           },
           "fieldConfig": {
             "defaults": {
@@ -2032,7 +2032,7 @@
           },
           "gridPos": {
             "x": 0,
-            "y": 127,
+            "y": 135,
             "w": 12,
             "h": 8
           },
@@ -2085,7 +2085,7 @@
           },
           "gridPos": {
             "x": 12,
-            "y": 127,
+            "y": 135,
             "w": 12,
             "h": 8
           },
@@ -2138,7 +2138,7 @@
           },
           "gridPos": {
             "x": 0,
-            "y": 135,
+            "y": 143,
             "w": 12,
             "h": 6
           },
@@ -2184,6 +2184,116 @@
           }
         }
       ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Events Dropped",
+      "description": "Events dropped by the gateway due to pipeline notification failure. Broken down by reason.",
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 41,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "expr": "rate(alo_gateway_events_dropped_total{instance=~\"\"}[5m])",
+          "legendFormat": "{{reason}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Event Delivery Rate",
+      "description": "Total events processed vs dropped per second. Healthy = dropped is 0.",
+      "datasource": {
+        "uid": "alo-prometheus",
+        "type": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 41,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "expr": "rate(alo_gateway_events_total{instance=~\"\"}[5m])",
+          "legendFormat": "Total events/s",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "uid": "alo-prometheus",
+            "type": "prometheus"
+          },
+          "expr": "rate(alo_gateway_events_dropped_total{instance=~\"\"}[5m])",
+          "legendFormat": "Dropped/s",
+          "refId": "B"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
     }
   ],
   "annotations": {
