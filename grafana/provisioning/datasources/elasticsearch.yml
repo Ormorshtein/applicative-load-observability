@@ -16,3 +16,19 @@ datasources:
       maxConcurrentShardRequests: 5
       interval: ""
     editable: true
+
+  - name: Elasticsearch (ALO Summary)
+    type: elasticsearch
+    uid: alo-elasticsearch-summary
+    access: proxy
+    url: http://elasticsearch:9200
+    database: "alo-summary"
+    isDefault: false
+    jsonData:
+      esVersion: "8.0.0"
+      timeField: "@timestamp"
+      logMessageField: ""
+      logLevelField: ""
+      maxConcurrentShardRequests: 5
+      interval: ""
+    editable: true

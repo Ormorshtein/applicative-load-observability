@@ -14,6 +14,8 @@ from _dashboards import (
     mk_pie,
     mk_stacked_bar,
     mk_stat,
+    mk_summary_table,
+    mk_summary_timeseries,
     mk_table,
     mk_text,
     mk_timeseries,
@@ -174,6 +176,35 @@ def build_main_dashboard() -> dict:
             ("Avg Cost Indicators", "stress.cost_indicator_count", "avg"),
             ("Requests", None, "count"),
         ], {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H}, size=10))
+    y += _PANEL_H
+
+    # ── Historical Trends (from summary index) ─────────────────────
+    panels.append(_section_header("Historical Trends", y))
+    y += _HDR_H
+
+    panels.append(mk_summary_timeseries(
+        "Stress Score Over Time (Historical)", "avg_score", "template",
+        {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}, size=10))
+    y += _PANEL_H
+
+    panels.append(mk_summary_timeseries(
+        "Request Volume Over Time (Historical)", "count", "operation",
+        {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
+        metric_op="sum", size=8))
+    panels.append(mk_summary_timeseries(
+        "Avg Latency Over Time (Historical)", "avg_es_took_ms", "template",
+        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H}, size=10))
+    y += _PANEL_H
+
+    panels.append(mk_summary_table(
+        "Top Templates by Cumulative Stress (Historical)",
+        "template", "Template", [
+            ("Total Stress", "sum_score", "sum"),
+            ("Avg Score", "avg_score", "avg"),
+            ("Total Requests", "count", "sum"),
+            ("Avg Latency (ms)", "avg_es_took_ms", "avg"),
+            ("Avg Multiplier", "avg_multiplier", "avg"),
+        ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}, size=10))
 
     return _wrap_dashboard(
         uid="alo-main",
@@ -330,6 +361,24 @@ def build_cost_indicators_dashboard() -> dict:
             ("Avg must_not", "clause_counts.bool_must_not", "avg", ""),
         ], {"x": _HALF_W + 2, "y": y, "w": _HALF_W - 2, "h": _BAR_H},
         series_type="line", stacked=True))
+    y += _BAR_H
+
+    # ── Section 7: Historical Trends (from summary index) ──────────
+    panels.append(_section_header("Historical Trends", y))
+    y += _HDR_H
+
+    panels.append(mk_summary_timeseries(
+        "Base vs Multiplier Over Time (Historical)", "avg_base", "template",
+        {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H}, size=10))
+    panels.append(mk_summary_timeseries(
+        "Avg Multiplier Over Time (Historical)", "avg_multiplier", "template",
+        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H}, size=10))
+    y += _PANEL_H
+
+    panels.append(mk_summary_timeseries(
+        "Avg Cost Indicators Over Time (Historical)",
+        "avg_cost_indicator_count", "applicative_provider",
+        {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}, size=8))
 
     return _wrap_dashboard(
         uid="alo-cost-indicators",

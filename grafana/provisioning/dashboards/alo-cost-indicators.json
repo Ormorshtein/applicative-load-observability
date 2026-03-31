@@ -1691,6 +1691,238 @@
         },
         "overrides": []
       }
+    },
+    {
+      "id": 22,
+      "title": "Historical Trends",
+      "type": "text",
+      "gridPos": {
+        "x": 0,
+        "y": 91,
+        "w": 24,
+        "h": 2
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### Historical Trends"
+      }
+    },
+    {
+      "id": 23,
+      "title": "Base vs Multiplier Over Time (Historical)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 93,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch-summary"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "avg_base"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "template",
+              "id": "2",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 24,
+      "title": "Avg Multiplier Over Time (Historical)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 93,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch-summary"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "avg_multiplier"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "template",
+              "id": "2",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 25,
+      "title": "Avg Cost Indicators Over Time (Historical)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 101,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch-summary"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "avg_cost_indicator_count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "applicative_provider",
+              "id": "2",
+              "settings": {
+                "size": "8",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20
+          }
+        },
+        "overrides": []
+      }
     }
   ],
   "templating": {

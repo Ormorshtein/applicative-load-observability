@@ -1,6 +1,6 @@
 {
   "uid": "alo-main",
-  "title": "ALO \u2014 Stress Analysis",
+  "title": "ALO — Stress Analysis",
   "description": "Stress analysis by application, target, operation, and template, with overall trend.",
   "tags": [
     "alo",
@@ -142,7 +142,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "## Dashboard Cheat Sheet\n\n**How to examine this dashboard:**\n\n1. **Start with the overview** \u2014 pie charts show which application, target, operation, or template contributes the most stress.\n2. **Review the Top 10 Templates table** \u2014 focus on templates with the highest sum stress and cost indicator counts.\n3. **Look at trends** \u2014 stress over time charts reveal spikes and patterns. Correlate with deployments or traffic changes.\n4. **Review volume & throughput** \u2014 request volume, total hits, docs affected, and request size panels show operational load. Total hits correlates with CPU.\n5. **Examine response times** \u2014 high ES or gateway latency alongside high stress may indicate query optimization opportunities.\n6. **Sanity checks** \u2014 verify if the most recurring templates are also the most stressful; templates with many cost indicators need attention.\n\n**What to focus on:**\n- **High stress slices** in pie charts \u2014 optimization targets\n- **Upward trends** in time series \u2014 growing load or degrading patterns\n- **Templates with many cost indicators** \u2014 query optimization candidates\n- **Latency spikes** correlating with specific operations or templates\n- **Total hits spikes** \u2014 correlate with CPU usage under queue saturation\n"
+        "content": "## Dashboard Cheat Sheet\n\n**How to examine this dashboard:**\n\n1. **Start with the overview** — pie charts show which application, target, operation, or template contributes the most stress.\n2. **Review the Top 10 Templates table** — focus on templates with the highest sum stress and cost indicator counts.\n3. **Look at trends** — stress over time charts reveal spikes and patterns. Correlate with deployments or traffic changes.\n4. **Review volume & throughput** — request volume, total hits, docs affected, and request size panels show operational load. Total hits correlates with CPU.\n5. **Examine response times** — high ES or gateway latency alongside high stress may indicate query optimization opportunities.\n6. **Sanity checks** — verify if the most recurring templates are also the most stressful; templates with many cost indicators need attention.\n\n**What to focus on:**\n- **High stress slices** in pie charts — optimization targets\n- **Upward trends** in time series — growing load or degrading patterns\n- **Templates with many cost indicators** — query optimization candidates\n- **Latency spikes** correlating with specific operations or templates\n- **Total hits spikes** — correlate with CPU usage under queue saturation\n"
       }
     },
     {
@@ -2372,6 +2372,371 @@
               {
                 "id": "displayName",
                 "value": "Requests"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 33,
+      "title": "Historical Trends",
+      "type": "text",
+      "gridPos": {
+        "x": 0,
+        "y": 148,
+        "w": 24,
+        "h": 2
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### Historical Trends"
+      }
+    },
+    {
+      "id": 34,
+      "title": "Stress Score Over Time (Historical)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 150,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch-summary"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "avg_score"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "template",
+              "id": "2",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 35,
+      "title": "Request Volume Over Time (Historical)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 158,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch-summary"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "sum",
+              "id": "1",
+              "field": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "operation",
+              "id": "2",
+              "settings": {
+                "size": "8",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 36,
+      "title": "Avg Latency Over Time (Historical)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 158,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch-summary"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "avg_es_took_ms"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "template",
+              "id": "2",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 37,
+      "title": "Top Templates by Cumulative Stress (Historical)",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 166,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch-summary"
+          },
+          "query": "",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "sum",
+              "id": "1",
+              "field": "sum_score"
+            },
+            {
+              "type": "avg",
+              "id": "2",
+              "field": "avg_score"
+            },
+            {
+              "type": "sum",
+              "id": "3",
+              "field": "count"
+            },
+            {
+              "type": "avg",
+              "id": "4",
+              "field": "avg_es_took_ms"
+            },
+            {
+              "type": "avg",
+              "id": "5",
+              "field": "avg_multiplier"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "template",
+              "id": "99",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sum sum_score"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Total Stress"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average avg_score"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Avg Score"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sum count"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Total Requests"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average avg_es_took_ms"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Avg Latency (ms)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average avg_multiplier"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Avg Multiplier"
               }
             ]
           }

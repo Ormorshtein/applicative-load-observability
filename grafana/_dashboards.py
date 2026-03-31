@@ -9,6 +9,7 @@ import json
 import os
 
 DATASOURCE = {"type": "elasticsearch", "uid": "alo-elasticsearch"}
+SUMMARY_DATASOURCE = {"type": "elasticsearch", "uid": "alo-elasticsearch-summary"}
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROVISION_DIR = os.path.join(SCRIPT_DIR, "provisioning", "dashboards")
 
@@ -312,6 +313,60 @@ def mk_bar(title, field, metric_field, metric_op, metric_label, gridpos,
         "legend": {"displayMode": "hidden"},
         "tooltip": {"mode": "single"},
     })
+
+
+def mk_summary_timeseries(title, metric_field, breakdown_field, gridpos,
+                          metric_op="avg", size=10, series_type="line",
+                          fill_opacity=20, stacked=False):
+    """Timeseries panel querying the summary index (long-term trends)."""
+    target = {
+        "datasource": SUMMARY_DATASOURCE,
+        "query": "",
+        "refId": "A",
+        "metrics": [_metric(metric_op, metric_field)],
+        "bucketAggs": [
+            _terms_agg(breakdown_field, agg_id="2", size=size),
+            _date_histogram(agg_id="3"),
+        ],
+    }
+    custom = {"drawStyle": series_type, "fillOpacity": fill_opacity}
+    if stacked:
+        custom["stacking"] = {"mode": "normal"}
+        custom["fillOpacity"] = 50
+    return _base_panel(title, "timeseries", gridpos, targets=[target],
+                       options={
+                           "legend": {"displayMode": "list", "placement": "right"},
+                           "tooltip": {"mode": "multi"},
+                       },
+                       field_config={"defaults": {"custom": custom}, "overrides": []})
+
+
+def mk_summary_table(title, bucket_field, bucket_label, metrics_spec,
+                     gridpos, size=10):
+    """Table panel querying the summary index."""
+    metrics = []
+    overrides = []
+    _NAMES = {"sum": "Sum", "avg": "Average", "count": "Count", "max": "Max"}
+    for i, (label, field, op) in enumerate(metrics_spec):
+        metrics.append(_metric(op, field, metric_id=str(i + 1)))
+        default = _NAMES.get(op, op)
+        if field:
+            default = f"{default} {field}"
+        overrides.append({
+            "matcher": {"id": "byName", "options": default},
+            "properties": [{"id": "displayName", "value": label}],
+        })
+    target = {
+        "datasource": SUMMARY_DATASOURCE,
+        "query": "",
+        "refId": "A",
+        "metrics": metrics,
+        "bucketAggs": [_terms_agg(bucket_field, agg_id="99", size=size,
+                                   order_by="1")],
+    }
+    return _base_panel(title, "table", gridpos, targets=[target],
+                       options={"showHeader": True},
+                       field_config={"defaults": {}, "overrides": overrides})
 
 
 def mk_stacked_bar(title, bucket_field, metrics_spec, gridpos, size=10):
