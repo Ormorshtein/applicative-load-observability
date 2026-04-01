@@ -300,3 +300,56 @@ def layout_usage(vis_ids: list[str], panels: list[dict],
     _add_panel(panels, refs, vis_ids[18], 0, y, 16, 12)
     _add_panel(panels, refs, vis_ids[19], 16, y, 16, 12)
     _add_panel(panels, refs, vis_ids[20], 32, y, 16, 12)
+
+
+def layout_historical(vis_ids: list[str], panels: list[dict],
+                      refs: list[dict]) -> None:
+    """Layout for the historical trends dashboard (17 vis).
+
+    vis_ids order matches build_historical_visualizations():
+      0=hdr-stress, 1=score-template, 2=score-app, 3=score-target,
+      4=hdr-composition, 5=base, 6=mult, 7=ci-count,
+      8=hdr-volume, 9=volume-op, 10=volume-app, 11=latency-es, 12=latency-gw,
+      13=hdr-top, 14=table-templates, 15=table-apps
+    """
+    HDR_H = 3
+    y = 0
+
+    # Stress Trends
+    _add_panel(panels, refs, vis_ids[0], 0, y, GRID_WIDTH, HDR_H,
+               panel_type="visualization")
+    y += HDR_H
+    _add_panel(panels, refs, vis_ids[1], 0, y, GRID_WIDTH, 12)
+    y += 12
+    _add_panel(panels, refs, vis_ids[2], 0, y, 24, 12)
+    _add_panel(panels, refs, vis_ids[3], 24, y, 24, 12)
+    y += 12
+
+    # Score Composition
+    _add_panel(panels, refs, vis_ids[4], 0, y, GRID_WIDTH, HDR_H,
+               panel_type="visualization")
+    y += HDR_H
+    _add_panel(panels, refs, vis_ids[5], 0, y, 24, 12)
+    _add_panel(panels, refs, vis_ids[6], 24, y, 24, 12)
+    y += 12
+    _add_panel(panels, refs, vis_ids[7], 0, y, GRID_WIDTH, 12)
+    y += 12
+
+    # Volume & Latency
+    _add_panel(panels, refs, vis_ids[8], 0, y, GRID_WIDTH, HDR_H,
+               panel_type="visualization")
+    y += HDR_H
+    _add_panel(panels, refs, vis_ids[9], 0, y, 24, 12)
+    _add_panel(panels, refs, vis_ids[10], 24, y, 24, 12)
+    y += 12
+    _add_panel(panels, refs, vis_ids[11], 0, y, 24, 12)
+    _add_panel(panels, refs, vis_ids[12], 24, y, 24, 12)
+    y += 12
+
+    # Top Offenders
+    _add_panel(panels, refs, vis_ids[13], 0, y, GRID_WIDTH, HDR_H,
+               panel_type="visualization")
+    y += HDR_H
+    _add_panel(panels, refs, vis_ids[14], 0, y, GRID_WIDTH, 14)
+    y += 14
+    _add_panel(panels, refs, vis_ids[15], 0, y, GRID_WIDTH, 14)

@@ -372,3 +372,99 @@ def build_usage_visualizations() -> list[tuple[str, dict]]:
         mk_horizontal_bar("alo-usage-bar-users", "Top 10 Users",
                           "identity.username", None, "count", "Requests", 10),
     ]
+
+
+# ---------------------------------------------------------------------------
+# Historical dashboard (summary index — flat field names)
+# ---------------------------------------------------------------------------
+
+def build_historical_visualizations() -> list[tuple[str, dict]]:
+    """Visualizations for the historical dashboard.
+
+    Uses the summary index fields (flat: avg_score, count, template)
+    instead of nested raw fields (stress.score, request.template).
+    """
+    return [
+        # ── Stress Trends ───────────────────────────────────────────────
+        _section_header("alo-hist-hdr-stress", "Stress Trends"),
+
+        mk_ts("alo-hist-ts-score-template", "Stress Score by Template",
+               "template",
+               metric_field="avg_score", metric_label="Avg Score",
+               metric_op="average", size=10),
+
+        mk_ts("alo-hist-ts-score-app", "Stress Score by Application",
+               "applicative_provider",
+               metric_field="avg_score", metric_label="Avg Score",
+               metric_op="average", size=8),
+
+        mk_ts("alo-hist-ts-score-target", "Stress Score by Target",
+               "target",
+               metric_field="avg_score", metric_label="Avg Score",
+               metric_op="average", size=8),
+
+        # ── Score Composition ───────────────────────────────────────────
+        _section_header("alo-hist-hdr-composition", "Score Composition"),
+
+        mk_ts("alo-hist-ts-base", "Avg Base Score by Template",
+               "template",
+               metric_field="avg_base", metric_label="Avg Base",
+               metric_op="average", size=10),
+
+        mk_ts("alo-hist-ts-mult", "Avg Multiplier by Template",
+               "template",
+               metric_field="avg_multiplier", metric_label="Avg Multiplier",
+               metric_op="average", size=10),
+
+        mk_ts("alo-hist-ts-ci-count", "Avg Cost Indicators by Application",
+               "applicative_provider",
+               metric_field="avg_cost_indicator_count",
+               metric_label="Avg Indicators",
+               metric_op="average", size=8),
+
+        # ── Volume & Latency ───────────────────────────────────────────
+        _section_header("alo-hist-hdr-volume", "Volume & Latency"),
+
+        mk_ts("alo-hist-ts-volume-op", "Request Volume by Operation",
+               "operation",
+               metric_field="count", metric_label="Requests",
+               metric_op="sum", size=8),
+
+        mk_ts("alo-hist-ts-volume-app", "Request Volume by Application",
+               "applicative_provider",
+               metric_field="count", metric_label="Requests",
+               metric_op="sum", size=8),
+
+        mk_ts("alo-hist-ts-latency-es", "Avg ES Latency by Template",
+               "template",
+               metric_field="avg_es_took_ms", metric_label="Avg ES Latency (ms)",
+               metric_op="average", size=10),
+
+        mk_ts("alo-hist-ts-latency-gw", "Avg Gateway Latency by Template",
+               "template",
+               metric_field="avg_gateway_took_ms",
+               metric_label="Avg Gateway Latency (ms)",
+               metric_op="average", size=10),
+
+        # ── Top Offenders ──────────────────────────────────────────────
+        _section_header("alo-hist-hdr-top", "Top Offenders (All Time)"),
+
+        mk_datatable("alo-hist-table-templates",
+                     "Top Templates by Cumulative Stress",
+                     "template", "Template", [
+                         ("sum_stress", "Total Stress", "sum_score", "sum"),
+                         ("avg_stress", "Avg Score",    "avg_score", "average"),
+                         ("total_reqs", "Total Requests", "count",  "sum"),
+                         ("avg_lat",    "Avg Latency (ms)", "avg_es_took_ms", "average"),
+                         ("avg_mult",   "Avg Multiplier", "avg_multiplier", "average"),
+                     ]),
+
+        mk_datatable("alo-hist-table-apps",
+                     "Top Applications by Cumulative Stress",
+                     "applicative_provider", "Application", [
+                         ("sum_stress", "Total Stress", "sum_score", "sum"),
+                         ("avg_stress", "Avg Score",    "avg_score", "average"),
+                         ("total_reqs", "Total Requests", "count",  "sum"),
+                         ("avg_lat",    "Avg Latency (ms)", "avg_es_took_ms", "average"),
+                     ]),
+    ]
