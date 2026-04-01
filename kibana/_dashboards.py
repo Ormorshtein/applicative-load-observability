@@ -262,21 +262,24 @@ def do_rebuild(cfg: StackConfig) -> bool:
     main_vis = build_main_visualizations()
     vis_ids = _upsert_visualizations(cfg, main_vis, all_lens=False)
     vis_ids.append(HEAVIEST_OPS_SEARCH_ID)
-    ok1 = build_dashboard(cfg, DASHBOARD_ID, "Applicative Load Observability",
-                          "Stress analysis by application, target, operation, and template, with overall trend.",
+    ok1 = build_dashboard(cfg, DASHBOARD_ID,
+                          "ALO \u2014 Stress Analysis",
+                          "Stress analysis by application, target, operation, and template.",
                           vis_ids, layout_main)
 
     print()
     ci_vis = build_ci_visualizations()
     ci_ids = _upsert_visualizations(cfg, ci_vis, all_lens=False)
-    ok2 = build_dashboard(cfg, CI_DASHBOARD_ID, "Cost Indicators & Query Patterns",
+    ok2 = build_dashboard(cfg, CI_DASHBOARD_ID,
+                          "ALO \u2014 Cost Indicators & Query Patterns",
                           "Cost indicators, clause counts, and query pattern analysis.",
                           ci_ids, layout_cost_indicators)
 
     print()
     usage_vis = build_usage_visualizations()
     usage_ids = _upsert_visualizations(cfg, usage_vis, all_lens=False)
-    ok3 = build_dashboard(cfg, USAGE_DASHBOARD_ID, "Cluster Usage",
+    ok3 = build_dashboard(cfg, USAGE_DASHBOARD_ID,
+                          "ALO \u2014 Cluster Usage",
                           "Operational overview: request rates, latency, errors, and data volume.",
                           usage_ids, layout_usage)
 
@@ -284,7 +287,7 @@ def do_rebuild(cfg: StackConfig) -> bool:
     hist_vis = build_historical_visualizations()
     hist_ids = _upsert_visualizations_with_ref(cfg, hist_vis, SUMMARY_DV_REF)
     ok4 = build_dashboard(cfg, HISTORICAL_DASHBOARD_ID,
-                          "ALO — Historical Trends",
+                          "ALO \u2014 Historical Trends",
                           "Long-term trends from hourly summary data.",
                           hist_ids, layout_historical)
 
