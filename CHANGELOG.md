@@ -1,5 +1,44 @@
 # Changelog
 
+## 1.16.0
+
+### Analyzer
+
+- **`cost_indicator_multipliers`** field added to stress section — stores per-indicator multiplier values (e.g., `{"has_script": 1.5}`) for full score drilldown in dashboards.
+- **`cluster_name` passthrough** — analyzer reads `cluster_name` from the gateway payload and includes it in the record. Enables centralized Logstash serving multiple clusters.
+- **`POST /analyze/bulk`** endpoint for batch analysis (array in, array out, per-item error isolation).
+
+### Dashboard
+
+- **CI dashboard rework** — Score Composition stacked bar chart, Base vs Final Score table, raw metrics alongside weighted values in Score Breakdown table (ES Latency ms, raw shards, raw hits). Section headers added.
+- **Pipeline Bottleneck section** in Stack Health — flow rates (input/filter/output), queue depth, plugin time per event, analyzer in-progress & latency, ES thread pool queues and rejected operations.
+- **Historical Trends dashboard** (standalone) — queries the hourly summary index for lightweight long-term trend analysis. Sections: Stress Trends, Score Composition, Volume & Latency, Top Offenders.
+- Historical sections added to Stress Analysis and Cost Indicators dashboards.
+- Stack Health: split CPU & Queue Backpressure, added memory/JVM panels for Analyzer + Logstash, instance variable filters on all panels.
+- DLQ table fixed (switched to `logs` metric for proper columns).
+- Gateway: Events Dropped + Event Delivery Rate panels.
+- All Kibana dashboards renamed with `ALO —` prefix for consistency.
+
+### Infrastructure
+
+- **Gateway lua-prometheus** — `alo_gateway_events_total` and `alo_gateway_events_dropped_total{reason}` Prometheus counters. Reasons: `logstash_unreachable`, `logstash_error_<status>`, `pcall_error`, `timer_failed`. Exposed on `/metrics` endpoint (port 9145).
+- **`cluster_name` moved to gateway** — Logstash no longer sets it from env var. Gateway sends it in the payload, enabling a single centralized Logstash for multiple clusters.
+- **ES summary transform** — continuous transform aggregating raw records into hourly summaries per (template, operation, app, target, cluster). ~4x doc size reduction. Summary index persists after raw data ILM deletion.
+- **`pipeline.workers: 4`** for Logstash parallel processing.
+- Summary data view + datasource for Kibana and Grafana.
+- ServiceMonitor for gateway lua-metrics in Helm chart.
+- Prometheus `gateway-lua` scrape job.
+
+### Documentation
+
+- README rewritten as project entry point (architecture diagram, quick start, key concepts).
+- Docs consolidated: `haproxy-gateway-analysis.md` and `grafana-support.md` folded into ARCHITECTURE.md and HELM.md.
+- Benchmarking guide moved to `tools/stress/benchmarking.md`.
+- `.env.example` expanded with all env vars grouped by component.
+- Stale image tags fixed (1.6.0 → 1.15.0).
+
+---
+
 ## 1.15.0
 
 ### Analyzer
