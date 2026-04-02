@@ -58,6 +58,8 @@ spec:
           env:
             - name: PIPELINE_URL
               value: {{ include "alo.pipelineUrl" . | quote }}
+            - name: CLUSTER_NAME
+              value: {{ .Values.global.clusterName | quote }}
             {{- if eq (include "alo.gatewayEsAuthEnabled" .) "true" }}
             {{- $authType := include "alo.gatewayEsAuthType" . }}
             {{- if eq $authType "basic" }}

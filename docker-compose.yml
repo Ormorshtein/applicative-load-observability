@@ -116,6 +116,7 @@ services:
       - GATEWAY_PORT=${GATEWAY_PORT:-9200}
       - WORKER_CONNECTIONS=${WORKER_CONNECTIONS:-1024}
       - LOGSTASH_TIMEOUT_MS=${LOGSTASH_TIMEOUT_MS:-1000}
+      - CLUSTER_NAME=${CLUSTER_NAME:-default}
     networks:
       - obs-net
     depends_on:

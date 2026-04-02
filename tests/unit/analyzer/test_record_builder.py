@@ -159,6 +159,7 @@ def _make_raw(**overrides):
         gateway_took_ms=67.0,
         request_size_bytes=284,
         response_size_bytes=1920,
+        cluster_name="default",
     )
     defaults.update(overrides)
     return RawFields(**defaults)

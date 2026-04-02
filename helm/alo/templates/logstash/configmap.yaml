@@ -37,7 +37,7 @@ data:
           payload = {}
           ["method", "path", "headers", "request_body", "response_body",
            "client_host", "upstream_response_time", "content_length",
-           "response_size_bytes", "response_status"].each do |f|
+           "response_size_bytes", "response_status", "cluster_name"].each do |f|
             v = event.get(f)
             payload[f] = v unless v.nil?
           end
@@ -65,7 +65,6 @@ data:
               resp.each { |k, v| event.set(k, v) }
 
               event.set("@timestamp", LogStash::Timestamp.new(ts_str)) if ts_str
-              event.set("cluster_name", "{{ .Values.global.clusterName }}")
               if op == "unknown"
                 event.tag("_httprequestfailure")
               else
@@ -81,7 +80,7 @@ data:
       if "_httprequestfailure" in [tags] {
         elasticsearch {
           hosts => ["{{ include "alo.elasticsearchUrl" . }}"]
-          index => "logs-alo.dead_letter-{{ .Values.global.clusterName }}"
+          index => "logs-alo.dead_letter-%{cluster_name}"
           action => "create"
           {{- if eq (include "alo.esAuthEnabled" .) "true" }}
           user => "${ES_USERNAME}"
@@ -100,7 +99,7 @@ data:
       } else {
         elasticsearch {
           hosts => ["{{ include "alo.elasticsearchUrl" . }}"]
-          index => "logs-alo.%{[@metadata][ds_dataset]}-{{ .Values.global.clusterName }}"
+          index => "logs-alo.%{[@metadata][ds_dataset]}-%{cluster_name}"
           action => "create"
           {{- if eq (include "alo.esAuthEnabled" .) "true" }}
           user => "${ES_USERNAME}"

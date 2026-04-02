@@ -55,6 +55,7 @@ class RawFields:
     gateway_took_ms:      float
     request_size_bytes:   int
     response_size_bytes:  int
+    cluster_name:         str
 
 
 def _parse_json_field(raw: str) -> dict[str, Any]:
@@ -104,6 +105,7 @@ def extract_raw_fields(payload: dict) -> RawFields:
         request_size_bytes=  _parse_content_length(
                                  payload.get("content_length", "")),
         response_size_bytes= int(payload.get("response_size_bytes", 0)),
+        cluster_name=        payload.get("cluster_name", "default"),
     )
 
 
@@ -315,6 +317,7 @@ def _assemble_record(
     """Assemble a single observability record dict."""
     record: dict[str, Any] = {
         "@timestamp": _utc_timestamp(),
+        "cluster_name": raw.cluster_name,
         "identity": {
             "username": parse_username(raw.headers),
             "applicative_provider": parse_applicative_provider(raw.headers),
