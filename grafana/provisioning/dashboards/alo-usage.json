@@ -1087,7 +1087,15 @@
         ]
       },
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "links": [
+            {
+              "title": "Filter by ${__data.fields[0]}",
+              "url": "/d/alo-main?${__url_time_range}&var-application=${__data.fields[0]}",
+              "targetBlank": false
+            }
+          ]
+        },
         "overrides": [
           {
             "matcher": {
@@ -1437,7 +1445,15 @@
         }
       },
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "links": [
+            {
+              "title": "Filter by ${__data.fields[0]}",
+              "url": "/d/alo-main?${__url_time_range}&var-application=${__data.fields[0]}",
+              "targetBlank": false
+            }
+          ]
+        },
         "overrides": []
       }
     },
@@ -1495,7 +1511,15 @@
         }
       },
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "links": [
+            {
+              "title": "Filter by ${__data.fields[0]}",
+              "url": "/d/alo-main?${__url_time_range}&var-target=${__data.fields[0]}",
+              "targetBlank": false
+            }
+          ]
+        },
         "overrides": []
       }
     },
@@ -1553,7 +1577,15 @@
         }
       },
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "links": [
+            {
+              "title": "Filter by ${__data.fields[0]}",
+              "url": "/d/alo-main?${__url_time_range}&var-username=${__data.fields[0]}",
+              "targetBlank": false
+            }
+          ]
+        },
         "overrides": []
       }
     }

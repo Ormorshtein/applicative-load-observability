@@ -207,7 +207,15 @@
         }
       },
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "links": [
+            {
+              "title": "Filter by ${__data.fields[0]}",
+              "url": "/d/alo-main?${__url_time_range}&var-application=${__data.fields[0]}",
+              "targetBlank": false
+            }
+          ]
+        },
         "overrides": []
       }
     },
@@ -273,7 +281,15 @@
         }
       },
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "links": [
+            {
+              "title": "Filter by ${__data.fields[0]}",
+              "url": "/d/alo-main?${__url_time_range}&var-target=${__data.fields[0]}",
+              "targetBlank": false
+            }
+          ]
+        },
         "overrides": []
       }
     },
@@ -339,7 +355,15 @@
         }
       },
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "links": [
+            {
+              "title": "Filter by ${__data.fields[0]}",
+              "url": "/d/alo-main?${__url_time_range}&var-operation=${__data.fields[0]}",
+              "targetBlank": false
+            }
+          ]
+        },
         "overrides": []
       }
     },
@@ -405,7 +429,15 @@
         }
       },
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "links": [
+            {
+              "title": "Filter by ${__data.fields[0]}",
+              "url": "/d/alo-main?${__url_time_range}&var-cost_indicator=${__data.fields[0]}",
+              "targetBlank": false
+            }
+          ]
+        },
         "overrides": []
       }
     },
@@ -471,7 +503,15 @@
         }
       },
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "links": [
+            {
+              "title": "Filter by ${__data.fields[0]}",
+              "url": "/d/alo-main?${__url_time_range}&var-template=${__data.fields[0]}",
+              "targetBlank": false
+            }
+          ]
+        },
         "overrides": []
       }
     },
@@ -559,7 +599,15 @@
         ]
       },
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "links": [
+            {
+              "title": "Filter by ${__data.fields[0]}",
+              "url": "/d/alo-main?${__url_time_range}&var-template=${__data.fields[0]}",
+              "targetBlank": false
+            }
+          ]
+        },
         "overrides": [
           {
             "matcher": {
@@ -692,7 +740,15 @@
         ]
       },
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "links": [
+            {
+              "title": "Filter by ${__data.fields[0]}",
+              "url": "/d/alo-main?${__url_time_range}&var-cost_indicator=${__data.fields[0]}",
+              "targetBlank": false
+            }
+          ]
+        },
         "overrides": [
           {
             "matcher": {
@@ -1419,7 +1475,7 @@
     },
     {
       "id": 20,
-      "title": "Avg ES Response Time by Cost Indicator",
+      "title": "Avg ES Latency (ms)",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1428,198 +1484,7 @@
       "gridPos": {
         "x": 0,
         "y": 118,
-        "w": 8,
-        "h": 8
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "A",
-          "metrics": [
-            {
-              "type": "avg",
-              "id": "1",
-              "field": "response.es_took_ms"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "stress.cost_indicator_names",
-              "id": "2",
-              "settings": {
-                "size": "5",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            },
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "3",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ]
-        },
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "B",
-          "metrics": [
-            {
-              "type": "count",
-              "id": "1"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ]
-        }
-      ],
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "right"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 0
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byFrameRefID",
-              "options": "B"
-            },
-            "properties": [
-              {
-                "id": "custom.axisPlacement",
-                "value": "right"
-              },
-              {
-                "id": "custom.drawStyle",
-                "value": "bars"
-              },
-              {
-                "id": "custom.fillOpacity",
-                "value": 20
-              },
-              {
-                "id": "displayName",
-                "value": "Requests"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": 21,
-      "title": "Avg ES Response Time by Operation",
-      "type": "timeseries",
-      "datasource": {
-        "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
-      },
-      "gridPos": {
-        "x": 8,
-        "y": 118,
-        "w": 8,
-        "h": 8
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch-summary"
-          },
-          "query": "",
-          "refId": "A",
-          "metrics": [
-            {
-              "type": "avg",
-              "id": "1",
-              "field": "avg_es_took_ms"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "operation",
-              "id": "2",
-              "settings": {
-                "size": "5",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            },
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "3",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ]
-        }
-      ],
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "right"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 20
-          }
-        },
-        "overrides": []
-      }
-    },
-    {
-      "id": 22,
-      "title": "Avg ES Response Time by Template",
-      "type": "timeseries",
-      "datasource": {
-        "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
-      },
-      "gridPos": {
-        "x": 16,
-        "y": 118,
-        "w": 8,
+        "w": 24,
         "h": 8
       },
       "targets": [

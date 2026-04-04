@@ -185,17 +185,42 @@ def mk_stat(title, field, operation, gridpos, query=""):
     })
 
 
-def mk_pie(title, field, gridpos, size=8):
+_FIELD_TO_VAR = {
+    "identity.applicative_provider": "application",
+    "request.target": "target",
+    "request.operation": "operation",
+    "stress.cost_indicator_names": "cost_indicator",
+    "request.template": "template",
+    "identity.username": "username",
+    "identity.client_host": "client_host",
+}
+
+
+def _add_filter_link(panel, field, dashboard_uid="alo-main"):
+    """Add a data link that filters the dashboard by the clicked value."""
+    var_name = _FIELD_TO_VAR.get(field)
+    if var_name:
+        panel["fieldConfig"]["defaults"]["links"] = [{
+            "title": "Filter by ${__data.fields[0]}",
+            "url": f"/d/{dashboard_uid}?${{__url_time_range}}"
+                   f"&var-{var_name}=${{__data.fields[0]}}",
+            "targetBlank": False,
+        }]
+
+
+def mk_pie(title, field, gridpos, size=8, dashboard_uid="alo-main"):
     target = _es_target(
         metrics=[_metric("sum", "stress.score")],
         bucket_aggs=[_terms_agg(field, size=size)],
     )
-    return _base_panel(title, "piechart", gridpos, targets=[target], options={
+    panel = _base_panel(title, "piechart", gridpos, targets=[target], options={
         "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": True},
         "pieType": "pie",
         "legend": {"displayMode": "list", "placement": "bottom"},
         "tooltip": {"mode": "multi"},
     })
+    _add_filter_link(panel, field, dashboard_uid)
+    return panel
 
 
 def mk_pie_filters(title, filters, gridpos):
@@ -300,19 +325,21 @@ def mk_timeseries_multi(title, metrics_spec, gridpos, series_type="line",
 
 
 def mk_bar(title, field, metric_field, metric_op, metric_label, gridpos,
-           size=10):
+           size=10, dashboard_uid="alo-main"):
     metrics = [_metric(metric_op, metric_field)] if metric_field else [
         _metric("count")]
     target = _es_target(
         metrics=metrics,
         bucket_aggs=[_terms_agg(field, size=size)],
     )
-    return _base_panel(title, "barchart", gridpos, targets=[target], options={
+    panel = _base_panel(title, "barchart", gridpos, targets=[target], options={
         "orientation": "horizontal",
         "showValue": "always",
         "legend": {"displayMode": "hidden"},
         "tooltip": {"mode": "single"},
     })
+    _add_filter_link(panel, field, dashboard_uid)
+    return panel
 
 
 def mk_summary_timeseries(title, metric_field, breakdown_field, gridpos,
@@ -406,7 +433,7 @@ def mk_stacked_bar(title, bucket_field, metrics_spec, gridpos, size=10):
 
 
 def mk_table(title, bucket_field, bucket_label, metrics_spec, gridpos,
-             size=10):
+             size=10, dashboard_uid="alo-main"):
     metrics = []
     overrides = []
     for i, (label, field, op) in enumerate(metrics_spec):
@@ -427,13 +454,15 @@ def mk_table(title, bucket_field, bucket_label, metrics_spec, gridpos,
             "matcher": {"id": "byName", "options": default},
             "properties": [{"id": "displayName", "value": label}],
         })
-    return _base_panel(title, "table", gridpos, targets=[target],
-                       options={
-                           "showHeader": True,
-                           "sortBy": [{"displayName": metrics_spec[0][0],
-                                       "desc": True}],
-                       },
-                       field_config={"defaults": {}, "overrides": overrides})
+    panel = _base_panel(title, "table", gridpos, targets=[target],
+                        options={
+                            "showHeader": True,
+                            "sortBy": [{"displayName": metrics_spec[0][0],
+                                        "desc": True}],
+                        },
+                        field_config={"defaults": {}, "overrides": overrides})
+    _add_filter_link(panel, bucket_field, dashboard_uid)
+    return panel
 
 
 # ---------------------------------------------------------------------------

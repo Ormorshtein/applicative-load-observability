@@ -86,14 +86,14 @@ def _add_panel(panels: list[dict], refs: list[dict], vid: str,
 
 def layout_main(vis_ids: list[str], panels: list[dict],
                 refs: list[dict]) -> None:
-    """Layout for main dashboard (25 vis + optional saved search at end).
+    """Layout for main dashboard (23 vis + optional saved search at end).
 
     Vis indices:
       0=cheat, 1=metric, 2-6=pies,
       7=hdr-offenders, 8=top-templates, 9=top-indicators,
       10=hdr-trends, 11-15=stress-ts,
       16=hdr-volume, 17=vol-template, 18=hits, 19=docs, 20=reqsize,
-      21=hdr-latency, 22-24=es-resp
+      21=hdr-latency, 22=es-latency
     """
     HDR_H = 3
     y = 0
@@ -117,8 +117,8 @@ def layout_main(vis_ids: list[str], panels: list[dict],
     _add_panel(panels, refs, vis_ids[8], 0, y, GRID_WIDTH, 14)
     y += 14
     # Heaviest Ops saved search (appended after vis_ids by do_rebuild)
-    if len(vis_ids) > 25:
-        _add_panel(panels, refs, vis_ids[25], 0, y, GRID_WIDTH, 16,
+    if len(vis_ids) > 23:
+        _add_panel(panels, refs, vis_ids[23], 0, y, GRID_WIDTH, 16,
                    panel_type="search")
         y += 16
     _add_panel(panels, refs, vis_ids[9], 0, y, GRID_WIDTH, 14)
@@ -144,12 +144,11 @@ def layout_main(vis_ids: list[str], panels: list[dict],
     _add_panel(panels, refs, vis_ids[20], 24, y, 24, 12)
     y += 12
 
-    # Response Times (ES only)
+    # Response Times
     _add_panel(panels, refs, vis_ids[21], 0, y, GRID_WIDTH, HDR_H,
                panel_type="visualization")
     y += HDR_H
-    for j in range(3):
-        _add_panel(panels, refs, vis_ids[22 + j], j * 16, y, 16, 12)
+    _add_panel(panels, refs, vis_ids[22], 0, y, GRID_WIDTH, 12)
 
 
 # ---------------------------------------------------------------------------

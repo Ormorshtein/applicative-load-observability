@@ -125,21 +125,14 @@ def build_main_visualizations() -> list[tuple[str, dict]]:
         metric_op="sum", size=8,
         description="Sum of request payload size by operation."))
 
-    # ── Response Times (ES only) ──────────────────────────────────────────
+    # ── Response Times ──────────────────────────────────────────────────────
     vis.append(_section_header("alo-hdr-latency", "Response Times"))
 
-    response_breakdowns = [
-        ("stress.cost_indicator_names", "Cost Indicator"),
-        ("request.operation",           "Operation"),
-        ("request.template",            "Template"),
-    ]
-    for bd_field, bd_label in response_breakdowns:
-        slug = bd_label.lower().replace(" ", "-")
-        vis.append(mk_ts_response(
-            f"alo-resp-es-{slug}",
-            f"Avg ES Response Time by {bd_label}",
-            bd_field, "response.es_took_ms", "Avg ES Latency (ms)",
-            description=PANEL_DESCRIPTIONS["resp_es"][bd_label]))
+    vis.append(mk_ts(
+        "alo-resp-es-template", "Avg ES Latency (ms)",
+        "request.template",
+        metric_field="response.es_took_ms", metric_label="Avg ES Latency (ms)",
+        metric_op="average", size=10))
 
     return vis
 

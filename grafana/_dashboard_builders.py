@@ -159,23 +159,13 @@ def build_main_dashboard() -> dict:
         metric_op="avg", size=8))
     y += _PANEL_H
 
-    # ── Response Times (ES only — gateway panels deferred, see docs) ───
+    # ── Response Times ────────────────────────────────────────────────
     panels.append(_row("Response Times", y))
     y += _ROW_H
 
-    # Cost Indicator breakdown uses raw (needs indicator names)
-    panels.append(mk_timeseries_response(
-        "Avg ES Response Time by Cost Indicator",
-        "stress.cost_indicator_names", "response.es_took_ms",
-        "Avg ES Latency (ms)",
-        {"x": 0, "y": y, "w": _THIRD_W, "h": _PANEL_H}))
-    # Operation and Template use summary
     panels.append(mk_summary_timeseries(
-        "Avg ES Response Time by Operation", "avg_es_took_ms", "operation",
-        {"x": _THIRD_W, "y": y, "w": _THIRD_W, "h": _PANEL_H}, size=5))
-    panels.append(mk_summary_timeseries(
-        "Avg ES Response Time by Template", "avg_es_took_ms", "template",
-        {"x": 2 * _THIRD_W, "y": y, "w": _THIRD_W, "h": _PANEL_H}, size=10))
+        "Avg ES Latency (ms)", "avg_es_took_ms", "template",
+        {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}, size=10))
     y += _PANEL_H
 
     return _wrap_dashboard(
