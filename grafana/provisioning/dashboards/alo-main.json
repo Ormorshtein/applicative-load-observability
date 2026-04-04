@@ -210,8 +210,8 @@
         "defaults": {
           "links": [
             {
-              "title": "Filter by ${__data.fields.name}",
-              "url": "/d/alo-main?${__all_variables}&var-Filters=identity.applicative_provider|=|${__data.fields.name}",
+              "title": "Filter by ${__value.text}",
+              "url": "/d/alo-main?${__all_variables}&var-Filters=identity.applicative_provider|=|${__value.text}",
               "targetBlank": false
             }
           ]
@@ -284,8 +284,8 @@
         "defaults": {
           "links": [
             {
-              "title": "Filter by ${__data.fields.name}",
-              "url": "/d/alo-main?${__all_variables}&var-Filters=request.target|=|${__data.fields.name}",
+              "title": "Filter by ${__value.text}",
+              "url": "/d/alo-main?${__all_variables}&var-Filters=request.target|=|${__value.text}",
               "targetBlank": false
             }
           ]
@@ -358,8 +358,8 @@
         "defaults": {
           "links": [
             {
-              "title": "Filter by ${__data.fields.name}",
-              "url": "/d/alo-main?${__all_variables}&var-Filters=request.operation|=|${__data.fields.name}",
+              "title": "Filter by ${__value.text}",
+              "url": "/d/alo-main?${__all_variables}&var-Filters=request.operation|=|${__value.text}",
               "targetBlank": false
             }
           ]
@@ -432,8 +432,8 @@
         "defaults": {
           "links": [
             {
-              "title": "Filter by ${__data.fields.name}",
-              "url": "/d/alo-main?${__all_variables}&var-Filters=stress.cost_indicator_names|=|${__data.fields.name}",
+              "title": "Filter by ${__value.text}",
+              "url": "/d/alo-main?${__all_variables}&var-Filters=stress.cost_indicator_names|=|${__value.text}",
               "targetBlank": false
             }
           ]
@@ -506,8 +506,8 @@
         "defaults": {
           "links": [
             {
-              "title": "Filter by ${__data.fields.name}",
-              "url": "/d/alo-main?${__all_variables}&var-Filters=request.template|=|${__data.fields.name}",
+              "title": "Filter by ${__value.text}",
+              "url": "/d/alo-main?${__all_variables}&var-Filters=request.template|=|${__value.text}",
               "targetBlank": false
             }
           ]

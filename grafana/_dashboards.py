@@ -198,9 +198,9 @@ def mk_pie(title, field, gridpos, size=8, dashboard_uid="alo-main"):
     })
     # Data link: clicking a slice filters the dashboard by that value
     panel["fieldConfig"]["defaults"]["links"] = [{
-        "title": "Filter by ${__data.fields.name}",
+        "title": "Filter by ${__value.text}",
         "url": f"/d/{dashboard_uid}?${{__all_variables}}"
-              f"&var-Filters={field}|=|${{__data.fields.name}}",
+              f"&var-Filters={field}|=|${{__value.text}}",
         "targetBlank": False,
     }]
     return panel
