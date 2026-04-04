@@ -185,17 +185,25 @@ def mk_stat(title, field, operation, gridpos, query=""):
     })
 
 
-def mk_pie(title, field, gridpos, size=8):
+def mk_pie(title, field, gridpos, size=8, dashboard_uid="alo-main"):
     target = _es_target(
         metrics=[_metric("sum", "stress.score")],
         bucket_aggs=[_terms_agg(field, size=size)],
     )
-    return _base_panel(title, "piechart", gridpos, targets=[target], options={
+    panel = _base_panel(title, "piechart", gridpos, targets=[target], options={
         "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": True},
         "pieType": "pie",
         "legend": {"displayMode": "list", "placement": "bottom"},
         "tooltip": {"mode": "multi"},
     })
+    # Data link: clicking a slice filters the dashboard by that value
+    panel["fieldConfig"]["defaults"]["links"] = [{
+        "title": "Filter by ${__data.fields.name}",
+        "url": f"/d/{dashboard_uid}?${{__all_variables}}"
+              f"&var-Filters={field}|=|${{__data.fields.name}}",
+        "targetBlank": False,
+    }]
+    return panel
 
 
 def mk_pie_filters(title, filters, gridpos):
