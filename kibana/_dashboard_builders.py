@@ -105,16 +105,16 @@ def build_main_visualizations() -> list[tuple[str, dict]]:
         description="Request count by template."))
 
     vis.append(mk_ts(
-        "alo-ts-total-hits", "Total Hits",
+        "alo-ts-total-hits", "Read Volume (Search Results)",
         "request.operation",
-        metric_field="response.hits", metric_label="Total Hits",
+        metric_field="response.hits", metric_label="Read Volume (Search Results)",
         metric_op="sum", size=8,
         description="Sum of response hits by operation."))
 
     vis.append(mk_ts(
-        "alo-ts-docs-affected", "Docs Affected",
+        "alo-ts-docs-affected", "Write Volume (Documents)",
         "request.operation",
-        metric_field="response.docs_affected", metric_label="Docs Affected",
+        metric_field="response.docs_affected", metric_label="Write Volume (Documents)",
         metric_op="sum", size=8,
         description="Sum of docs affected by operation."))
 
@@ -306,13 +306,13 @@ def build_usage_visualizations() -> list[tuple[str, dict]]:
 
         mk_ts("alo-usage-ts-hits", "Read Volume (Total Hits)",
                "request.operation",
-               metric_field="response.hits", metric_label="Total Hits",
+               metric_field="response.hits", metric_label="Read Volume (Search Results)",
                metric_op="sum", size=8),
 
         mk_ts("alo-usage-ts-docs", "Write Volume (Docs Affected)",
                "request.operation",
                metric_field="response.docs_affected",
-               metric_label="Docs Affected",
+               metric_label="Write Volume (Documents)",
                metric_op="sum", size=8),
 
         mk_ts_multi("alo-usage-ts-payload", "Payload Sizes", [

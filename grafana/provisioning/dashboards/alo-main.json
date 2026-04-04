@@ -1251,7 +1251,7 @@
     },
     {
       "id": 17,
-      "title": "Total Hits",
+      "title": "Read Volume (Search Results)",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1322,7 +1322,7 @@
     },
     {
       "id": 18,
-      "title": "Docs Affected",
+      "title": "Write Volume (Documents)",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
