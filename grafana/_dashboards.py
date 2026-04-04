@@ -351,10 +351,9 @@ def mk_summary_timeseries(title, metric_field, breakdown_field, gridpos,
         "query": "",
         "refId": "A",
         "metrics": [_metric(metric_op, metric_field)],
-        "bucketAggs": [
-            _terms_agg(breakdown_field, agg_id="2", size=size),
-            _date_histogram(agg_id="3"),
-        ],
+        "bucketAggs": ([_terms_agg(breakdown_field, agg_id="2", size=size)]
+                       if breakdown_field else [])
+                      + [_date_histogram(agg_id="3")],
     }
     custom = {"drawStyle": series_type, "fillOpacity": fill_opacity}
     if stacked:

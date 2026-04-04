@@ -138,25 +138,25 @@ def build_main_dashboard() -> dict:
     y += _ROW_H
 
     panels.append(mk_summary_timeseries(
-        "Request Volume by Template", "count", "template",
+        "Request Volume", "count", None,
         {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-        metric_op="sum", size=10))
+        metric_op="sum"))
     y += _PANEL_H
 
     panels.append(mk_summary_timeseries(
-        "Documents Matched by Queries", "avg_hits", "operation",
+        "Documents Matched by Queries", "avg_hits", None,
         {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-        metric_op="avg", size=8))
+        metric_op="avg"))
     y += _PANEL_H
 
     panels.append(mk_summary_timeseries(
-        "Write Volume (Documents)", "avg_docs_affected", "operation",
+        "Write Volume (Documents)", "avg_docs_affected", None,
         {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        metric_op="avg", size=8))
+        metric_op="avg"))
     panels.append(mk_summary_timeseries(
-        "Request Size (Bytes)", "avg_request_size_bytes", "operation",
+        "Request Size (Bytes)", "avg_request_size_bytes", None,
         {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        metric_op="avg", size=8))
+        metric_op="avg"))
     y += _PANEL_H
 
     # ── Response Times ────────────────────────────────────────────────
@@ -164,8 +164,8 @@ def build_main_dashboard() -> dict:
     y += _ROW_H
 
     panels.append(mk_summary_timeseries(
-        "Avg ES Latency (ms)", "avg_es_took_ms", "template",
-        {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}, size=10))
+        "Avg ES Latency (ms)", "avg_es_took_ms", None,
+        {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}))
     y += _PANEL_H
 
     return _wrap_dashboard(

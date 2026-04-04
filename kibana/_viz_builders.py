@@ -130,33 +130,43 @@ def mk_pie_filters(
     return vis_id, attrs
 
 
-def mk_ts(vis_id: str, title: str, field: str,
+def mk_ts(vis_id: str, title: str, field: str | None,
            metric_field: str = "stress.score", metric_label: str = "Avg Stress Score",
            metric_op: str = "average", size: int = 5,
            description: str = "") -> tuple[str, dict]:
+    columns = {
+        "time": {"label": "@timestamp", "dataType": "date", "operationType": "date_histogram",
+                 "sourceField": "@timestamp", "isBucketed": True, "params": {"interval": "auto"}},
+        "metric": {"label": metric_label, "customLabel": True, "dataType": "number",
+                   "operationType": metric_op, "sourceField": metric_field, "isBucketed": False},
+    }
+    col_order = ["time", "metric"]
+    layer = {"layerId": "layer1", "layerType": "data", "seriesType": "area",
+             "xAccessor": "time", "accessors": ["metric"]}
+
+    if field:
+        columns["breakdown"] = {
+            "label": field.split(".")[-1], "dataType": "string",
+            "operationType": "terms", "sourceField": field, "isBucketed": True,
+            "params": {"size": size, "orderBy": {"type": "column", "columnId": "metric"},
+                       "orderDirection": "desc", "otherBucket": False},
+        }
+        col_order = ["time", "breakdown", "metric"]
+        layer["splitAccessor"] = "breakdown"
+
     attrs = {
         "title": title, "visualizationType": "lnsXY",
         "state": {
             "visualization": {
                 "preferredSeriesType": "area",
-                "layers": [{"layerId": "layer1", "layerType": "data", "seriesType": "area",
-                            "xAccessor": "time", "accessors": ["metric"], "splitAccessor": "breakdown"}],
+                "layers": [layer],
                 "legend": {"isVisible": True, "position": "right"},
                 "axisTitlesVisibilitySettings": {"x": False, "yLeft": True, "yRight": True},
                 "yLeftExtent": {"mode": "dataBounds"},
             },
             "datasourceStates": {"formBased": {"layers": {"layer1": {
-                "columns": {
-                    "time": {"label": "@timestamp", "dataType": "date", "operationType": "date_histogram",
-                             "sourceField": "@timestamp", "isBucketed": True, "params": {"interval": "auto"}},
-                    "breakdown": {"label": field.split(".")[-1], "dataType": "string",
-                                  "operationType": "terms", "sourceField": field, "isBucketed": True,
-                                  "params": {"size": size, "orderBy": {"type": "column", "columnId": "metric"},
-                                             "orderDirection": "desc", "otherBucket": False}},
-                    "metric": {"label": metric_label, "dataType": "number",
-                               "operationType": metric_op, "sourceField": metric_field, "isBucketed": False},
-                },
-                "columnOrder": ["time", "breakdown", "metric"], "incompleteColumns": {},
+                "columns": columns,
+                "columnOrder": col_order, "incompleteColumns": {},
             }}}},
             "query": {"query": "", "language": "kuery"}, "filters": [],
         },

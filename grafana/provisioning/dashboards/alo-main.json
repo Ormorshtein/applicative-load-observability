@@ -1180,7 +1180,7 @@
     },
     {
       "id": 16,
-      "title": "Request Volume by Template",
+      "title": "Request Volume",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1208,17 +1208,6 @@
             }
           ],
           "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "template",
-              "id": "2",
-              "settings": {
-                "size": "10",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            },
             {
               "type": "date_histogram",
               "field": "@timestamp",
@@ -1280,17 +1269,6 @@
           ],
           "bucketAggs": [
             {
-              "type": "terms",
-              "field": "operation",
-              "id": "2",
-              "settings": {
-                "size": "8",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            },
-            {
               "type": "date_histogram",
               "field": "@timestamp",
               "id": "3",
@@ -1351,17 +1329,6 @@
           ],
           "bucketAggs": [
             {
-              "type": "terms",
-              "field": "operation",
-              "id": "2",
-              "settings": {
-                "size": "8",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            },
-            {
               "type": "date_histogram",
               "field": "@timestamp",
               "id": "3",
@@ -1421,17 +1388,6 @@
             }
           ],
           "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "operation",
-              "id": "2",
-              "settings": {
-                "size": "8",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            },
             {
               "type": "date_histogram",
               "field": "@timestamp",
@@ -1503,17 +1459,6 @@
             }
           ],
           "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "template",
-              "id": "2",
-              "settings": {
-                "size": "10",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            },
             {
               "type": "date_histogram",
               "field": "@timestamp",

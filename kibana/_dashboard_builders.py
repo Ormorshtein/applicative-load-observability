@@ -98,41 +98,32 @@ def build_main_visualizations() -> list[tuple[str, dict]]:
     vis.append(_section_header("alo-hdr-volume", "Volume & Throughput"))
 
     vis.append(mk_ts(
-        "alo-ts-volume-template", "Request Volume by Template",
-        "request.template",
+        "alo-ts-volume", "Request Volume", None,
         metric_field="___records___", metric_label="Requests",
-        metric_op="count", size=10,
-        description="Request count by template."))
+        metric_op="count"))
 
     vis.append(mk_ts(
-        "alo-ts-total-hits", "Documents Matched by Queries",
-        "request.operation",
-        metric_field="response.hits", metric_label="Documents Matched by Queries",
-        metric_op="sum", size=8,
-        description="Sum of response hits by operation."))
+        "alo-ts-total-hits", "Documents Matched by Queries", None,
+        metric_field="response.hits", metric_label="Documents Matched",
+        metric_op="sum"))
 
     vis.append(mk_ts(
-        "alo-ts-docs-affected", "Write Volume (Documents)",
-        "request.operation",
-        metric_field="response.docs_affected", metric_label="Write Volume (Documents)",
-        metric_op="sum", size=8,
-        description="Sum of docs affected by operation."))
+        "alo-ts-docs-affected", "Write Volume (Documents)", None,
+        metric_field="response.docs_affected", metric_label="Documents Written",
+        metric_op="sum"))
 
     vis.append(mk_ts(
-        "alo-ts-request-size", "Request Size (Bytes)",
-        "request.operation",
+        "alo-ts-request-size", "Request Size (Bytes)", None,
         metric_field="request.size_bytes", metric_label="Request Bytes",
-        metric_op="sum", size=8,
-        description="Sum of request payload size by operation."))
+        metric_op="sum"))
 
     # ── Response Times ──────────────────────────────────────────────────────
     vis.append(_section_header("alo-hdr-latency", "Response Times"))
 
     vis.append(mk_ts(
-        "alo-resp-es-template", "Avg ES Latency (ms)",
-        "request.template",
+        "alo-resp-es", "Avg ES Latency (ms)", None,
         metric_field="response.es_took_ms", metric_label="Avg ES Latency (ms)",
-        metric_op="average", size=10))
+        metric_op="average"))
 
     return vis
 
