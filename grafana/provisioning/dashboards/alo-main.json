@@ -758,7 +758,7 @@
     },
     {
       "id": 11,
-      "title": "Stress Over Time by Application",
+      "title": "Stress by Application",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -829,7 +829,7 @@
     },
     {
       "id": 12,
-      "title": "Stress Over Time by Target",
+      "title": "Stress by Target",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -900,7 +900,7 @@
     },
     {
       "id": 13,
-      "title": "Stress Over Time by Operation",
+      "title": "Stress by Operation",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -971,7 +971,7 @@
     },
     {
       "id": 14,
-      "title": "Stress Over Time by Cost Indicator",
+      "title": "Stress by Cost Indicator",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1042,7 +1042,7 @@
     },
     {
       "id": 15,
-      "title": "Stress Over Time by Template",
+      "title": "Stress by Template",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1124,7 +1124,7 @@
     },
     {
       "id": 16,
-      "title": "Request Volume Over Time by Template",
+      "title": "Request Volume by Template",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1195,7 +1195,7 @@
     },
     {
       "id": 17,
-      "title": "Total Hits Over Time",
+      "title": "Total Hits",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1266,7 +1266,7 @@
     },
     {
       "id": 18,
-      "title": "Docs Affected Over Time",
+      "title": "Docs Affected",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1337,7 +1337,7 @@
     },
     {
       "id": 19,
-      "title": "Request Size Over Time",
+      "title": "Request Size (Bytes)",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",

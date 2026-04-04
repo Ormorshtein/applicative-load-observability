@@ -116,7 +116,7 @@ def build_main_dashboard() -> dict:
         size = 10 if field == "request.template" else 5
         if field == "stress.cost_indicator_names":
             panels.append(mk_timeseries(
-                f"Stress Over Time by {label}", field,
+                f"Stress by {label}", field,
                 {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
                 size=size, series_type="line", fill_opacity=20))
         else:
@@ -128,7 +128,7 @@ def build_main_dashboard() -> dict:
                 "request.template": "template",
             }[field]
             panels.append(mk_summary_timeseries(
-                f"Stress Over Time by {label}", "avg_score", summary_field,
+                f"Stress by {label}", "avg_score", summary_field,
                 {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
                 size=size))
         y += _PANEL_H
@@ -138,23 +138,23 @@ def build_main_dashboard() -> dict:
     y += _ROW_H
 
     panels.append(mk_summary_timeseries(
-        "Request Volume Over Time by Template", "count", "template",
+        "Request Volume by Template", "count", "template",
         {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
         metric_op="sum", size=10))
     y += _PANEL_H
 
     panels.append(mk_summary_timeseries(
-        "Total Hits Over Time", "avg_hits", "operation",
+        "Total Hits", "avg_hits", "operation",
         {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
         metric_op="avg", size=8))
     y += _PANEL_H
 
     panels.append(mk_summary_timeseries(
-        "Docs Affected Over Time", "avg_docs_affected", "operation",
+        "Docs Affected", "avg_docs_affected", "operation",
         {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
         metric_op="avg", size=8))
     panels.append(mk_summary_timeseries(
-        "Request Size Over Time", "avg_request_size_bytes", "operation",
+        "Request Size (Bytes)", "avg_request_size_bytes", "operation",
         {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
         metric_op="avg", size=8))
     y += _PANEL_H
@@ -268,7 +268,7 @@ def build_cost_indicators_dashboard() -> dict:
     y += _ROW_H
 
     panels.append(mk_timeseries_multi(
-        "Score Components Over Time", [
+        "Score Components", [
             ("Avg Took", "stress.components.took", "avg", ""),
             ("Avg Shards", "stress.components.shards", "avg", ""),
             ("Avg Hits", "stress.components.hits", "avg", ""),
@@ -278,7 +278,7 @@ def build_cost_indicators_dashboard() -> dict:
     y += _PANEL_H
 
     panels.append(mk_timeseries_multi(
-        "Flagged vs Total Requests Over Time", [
+        "Flagged vs Total Requests", [
             ("Flagged Requests", None, "count",
              "stress.cost_indicator_count:[1 TO *]"),
             ("Total Requests", None, "count", ""),
@@ -326,7 +326,7 @@ def build_cost_indicators_dashboard() -> dict:
         ], {"x": 0, "y": y, "w": _HALF_W + 2, "h": _BAR_H},
         series_type="line"))
     panels.append(mk_timeseries_multi(
-        "Bool Clause Breakdown Over Time", [
+        "Bool Clause Breakdown", [
             ("Avg must", "clause_counts.bool_must", "avg", ""),
             ("Avg should", "clause_counts.bool_should", "avg", ""),
             ("Avg filter", "clause_counts.bool_filter", "avg", ""),
@@ -340,15 +340,15 @@ def build_cost_indicators_dashboard() -> dict:
     y += _ROW_H
 
     panels.append(mk_summary_timeseries(
-        "Base vs Multiplier Over Time (Historical)", "avg_base", "template",
+        "Base Score by Template (Historical)", "avg_base", "template",
         {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H}, size=10))
     panels.append(mk_summary_timeseries(
-        "Avg Multiplier Over Time (Historical)", "avg_multiplier", "template",
+        "Avg Multiplier by Template (Historical)", "avg_multiplier", "template",
         {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H}, size=10))
     y += _PANEL_H
 
     panels.append(mk_summary_timeseries(
-        "Avg Cost Indicators Over Time (Historical)",
+        "Avg Cost Indicators by Application (Historical)",
         "avg_cost_indicator_count", "applicative_provider",
         {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}, size=8))
 
@@ -424,7 +424,7 @@ def build_usage_dashboard() -> dict:
     y += _HDR_H
 
     panels.append(mk_timeseries_multi(
-        "Error Rate Over Time", [
+        "Error Rate", [
             ("Errors (4xx+5xx)", None, "count",
              "response.status:[400 TO *]"),
             ("Total Requests", None, "count", ""),

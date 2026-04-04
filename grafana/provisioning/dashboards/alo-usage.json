@@ -1,6 +1,6 @@
 {
   "uid": "alo-usage",
-  "title": "ALO \u2014 Cluster Usage",
+  "title": "ALO — Cluster Usage",
   "description": "Request rates, latency percentiles, error tracking, and data volume analytics.",
   "tags": [
     "alo",
@@ -889,7 +889,7 @@
     },
     {
       "id": 11,
-      "title": "Error Rate Over Time",
+      "title": "Error Rate",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",

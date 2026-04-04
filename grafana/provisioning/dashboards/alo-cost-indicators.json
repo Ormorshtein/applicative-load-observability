@@ -889,7 +889,7 @@
     },
     {
       "id": 9,
-      "title": "Score Components Over Time",
+      "title": "Score Components",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1031,7 +1031,7 @@
     },
     {
       "id": 10,
-      "title": "Flagged vs Total Requests Over Time",
+      "title": "Flagged vs Total Requests",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1512,7 +1512,7 @@
     },
     {
       "id": 16,
-      "title": "Bool Clause Breakdown Over Time",
+      "title": "Bool Clause Breakdown",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1665,7 +1665,7 @@
     },
     {
       "id": 17,
-      "title": "Base vs Multiplier Over Time (Historical)",
+      "title": "Base Score by Template (Historical)",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1736,7 +1736,7 @@
     },
     {
       "id": 18,
-      "title": "Avg Multiplier Over Time (Historical)",
+      "title": "Avg Multiplier by Template (Historical)",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1807,7 +1807,7 @@
     },
     {
       "id": 19,
-      "title": "Avg Cost Indicators Over Time (Historical)",
+      "title": "Avg Cost Indicators by Application (Historical)",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
