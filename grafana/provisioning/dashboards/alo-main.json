@@ -197,7 +197,7 @@
           "fields": "",
           "values": true
         },
-        "pieType": "donut",
+        "pieType": "pie",
         "legend": {
           "displayMode": "list",
           "placement": "bottom"
@@ -263,7 +263,7 @@
           "fields": "",
           "values": true
         },
-        "pieType": "donut",
+        "pieType": "pie",
         "legend": {
           "displayMode": "list",
           "placement": "bottom"
@@ -329,7 +329,7 @@
           "fields": "",
           "values": true
         },
-        "pieType": "donut",
+        "pieType": "pie",
         "legend": {
           "displayMode": "list",
           "placement": "bottom"
@@ -395,7 +395,7 @@
           "fields": "",
           "values": true
         },
-        "pieType": "donut",
+        "pieType": "pie",
         "legend": {
           "displayMode": "list",
           "placement": "bottom"
@@ -461,7 +461,7 @@
           "fields": "",
           "values": true
         },
-        "pieType": "donut",
+        "pieType": "pie",
         "legend": {
           "displayMode": "list",
           "placement": "bottom"

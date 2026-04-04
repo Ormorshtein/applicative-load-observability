@@ -86,35 +86,19 @@ def _add_panel(panels: list[dict], refs: list[dict], vid: str,
 
 def layout_main(vis_ids: list[str], panels: list[dict],
                 refs: list[dict]) -> None:
-    """
-    Layout (reorganized for investigation flow):
-
-    Section 1 — Overview:
-      Cheat sheet + Total Stress Score, 5 pie charts
-    Section 2 — Highest Impact:
-      Header, Top Templates table, Heaviest Ops, Top Cost Indicators table
-    Section 3 — Stress Trends:
-      Header, 5x Stress Over Time
-    Section 4 — Volume & Throughput:
-      Header, Volume by Op + Template, Total Hits, Docs Affected + Request Size
-    Section 5 — Response Times:
-      Header, 3x ES resp, 3x Gateway resp
-    Section 6 — Sanity Checks:
-      Header, Recurring Templates + Most Cost Indicators
+    """Layout for main dashboard (25 vis + optional saved search at end).
 
     Vis indices:
       0=cheat, 1=metric, 2-6=pies,
       7=hdr-offenders, 8=top-templates, 9=top-indicators,
       10=hdr-trends, 11-15=stress-ts,
-      16=hdr-volume, 17=vol-op, 18=vol-template, 19=hits, 20=docs, 21=reqsize,
-      22=hdr-latency, 23-25=es-resp, 26-28=gw-resp,
-      29=hdr-sanity, 30=recurring, 31=cost-ind-table,
-      saved-search=32
+      16=hdr-volume, 17=vol-template, 18=hits, 19=docs, 20=reqsize,
+      21=hdr-latency, 22-24=es-resp
     """
     HDR_H = 3
     y = 0
 
-    # ── Section 1: Overview ────────────────────────────────────────────────
+    # Overview: cheat sheet + metric + 5 pies
     _add_panel(panels, refs, vis_ids[0], 0, y, 36, 10, panel_type="visualization")
     _add_panel(panels, refs, vis_ids[1], 36, y, 12, 10)
     y += 10
@@ -126,57 +110,46 @@ def layout_main(vis_ids: list[str], panels: list[dict],
         _add_panel(panels, refs, vid, i * pie_w, y, w, 10)
     y += 10
 
-    # ── Section 2: Highest Impact ──────────────────────────────────────────
-    _add_panel(panels, refs, vis_ids[7], 0, y, GRID_WIDTH, HDR_H, panel_type="visualization")
+    # Highest Impact
+    _add_panel(panels, refs, vis_ids[7], 0, y, GRID_WIDTH, HDR_H,
+               panel_type="visualization")
     y += HDR_H
-
     _add_panel(panels, refs, vis_ids[8], 0, y, GRID_WIDTH, 14)
     y += 14
-
-    _add_panel(panels, refs, vis_ids[32], 0, y, GRID_WIDTH, 16, panel_type="search")
-    y += 16
-
+    # Heaviest Ops saved search (appended after vis_ids by do_rebuild)
+    if len(vis_ids) > 25:
+        _add_panel(panels, refs, vis_ids[25], 0, y, GRID_WIDTH, 16,
+                   panel_type="search")
+        y += 16
     _add_panel(panels, refs, vis_ids[9], 0, y, GRID_WIDTH, 14)
     y += 14
 
-    # ── Section 3: Stress Trends ───────────────────────────────────────────
-    _add_panel(panels, refs, vis_ids[10], 0, y, GRID_WIDTH, HDR_H, panel_type="visualization")
+    # Stress Trends
+    _add_panel(panels, refs, vis_ids[10], 0, y, GRID_WIDTH, HDR_H,
+               panel_type="visualization")
     y += HDR_H
-
     for i in range(5):
         _add_panel(panels, refs, vis_ids[11 + i], 0, y, GRID_WIDTH, 12)
         y += 12
 
-    # ── Section 4: Volume & Throughput ─────────────────────────────────────
-    _add_panel(panels, refs, vis_ids[16], 0, y, GRID_WIDTH, HDR_H, panel_type="visualization")
+    # Volume & Throughput
+    _add_panel(panels, refs, vis_ids[16], 0, y, GRID_WIDTH, HDR_H,
+               panel_type="visualization")
     y += HDR_H
-
-    _add_panel(panels, refs, vis_ids[17], 0, y, 24, 12)
-    _add_panel(panels, refs, vis_ids[18], 24, y, 24, 12)
+    _add_panel(panels, refs, vis_ids[17], 0, y, GRID_WIDTH, 12)
+    y += 12
+    _add_panel(panels, refs, vis_ids[18], 0, y, GRID_WIDTH, 12)
+    y += 12
+    _add_panel(panels, refs, vis_ids[19], 0, y, 24, 12)
+    _add_panel(panels, refs, vis_ids[20], 24, y, 24, 12)
     y += 12
 
-    _add_panel(panels, refs, vis_ids[19], 0, y, GRID_WIDTH, 12)
-    y += 12
-
-    _add_panel(panels, refs, vis_ids[20], 0, y, 24, 12)
-    _add_panel(panels, refs, vis_ids[21], 24, y, 24, 12)
-    y += 12
-
-    # ── Section 5: Response Times ──────────────────────────────────────────
-    _add_panel(panels, refs, vis_ids[22], 0, y, GRID_WIDTH, HDR_H, panel_type="visualization")
+    # Response Times (ES only)
+    _add_panel(panels, refs, vis_ids[21], 0, y, GRID_WIDTH, HDR_H,
+               panel_type="visualization")
     y += HDR_H
-
-    for row_start in (23, 26):
-        for j in range(3):
-            _add_panel(panels, refs, vis_ids[row_start + j], j * 16, y, 16, 12)
-        y += 12
-
-    # ── Section 6: Sanity Checks ───────────────────────────────────────────
-    _add_panel(panels, refs, vis_ids[29], 0, y, GRID_WIDTH, HDR_H, panel_type="visualization")
-    y += HDR_H
-
-    for j in range(2):
-        _add_panel(panels, refs, vis_ids[30 + j], j * 24, y, 24, 12)
+    for j in range(3):
+        _add_panel(panels, refs, vis_ids[22 + j], j * 16, y, 16, 12)
 
 
 # ---------------------------------------------------------------------------

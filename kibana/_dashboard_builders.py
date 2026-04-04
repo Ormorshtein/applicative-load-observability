@@ -79,11 +79,10 @@ def build_main_visualizations() -> list[tuple[str, dict]]:
             ("sum_stress",     "Sum Stress",              "stress.score",             "sum"),
             ("avg_stress",     "Avg Stress",              "stress.score",             "average"),
             ("avg_es_latency", "Avg ES Latency (ms)",     "response.es_took_ms",      "average"),
-            ("avg_gw_latency", "Avg Gateway Latency (ms)", "response.gateway_took_ms", "average"),
             ("requests",       "Requests",                None,                        "count"),
         ], size=10))
 
-    # ── Section 3: Stress Trends ───────────────────────────────────────────
+    # ── Stress Trends ─────────────────────────────────────────────────────
     vis.append(_section_header("alo-hdr-trends", "Stress Trends"))
 
     for field, label in SECTIONS:
@@ -91,49 +90,42 @@ def build_main_visualizations() -> list[tuple[str, dict]]:
         slug = label.lower().replace(" ", "-")
         vis.append(mk_ts(
             f"alo-ts-{slug}",
-            f"Stress Over Time by {label}",
+            f"Stress by {label}",
             field, size=size,
             description=PANEL_DESCRIPTIONS["ts"][label]))
 
-    # ── Section 4: Volume & Throughput ─────────────────────────────────────
+    # ── Volume & Throughput ───────────────────────────────────────────────
     vis.append(_section_header("alo-hdr-volume", "Volume & Throughput"))
 
     vis.append(mk_ts(
-        "alo-ts-volume-operation", "Request Volume Over Time",
-        "request.operation",
-        metric_field="___records___", metric_label="Requests",
-        metric_op="count", size=8,
-        description="Total request count over time by operation."))
-
-    vis.append(mk_ts(
-        "alo-ts-volume-template", "Request Volume Over Time by Template",
+        "alo-ts-volume-template", "Request Volume by Template",
         "request.template",
         metric_field="___records___", metric_label="Requests",
         metric_op="count", size=10,
-        description="Request count over time by template."))
+        description="Request count by template."))
 
     vis.append(mk_ts(
-        "alo-ts-total-hits", "Total Hits Over Time",
+        "alo-ts-total-hits", "Total Hits",
         "request.operation",
         metric_field="response.hits", metric_label="Total Hits",
         metric_op="sum", size=8,
-        description="Sum of response hits over time by operation."))
+        description="Sum of response hits by operation."))
 
     vis.append(mk_ts(
-        "alo-ts-docs-affected", "Docs Affected Over Time",
+        "alo-ts-docs-affected", "Docs Affected",
         "request.operation",
         metric_field="response.docs_affected", metric_label="Docs Affected",
         metric_op="sum", size=8,
-        description="Sum of docs affected over time by operation."))
+        description="Sum of docs affected by operation."))
 
     vis.append(mk_ts(
-        "alo-ts-request-size", "Request Size Over Time",
+        "alo-ts-request-size", "Request Size (Bytes)",
         "request.operation",
         metric_field="request.size_bytes", metric_label="Request Bytes",
         metric_op="sum", size=8,
-        description="Sum of request payload size over time by operation."))
+        description="Sum of request payload size by operation."))
 
-    # ── Section 5: Response Times ──────────────────────────────────────────
+    # ── Response Times (ES only) ──────────────────────────────────────────
     vis.append(_section_header("alo-hdr-latency", "Response Times"))
 
     response_breakdowns = [
@@ -148,30 +140,6 @@ def build_main_visualizations() -> list[tuple[str, dict]]:
             f"Avg ES Response Time by {bd_label}",
             bd_field, "response.es_took_ms", "Avg ES Latency (ms)",
             description=PANEL_DESCRIPTIONS["resp_es"][bd_label]))
-
-    for bd_field, bd_label in response_breakdowns:
-        slug = bd_label.lower().replace(" ", "-")
-        vis.append(mk_ts_response(
-            f"alo-resp-gw-{slug}",
-            f"Avg Gateway Response Time by {bd_label}",
-            bd_field, "response.gateway_took_ms", "Avg Gateway Latency (ms)",
-            description=PANEL_DESCRIPTIONS["resp_gw"][bd_label]))
-
-    # ── Section 6: Sanity Checks ───────────────────────────────────────────
-    vis.append(_section_header("alo-hdr-sanity", "Sanity Checks"))
-
-    vis.append(mk_datatable(
-        "alo-sanity-recurring", "Top 10 Most Recurring Templates",
-        "request.template", "Template", [
-            ("requests", "Requests", None, "count"),
-        ], size=10))
-
-    vis.append(mk_datatable(
-        "alo-sanity-cost-indicators", "Top 10 Templates with Most Cost Indicators",
-        "request.template", "Template", [
-            ("avg_ci",   "Avg Cost Indicators", "stress.cost_indicator_count", "average"),
-            ("requests", "Requests",            None,                          "count"),
-        ], size=10))
 
     return vis
 
@@ -213,14 +181,14 @@ def build_ci_visualizations() -> list[tuple[str, dict]]:
         # ── Trends ──────────────────────────────────────────────────────
         _section_header("alo-ci-hdr-trends", "Trends"),
 
-        mk_ts_multi("alo-ci-ts-components", "Score Components Over Time", [
+        mk_ts_multi("alo-ci-ts-components", "Score Components", [
             ("took",   "Avg Took",   "stress.components.took",   "average"),
             ("shards", "Avg Shards", "stress.components.shards", "average"),
             ("hits",   "Avg Hits",   "stress.components.hits",   "average"),
             ("bonus",  "Avg Bonus",  "stress.components.bonus",  "average"),
         ], "area_stacked"),
 
-        mk_ts_multi("alo-ci-ts-flag-rate", "Flagged vs Total Requests Over Time", [
+        mk_ts_multi("alo-ci-ts-flag-rate", "Flagged vs Total Requests", [
             ("flagged", "Flagged Requests", "stress.cost_indicator_count >= 1", "count"),
             ("total",   "Total Requests",   "",                                  "count"),
         ], "area"),
@@ -257,7 +225,7 @@ def build_ci_visualizations() -> list[tuple[str, dict]]:
             ("script_avg",   "Avg script",       "clause_counts.script",       "average"),
             ("wildcard_avg", "Avg wildcard",     "clause_counts.wildcard",     "average"),
         ], "line"),
-        mk_ts_multi("alo-ci-ts-bool", "Bool Clause Breakdown Over Time", [
+        mk_ts_multi("alo-ci-ts-bool", "Bool Clause Breakdown", [
             ("must",     "Avg must",     "clause_counts.bool_must",     "average"),
             ("should",   "Avg should",   "clause_counts.bool_should",   "average"),
             ("filter_c", "Avg filter",   "clause_counts.bool_filter",   "average"),
@@ -326,7 +294,7 @@ def build_usage_visualizations() -> list[tuple[str, dict]]:
         # ── Errors ─────────────────────────────────────────────────────────
         _section_header("alo-usage-hdr-errors", "Errors"),
 
-        mk_ts_multi("alo-usage-ts-errors", "Error Rate Over Time", [
+        mk_ts_multi("alo-usage-ts-errors", "Error Rate", [
             ("errors", "Errors (4xx+5xx)", "response.status >= 400", "count"),
             ("total",  "Total Requests",   "",                       "count"),
         ], "area"),

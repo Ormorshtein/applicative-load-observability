@@ -192,7 +192,7 @@ def mk_pie(title, field, gridpos, size=8):
     )
     return _base_panel(title, "piechart", gridpos, targets=[target], options={
         "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": True},
-        "pieType": "donut",
+        "pieType": "pie",
         "legend": {"displayMode": "list", "placement": "bottom"},
         "tooltip": {"mode": "multi"},
     })
@@ -212,7 +212,7 @@ def mk_pie_filters(title, filters, gridpos):
         targets.append(target)
     return _base_panel(title, "piechart", gridpos, targets=targets, options={
         "reduceOptions": {"calcs": ["sum"], "fields": "", "values": False},
-        "pieType": "donut",
+        "pieType": "pie",
         "legend": {"displayMode": "list", "placement": "bottom"},
         "tooltip": {"mode": "multi"},
     })
