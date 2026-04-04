@@ -144,7 +144,7 @@ def build_main_dashboard() -> dict:
     y += _PANEL_H
 
     panels.append(mk_summary_timeseries(
-        "Read Volume (Search Results)", "avg_hits", "operation",
+        "Documents Matched by Queries", "avg_hits", "operation",
         {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
         metric_op="avg", size=8))
     y += _PANEL_H

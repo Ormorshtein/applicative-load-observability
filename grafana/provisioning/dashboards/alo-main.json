@@ -1251,7 +1251,7 @@
     },
     {
       "id": 17,
-      "title": "Read Volume (Search Results)",
+      "title": "Documents Matched by Queries",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",

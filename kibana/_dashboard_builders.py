@@ -105,9 +105,9 @@ def build_main_visualizations() -> list[tuple[str, dict]]:
         description="Request count by template."))
 
     vis.append(mk_ts(
-        "alo-ts-total-hits", "Read Volume (Search Results)",
+        "alo-ts-total-hits", "Documents Matched by Queries",
         "request.operation",
-        metric_field="response.hits", metric_label="Read Volume (Search Results)",
+        metric_field="response.hits", metric_label="Documents Matched by Queries",
         metric_op="sum", size=8,
         description="Sum of response hits by operation."))
 
@@ -306,7 +306,7 @@ def build_usage_visualizations() -> list[tuple[str, dict]]:
 
         mk_ts("alo-usage-ts-hits", "Read Volume (Total Hits)",
                "request.operation",
-               metric_field="response.hits", metric_label="Read Volume (Search Results)",
+               metric_field="response.hits", metric_label="Documents Matched by Queries",
                metric_op="sum", size=8),
 
         mk_ts("alo-usage-ts-docs", "Write Volume (Docs Affected)",
