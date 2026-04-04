@@ -1,4 +1,4 @@
-{{- if and .Values.route.enabled .Values.route.analyzer.enabled }}
+{{- if and .Values.analyzer.enabled .Values.route.enabled .Values.route.analyzer.enabled }}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:

@@ -242,6 +242,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "enabled": { "type": "boolean" },
         "image": { "$ref": "#/$defs/image" },
         "replicas": { "$ref": "#/$defs/replicas" },
         "port": { "$ref": "#/$defs/port" },
@@ -277,6 +278,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "enabled": { "type": "boolean" },
         "elasticsearch": {
           "type": "object",
           "additionalProperties": false,

@@ -224,6 +224,7 @@ logstash:
 
 # ── Analyzer ────────────────────────────────────────────────────────────────
 analyzer:
+  enabled: true
   image:
     repository: oracle1012/applicative-load-observability
     tag: analyzer-1.14.0
@@ -257,6 +258,7 @@ analyzer:
 
 # ── Gateway ─────────────────────────────────────────────────────────────────
 gateway:
+  enabled: true
   # The ES cluster the gateway proxies to (the one being monitored).
   # If url is empty, falls back to the main elasticsearch config above.
   elasticsearch:

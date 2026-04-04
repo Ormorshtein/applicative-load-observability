@@ -1,4 +1,4 @@
-{{- if and .Values.ingress.enabled .Values.ingress.analyzer.host }}
+{{- if and .Values.analyzer.enabled .Values.ingress.enabled .Values.ingress.analyzer.host }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

@@ -1,4 +1,4 @@
-{{- if and .Values.route.enabled .Values.route.gateway.enabled }}
+{{- if and .Values.gateway.enabled .Values.route.enabled .Values.route.gateway.enabled }}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:

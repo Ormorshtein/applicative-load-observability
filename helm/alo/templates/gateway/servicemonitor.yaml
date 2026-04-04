@@ -1,3 +1,4 @@
+{{- if .Values.gateway.enabled }}
 {{- if .Values.serviceMonitors.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -21,4 +22,5 @@ spec:
     - port: metrics
       interval: {{ .Values.serviceMonitors.interval }}
     {{- end }}
+{{- end }}
 {{- end }}
