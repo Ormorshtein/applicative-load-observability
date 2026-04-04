@@ -1,6 +1,6 @@
 {
   "uid": "alo-cost-indicators",
-  "title": "ALO — Cost Indicators & Query Patterns",
+  "title": "Cost Indicators & Query Patterns",
   "description": "Cost indicators, clause counts, and query pattern analysis.",
   "tags": [
     "alo",
@@ -248,26 +248,18 @@
       }
     },
     {
-      "id": 5,
+      "type": "row",
       "title": "Score Composition",
-      "type": "text",
+      "collapsed": false,
       "gridPos": {
-        "x": 0,
-        "y": 5,
+        "h": 1,
         "w": 24,
-        "h": 2
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "### Score Composition"
+        "x": 0,
+        "y": 5
       }
     },
     {
-      "id": 6,
+      "id": 5,
       "title": "Score Composition by Template",
       "type": "barchart",
       "datasource": {
@@ -276,7 +268,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 7,
+        "y": 6,
         "w": 24,
         "h": 10
       },
@@ -392,7 +384,7 @@
       }
     },
     {
-      "id": 7,
+      "id": 6,
       "title": "Base vs Final Score by Template",
       "type": "table",
       "datasource": {
@@ -401,7 +393,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 17,
+        "y": 16,
         "w": 12,
         "h": 10
       },
@@ -530,7 +522,7 @@
       }
     },
     {
-      "id": 8,
+      "id": 7,
       "title": "Top Templates by Cost Indicator Count",
       "type": "table",
       "datasource": {
@@ -539,7 +531,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 17,
+        "y": 16,
         "w": 12,
         "h": 10
       },
@@ -651,26 +643,18 @@
       }
     },
     {
-      "id": 9,
+      "type": "row",
       "title": "Score Breakdown",
-      "type": "text",
+      "collapsed": false,
       "gridPos": {
-        "x": 0,
-        "y": 27,
+        "h": 1,
         "w": 24,
-        "h": 2
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "### Score Breakdown"
+        "x": 0,
+        "y": 26
       }
     },
     {
-      "id": 10,
+      "id": 8,
       "title": "Score Breakdown by Template",
       "type": "table",
       "datasource": {
@@ -679,7 +663,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 29,
+        "y": 27,
         "w": 24,
         "h": 10
       },
@@ -813,7 +797,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Took (weighted)"
+                "value": "ES Took (weighted)"
               }
             ]
           },
@@ -893,26 +877,18 @@
       }
     },
     {
-      "id": 11,
+      "type": "row",
       "title": "Trends",
-      "type": "text",
+      "collapsed": false,
       "gridPos": {
-        "x": 0,
-        "y": 39,
+        "h": 1,
         "w": 24,
-        "h": 2
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "### Trends"
+        "x": 0,
+        "y": 37
       }
     },
     {
-      "id": 12,
+      "id": 9,
       "title": "Score Components Over Time",
       "type": "timeseries",
       "datasource": {
@@ -921,7 +897,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 41,
+        "y": 38,
         "w": 24,
         "h": 8
       },
@@ -1054,7 +1030,7 @@
       }
     },
     {
-      "id": 13,
+      "id": 10,
       "title": "Flagged vs Total Requests Over Time",
       "type": "timeseries",
       "datasource": {
@@ -1063,7 +1039,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 49,
+        "y": 46,
         "w": 24,
         "h": 8
       },
@@ -1139,26 +1115,18 @@
       }
     },
     {
-      "id": 14,
+      "type": "row",
       "title": "Cost Indicator Deep Dive",
-      "type": "text",
+      "collapsed": false,
       "gridPos": {
-        "x": 0,
-        "y": 57,
+        "h": 1,
         "w": 24,
-        "h": 2
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "### Cost Indicator Deep Dive"
+        "x": 0,
+        "y": 54
       }
     },
     {
-      "id": 15,
+      "id": 11,
       "title": "Cost Indicator Types - Frequency",
       "type": "barchart",
       "datasource": {
@@ -1167,7 +1135,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 59,
+        "y": 55,
         "w": 12,
         "h": 10
       },
@@ -1216,7 +1184,7 @@
       }
     },
     {
-      "id": 16,
+      "id": 12,
       "title": "Stress Multiplier by Application",
       "type": "barchart",
       "datasource": {
@@ -1225,7 +1193,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 59,
+        "y": 55,
         "w": 12,
         "h": 10
       },
@@ -1275,7 +1243,7 @@
       }
     },
     {
-      "id": 17,
+      "id": 13,
       "title": "Cost Indicator Count by Target Index",
       "type": "barchart",
       "datasource": {
@@ -1284,7 +1252,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 69,
+        "y": 65,
         "w": 12,
         "h": 10
       },
@@ -1334,7 +1302,7 @@
       }
     },
     {
-      "id": 18,
+      "id": 14,
       "title": "Stress Multiplier by Target Index",
       "type": "barchart",
       "datasource": {
@@ -1343,7 +1311,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 69,
+        "y": 65,
         "w": 12,
         "h": 10
       },
@@ -1393,26 +1361,18 @@
       }
     },
     {
-      "id": 19,
+      "type": "row",
       "title": "Clause Patterns",
-      "type": "text",
+      "collapsed": false,
       "gridPos": {
-        "x": 0,
-        "y": 79,
+        "h": 1,
         "w": 24,
-        "h": 2
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "### Clause Patterns"
+        "x": 0,
+        "y": 75
       }
     },
     {
-      "id": 20,
+      "id": 15,
       "title": "Clause Count Trends",
       "type": "timeseries",
       "datasource": {
@@ -1421,7 +1381,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 81,
+        "y": 76,
         "w": 14,
         "h": 10
       },
@@ -1551,7 +1511,7 @@
       }
     },
     {
-      "id": 21,
+      "id": 16,
       "title": "Bool Clause Breakdown Over Time",
       "type": "timeseries",
       "datasource": {
@@ -1560,7 +1520,7 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 81,
+        "y": 76,
         "w": 10,
         "h": 10
       },
@@ -1693,26 +1653,18 @@
       }
     },
     {
-      "id": 22,
+      "type": "row",
       "title": "Historical Trends",
-      "type": "text",
+      "collapsed": true,
       "gridPos": {
-        "x": 0,
-        "y": 91,
+        "h": 1,
         "w": 24,
-        "h": 2
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "### Historical Trends"
+        "x": 0,
+        "y": 86
       }
     },
     {
-      "id": 23,
+      "id": 17,
       "title": "Base vs Multiplier Over Time (Historical)",
       "type": "timeseries",
       "datasource": {
@@ -1721,7 +1673,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 93,
+        "y": 87,
         "w": 12,
         "h": 8
       },
@@ -1783,7 +1735,7 @@
       }
     },
     {
-      "id": 24,
+      "id": 18,
       "title": "Avg Multiplier Over Time (Historical)",
       "type": "timeseries",
       "datasource": {
@@ -1792,7 +1744,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 93,
+        "y": 87,
         "w": 12,
         "h": 8
       },
@@ -1854,7 +1806,7 @@
       }
     },
     {
-      "id": 25,
+      "id": 19,
       "title": "Avg Cost Indicators Over Time (Historical)",
       "type": "timeseries",
       "datasource": {
@@ -1863,7 +1815,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 101,
+        "y": 95,
         "w": 24,
         "h": 8
       },

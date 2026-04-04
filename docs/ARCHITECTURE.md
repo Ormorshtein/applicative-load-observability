@@ -650,6 +650,7 @@ Override any of the environment variables below. Docker Compose defaults work ou
 - Separate `cpu_stress_score` and `memory_stress_score` — once real data allows accurate resource-type attribution
 - Join queries: `has_child` / `has_parent` clauses (weight 5) — distributed join across parent-child relations, expensive index lookup
 - `function_score` queries (weight 3) — custom scoring functions executed per document
+- **Gateway response time panels** — removed from main dashboard in 1.16.0. Gateway latency (`response.gateway_took_ms`) includes network time between gateway and ES, which is infrastructure noise rather than query cost. Avg ES latency (`response.es_took_ms`) is the actionable metric. Consider re-adding gateway latency panels if network issues become a diagnostic concern.
 - Stress score formula weight tuning and cost indicator multiplier calibration based on real production data
 
 ---

@@ -201,7 +201,7 @@ def build_ci_visualizations() -> list[tuple[str, dict]]:
                          ("count",          "Requests",          None,                       "count"),
                          ("avg_score",      "Avg Score",         "stress.score",             "average"),
                          ("avg_mult",       "Multiplier",        "stress.multiplier",        "average"),
-                         ("avg_took_w",     "Took (weighted)",   "stress.components.took",   "average"),
+                         ("avg_took_w",     "ES Took (weighted)", "stress.components.took",   "average"),
                          ("avg_took_raw",   "ES Latency (ms)",   "response.es_took_ms",      "average"),
                          ("avg_shards_w",   "Shards (weighted)", "stress.components.shards", "average"),
                          ("avg_shards_raw", "Shards (raw)",      "response.shards_total",    "average"),
