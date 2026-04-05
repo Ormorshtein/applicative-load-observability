@@ -159,51 +159,6 @@ def build_main_dashboard() -> dict:
         series_type="line"))
     y += _PANEL_H
 
-    # ── Latency Percentiles (from summary transform) ────────────────
-    panels.append(_row("Latency Percentiles", y, collapsed=True))
-    y += _ROW_H
-
-    panels.append(mk_timeseries(
-        "p95 ES Latency by Template", "request.template",
-        {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        metric_field="pct_es_took_ms.95", metric_op="avg", size=10))
-    panels.append(mk_timeseries(
-        "p99 ES Latency by Template", "request.template",
-        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        metric_field="pct_es_took_ms.99", metric_op="avg", size=10))
-    y += _PANEL_H
-
-    panels.append(mk_timeseries(
-        "p95 Gateway Latency by Template", "request.template",
-        {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        metric_field="pct_gateway_took_ms.95", metric_op="avg", size=10))
-    panels.append(mk_timeseries(
-        "p95 Stress Score by Template", "request.template",
-        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        metric_field="pct_score.95", metric_op="avg", size=10))
-    y += _PANEL_H
-
-    # ── Score Composition ────────────────────────────────────────────
-    panels.append(_row("Score Composition", y, collapsed=True))
-    y += _ROW_H
-
-    panels.append(mk_timeseries(
-        "Avg Base Score by Template", "request.template",
-        {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        metric_field="stress.base", metric_op="avg", size=10))
-    panels.append(mk_timeseries(
-        "Avg Multiplier by Template", "request.template",
-        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        metric_field="stress.multiplier", metric_op="avg", size=10))
-    y += _PANEL_H
-
-    panels.append(mk_timeseries(
-        "Avg Cost Indicators by Application",
-        "identity.applicative_provider",
-        {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-        metric_field="stress.cost_indicator_count", metric_op="avg", size=8))
-    y += _PANEL_H
-
     return _wrap_dashboard(
         uid="alo-main",
         title="ALO — Stress Analysis",

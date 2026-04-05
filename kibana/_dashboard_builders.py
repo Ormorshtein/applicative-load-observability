@@ -127,55 +127,6 @@ def build_main_visualizations() -> list[tuple[str, dict]]:
             ("p99",  "P99",  "response.es_took_ms", "percentile_99"),
         ], "line"))
 
-    # ── Latency Percentiles (from summary transform) ────��────────────────
-    vis.append(_section_header("alo-hdr-pct", "Latency Percentiles"))
-
-    vis.append(mk_ts(
-        "alo-pct-es-95", "p95 ES Latency by Template",
-        "request.template",
-        metric_field="pct_es_took_ms.95", metric_label="p95 (ms)",
-        metric_op="average", size=10))
-
-    vis.append(mk_ts(
-        "alo-pct-es-99", "p99 ES Latency by Template",
-        "request.template",
-        metric_field="pct_es_took_ms.99", metric_label="p99 (ms)",
-        metric_op="average", size=10))
-
-    vis.append(mk_ts(
-        "alo-pct-gw-95", "p95 Gateway Latency by Template",
-        "request.template",
-        metric_field="pct_gateway_took_ms.95", metric_label="p95 (ms)",
-        metric_op="average", size=10))
-
-    vis.append(mk_ts(
-        "alo-pct-score-95", "p95 Stress Score by Template",
-        "request.template",
-        metric_field="pct_score.95", metric_label="p95 Score",
-        metric_op="average", size=10))
-
-    # ── Score Composition ──────────────────────────────────��───────────────
-    vis.append(_section_header("alo-hdr-composition", "Score Composition"))
-
-    vis.append(mk_ts(
-        "alo-ts-base", "Avg Base Score by Template",
-        "request.template",
-        metric_field="stress.base", metric_label="Avg Base",
-        metric_op="average", size=10))
-
-    vis.append(mk_ts(
-        "alo-ts-mult", "Avg Multiplier by Template",
-        "request.template",
-        metric_field="stress.multiplier", metric_label="Avg Multiplier",
-        metric_op="average", size=10))
-
-    vis.append(mk_ts(
-        "alo-ts-ci-count", "Avg Cost Indicators by Application",
-        "identity.applicative_provider",
-        metric_field="stress.cost_indicator_count",
-        metric_label="Avg Indicators",
-        metric_op="average", size=8))
-
     return vis
 
 

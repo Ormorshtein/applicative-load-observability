@@ -84,16 +84,14 @@ def _add_panel(panels: list[dict], refs: list[dict], vid: str,
 
 def layout_main(vis_ids: list[str], panels: list[dict],
                 refs: list[dict]) -> None:
-    """Layout for main dashboard (32 vis + optional saved search at end).
+    """Layout for main dashboard (23 vis + optional saved search at end).
 
     Vis indices:
       0=cheat, 1=metric, 2-6=pies,
       7=hdr-offenders, 8=top-templates, 9=top-indicators,
       10=hdr-trends, 11-15=stress-ts,
       16=hdr-volume, 17=vol, 18=hits, 19=docs, 20=reqsize,
-      21=hdr-latency, 22=es-latency,
-      23=hdr-pct, 24=pct-es-95, 25=pct-es-99, 26=pct-gw-95, 27=pct-score-95,
-      28=hdr-composition, 29=base, 30=mult, 31=ci-count
+      21=hdr-latency, 22=es-latency
     """
     HDR_H = 3
     y = 0
@@ -149,27 +147,6 @@ def layout_main(vis_ids: list[str], panels: list[dict],
                panel_type="visualization")
     y += HDR_H
     _add_panel(panels, refs, vis_ids[22], 0, y, GRID_WIDTH, 12)
-    y += 12
-
-    # Latency Percentiles
-    _add_panel(panels, refs, vis_ids[23], 0, y, GRID_WIDTH, HDR_H,
-               panel_type="visualization")
-    y += HDR_H
-    _add_panel(panels, refs, vis_ids[24], 0, y, 24, 12)
-    _add_panel(panels, refs, vis_ids[25], 24, y, 24, 12)
-    y += 12
-    _add_panel(panels, refs, vis_ids[26], 0, y, 24, 12)
-    _add_panel(panels, refs, vis_ids[27], 24, y, 24, 12)
-    y += 12
-
-    # Score Composition
-    _add_panel(panels, refs, vis_ids[28], 0, y, GRID_WIDTH, HDR_H,
-               panel_type="visualization")
-    y += HDR_H
-    _add_panel(panels, refs, vis_ids[29], 0, y, 24, 12)
-    _add_panel(panels, refs, vis_ids[30], 24, y, 24, 12)
-    y += 12
-    _add_panel(panels, refs, vis_ids[31], 0, y, GRID_WIDTH, 12)
 
 
 # ---------------------------------------------------------------------------

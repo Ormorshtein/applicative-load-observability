@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.17.1
+
+### Dashboard
+
+- Removed extra panels that were incorrectly merged into main dashboard (Latency Percentiles section, Score Composition section). These belong in CI dashboard / Usage dashboard respectively.
+- Removed unused `mk_pie_filters` from Grafana helpers.
+- Fixed stale `build_historical_dashboard` reference in Grafana export function.
+
 ## 1.17.0
 
 ### Dashboard
