@@ -1452,7 +1452,7 @@
           "refId": "A",
           "metrics": [
             {
-              "type": "average",
+              "type": "avg",
               "id": "1",
               "field": "response.es_took_ms"
             }

@@ -156,7 +156,7 @@ def build_main_dashboard() -> dict:
     panels.append(mk_timeseries(
         "Avg ES Latency (ms)", None,
         {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-        metric_field="response.es_took_ms", metric_op="average",
+        metric_field="response.es_took_ms", metric_op="avg",
         series_type="line", fill_opacity=20))
     y += _PANEL_H
 
