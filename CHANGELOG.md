@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.17.0
+
+### Dashboard
+
+- **Historical dashboard removed** — percentile and score composition panels merged into the main Stress Analysis dashboard as collapsed rows. Three dashboards now (Stress Analysis, Cost Indicators, Cluster Usage).
+- **Seamless long-term retention** — primary datasource queries `logs-alo.*-*,alo-summary` (combined index pattern). Raw data provides full resolution for 3 days; summary data seamlessly fills in for up to 120 days. ~2% noise from overlap is negligible and documented.
+- **ES Latency panel upgraded** — shows Avg, P50, P95, P99 on a single chart (was avg-only).
+- **Volume panels dual-query** — fallback dashed line from summary `sum(count)` ensures request volume survives raw data expiry.
+- **Percentile panels** (p95/p99 ES latency, gateway latency, stress score) added to main dashboard from summary transform data.
+- **Score Composition section** (base score, multiplier, cost indicator count by template/app) added to main dashboard.
+- Grafana and Kibana dashboards fully synced.
+
+### Infrastructure
+
+- **ES summary transform overhauled** — output uses same nested field paths as raw index (`stress.score`, `response.es_took_ms`, `request.template`, etc.) enabling shared data views. Added p50/p95/p99 percentile aggregations for latency and stress score. Transform `retention_policy` auto-deletes summary docs older than 120 days.
+- **ILM simplified** — all raw indices now use uniform 3-day rollover + 3-day delete with `parse_origination_date`. Removed per-operation retention tiers (was 90d/30d/60d).
+- **Lite index removed** — TSDS approach abandoned in favor of the summary transform. Removed lite ILM, index template, Logstash clone filter, and Helm clone config.
+- **Helm Logstash parity** — added `_msearch` fan-out logic and fixed output condition (`else if [@metadata][ds_dataset]` instead of bare `else`).
+- Dead code cleanup: removed unused `mk_pie_filters`, `mk_ts_response`, `mk_summary_timeseries`, `mk_summary_table`, and stale flat field name references.
+
 ## 1.16.0
 
 ### Analyzer

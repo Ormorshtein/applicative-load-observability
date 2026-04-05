@@ -4,6 +4,24 @@ Elasticsearch data stream resources for ALO.
 Defines a shared component template (mappings), three ILM policies
 (search / write / default), and three composable index templates that
 route each operation category to the correct lifecycle.
+
+Long-term retention
+~~~~~~~~~~~~~~~~~~~
+A continuous ES transform aggregates raw data into ``alo-summary`` with
+hourly buckets grouped by template / operation / app / target / cluster.
+The summary index uses the **same nested field paths** as the raw indices
+(``stress.score``, ``response.es_took_ms``, ``request.template``, …) so
+that dashboard panels work against both without modification.
+
+Dashboards query a combined index pattern (``logs-alo.*-*,alo-summary``).
+While raw data exists it vastly outnumbers summary docs (~1 000 raw vs
+~20 summary per hour), so the summary's contribution is <2 % noise on
+aggregations — invisible on charts and preserving rankings in tables.
+After ILM deletes raw indices (3 days) the summary docs seamlessly take
+over, providing avg metrics and p50/p95/p99 percentiles at hourly
+granularity for up to 120 days.  The transform's ``retention_policy``
+automatically deletes summary docs older than 120 days (rolling, not
+bulk — unlike ILM on a regular index which would drop the entire index).
 """
 
 # ── Component template (shared mappings + settings) ─────────────────────────
@@ -14,6 +32,7 @@ COMPONENT_TEMPLATE: dict = {
             "number_of_shards": 1,
             "number_of_replicas": 0,
             "refresh_interval": "5s",
+            "index.lifecycle.parse_origination_date": True,
         },
         "mappings": {
             "dynamic": "strict",
@@ -152,7 +171,7 @@ def _ilm_policy(delete_after: str) -> dict:
                 "hot": {
                     "actions": {
                         "rollover": {
-                            "max_age": "1d",
+                            "max_age": "3d",
                             "max_primary_shard_size": "50gb",
                         }
                     }
@@ -167,16 +186,24 @@ def _ilm_policy(delete_after: str) -> dict:
 
 
 ILM_POLICIES: dict[str, dict] = {
-    "alo-search-lifecycle":  _ilm_policy("90d"),
-    "alo-write-lifecycle":   _ilm_policy("30d"),
-    "alo-default-lifecycle": _ilm_policy("60d"),
-    "alo-dead-letter-lifecycle": _ilm_policy("7d"),
+    "alo-search-lifecycle":      _ilm_policy("3d"),
+    "alo-write-lifecycle":       _ilm_policy("3d"),
+    "alo-default-lifecycle":     _ilm_policy("3d"),
+    "alo-dead-letter-lifecycle": _ilm_policy("3d"),
 }
 
 # ── Summary index (long-term retention) ────────────────────────────────────
 
 SUMMARY_INDEX = "alo-summary"
 SUMMARY_TRANSFORM_ID = "alo-summary-transform"
+
+_PCT_FIELDS: dict = {
+    "properties": {
+        "50": {"type": "double"},
+        "95": {"type": "double"},
+        "99": {"type": "double"},
+    },
+}
 
 SUMMARY_INDEX_TEMPLATE: dict = {
     "index_patterns": ["alo-summary"],
@@ -189,28 +216,53 @@ SUMMARY_INDEX_TEMPLATE: dict = {
         "mappings": {
             "dynamic": "strict",
             "properties": {
-                "@timestamp":              {"type": "date"},
-                "template":                {"type": "keyword"},
-                "operation":               {"type": "keyword"},
-                "applicative_provider":    {"type": "keyword"},
-                "target":                  {"type": "keyword"},
-                "cluster_name":            {"type": "keyword"},
-                "count":                   {"type": "long"},
-                "avg_score":               {"type": "float"},
-                "sum_score":               {"type": "float"},
-                "avg_es_took_ms":          {"type": "float"},
-                "avg_gateway_took_ms":     {"type": "float"},
-                "avg_hits":                {"type": "float"},
-                "avg_shards":              {"type": "float"},
-                "avg_docs_affected":       {"type": "float"},
-                "avg_request_size_bytes":  {"type": "float"},
-                "avg_base":                {"type": "float"},
-                "avg_multiplier":          {"type": "float"},
-                "avg_cost_indicator_count": {"type": "float"},
+                "@timestamp": {"type": "date"},
+                # ── Dimensions (same paths as raw index) ──
+                "request": {
+                    "properties": {
+                        "template":  {"type": "keyword"},
+                        "operation": {"type": "keyword"},
+                        "target":    {"type": "keyword"},
+                    },
+                },
+                "identity": {
+                    "properties": {
+                        "applicative_provider": {"type": "keyword"},
+                    },
+                },
+                "cluster_name": {"type": "keyword"},
+                # ── Averages (same paths as raw — panels work on both) ──
+                "response": {
+                    "properties": {
+                        "es_took_ms":      {"type": "double"},
+                        "gateway_took_ms": {"type": "double"},
+                        "hits":            {"type": "double"},
+                        "shards_total":    {"type": "double"},
+                        "docs_affected":   {"type": "double"},
+                    },
+                },
+                "stress": {
+                    "properties": {
+                        "score":                {"type": "double"},
+                        "base":                 {"type": "double"},
+                        "multiplier":           {"type": "double"},
+                        "cost_indicator_count": {"type": "double"},
+                    },
+                },
+                # ── Summary-only fields ──
+                "count":     {"type": "long"},
+                "sum_score": {"type": "double"},
+                "request_size_bytes": {"type": "double"},
+                # ── Percentiles (p50 / p95 / p99 per hourly bucket) ──
+                "pct_es_took_ms":      _PCT_FIELDS,
+                "pct_gateway_took_ms": _PCT_FIELDS,
+                "pct_score":           _PCT_FIELDS,
             },
         },
     },
 }
+
+_PERCENTILES = [50, 95, 99]
 
 SUMMARY_TRANSFORM: dict = {
     "source": {
@@ -228,22 +280,23 @@ SUMMARY_TRANSFORM: dict = {
     },
     "pivot": {
         "group_by": {
+            # Dotted paths → output matches raw index structure
             "@timestamp": {
                 "date_histogram": {
                     "field": "@timestamp",
                     "calendar_interval": "1h",
                 },
             },
-            "template": {
+            "request.template": {
                 "terms": {"field": "request.template"},
             },
-            "operation": {
+            "request.operation": {
                 "terms": {"field": "request.operation"},
             },
-            "applicative_provider": {
+            "identity.applicative_provider": {
                 "terms": {"field": "identity.applicative_provider"},
             },
-            "target": {
+            "request.target": {
                 "terms": {"field": "request.target"},
             },
             "cluster_name": {
@@ -251,18 +304,39 @@ SUMMARY_TRANSFORM: dict = {
             },
         },
         "aggregations": {
-            "count":                   {"value_count": {"field": "@timestamp"}},
-            "avg_score":               {"avg": {"field": "stress.score"}},
-            "sum_score":               {"sum": {"field": "stress.score"}},
-            "avg_es_took_ms":          {"avg": {"field": "response.es_took_ms"}},
-            "avg_gateway_took_ms":     {"avg": {"field": "response.gateway_took_ms"}},
-            "avg_hits":                {"avg": {"field": "response.hits"}},
-            "avg_shards":              {"avg": {"field": "response.shards_total"}},
-            "avg_docs_affected":       {"avg": {"field": "response.docs_affected"}},
-            "avg_request_size_bytes":  {"avg": {"field": "request.size_bytes"}},
-            "avg_base":                {"avg": {"field": "stress.base"}},
-            "avg_multiplier":          {"avg": {"field": "stress.multiplier"}},
-            "avg_cost_indicator_count": {"avg": {"field": "stress.cost_indicator_count"}},
+            # Volume
+            "count": {"value_count": {"field": "@timestamp"}},
+            # Averages — dotted paths match raw index for shared panels
+            "stress.score":                {"avg": {"field": "stress.score"}},
+            "sum_score":                   {"sum": {"field": "stress.score"}},
+            "stress.base":                 {"avg": {"field": "stress.base"}},
+            "stress.multiplier":           {"avg": {"field": "stress.multiplier"}},
+            "stress.cost_indicator_count": {"avg": {"field": "stress.cost_indicator_count"}},
+            "response.es_took_ms":         {"avg": {"field": "response.es_took_ms"}},
+            "response.gateway_took_ms":    {"avg": {"field": "response.gateway_took_ms"}},
+            "response.hits":               {"avg": {"field": "response.hits"}},
+            "response.shards_total":       {"avg": {"field": "response.shards_total"}},
+            "response.docs_affected":      {"avg": {"field": "response.docs_affected"}},
+            "request_size_bytes":          {"avg": {"field": "request.size_bytes"}},
+            # Percentiles (p50 / p95 / p99)
+            "pct_es_took_ms": {
+                "percentiles": {
+                    "field": "response.es_took_ms",
+                    "percents": _PERCENTILES,
+                },
+            },
+            "pct_gateway_took_ms": {
+                "percentiles": {
+                    "field": "response.gateway_took_ms",
+                    "percents": _PERCENTILES,
+                },
+            },
+            "pct_score": {
+                "percentiles": {
+                    "field": "stress.score",
+                    "percents": _PERCENTILES,
+                },
+            },
         },
     },
     "sync": {
@@ -271,8 +345,14 @@ SUMMARY_TRANSFORM: dict = {
             "delay": "5m",
         },
     },
+    "retention_policy": {
+        "time": {
+            "field": "@timestamp",
+            "max_age": "120d",
+        },
+    },
     "frequency": "5m",
-    "description": "ALO long-term summary: hourly aggregates per template/operation/app/target.",
+    "description": "ALO hourly summary with percentiles per template/operation/app/target.",
 }
 
 # ── Composable index templates ──────────────────────────────────────────────

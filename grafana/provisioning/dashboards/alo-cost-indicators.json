@@ -1737,21 +1737,21 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch-summary"
+            "uid": "alo-elasticsearch"
           },
-          "query": "",
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
           "metrics": [
             {
               "type": "avg",
               "id": "1",
-              "field": "avg_base"
+              "field": "stress.base"
             }
           ],
           "bucketAggs": [
             {
               "type": "terms",
-              "field": "template",
+              "field": "request.template",
               "id": "2",
               "settings": {
                 "size": "10",
@@ -1808,21 +1808,21 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch-summary"
+            "uid": "alo-elasticsearch"
           },
-          "query": "",
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
           "metrics": [
             {
               "type": "avg",
               "id": "1",
-              "field": "avg_multiplier"
+              "field": "stress.multiplier"
             }
           ],
           "bucketAggs": [
             {
               "type": "terms",
-              "field": "template",
+              "field": "request.template",
               "id": "2",
               "settings": {
                 "size": "10",
@@ -1879,21 +1879,21 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch-summary"
+            "uid": "alo-elasticsearch"
           },
-          "query": "",
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
           "metrics": [
             {
               "type": "avg",
               "id": "1",
-              "field": "avg_cost_indicator_count"
+              "field": "stress.cost_indicator_count"
             }
           ],
           "bucketAggs": [
             {
               "type": "terms",
-              "field": "applicative_provider",
+              "field": "identity.applicative_provider",
               "id": "2",
               "settings": {
                 "size": "8",

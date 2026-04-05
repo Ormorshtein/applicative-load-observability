@@ -14,13 +14,10 @@ from _dashboards import (
     mk_pie,
     mk_stacked_bar,
     mk_stat,
-    mk_summary_table,
-    mk_summary_timeseries,
     mk_table,
     mk_text,
     mk_timeseries,
     mk_timeseries_multi,
-    mk_timeseries_response,
 )
 
 _FULL_W = 24
@@ -127,7 +124,7 @@ def build_main_dashboard() -> dict:
         "Request Volume", None,
         {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
         metric_field=None, metric_op="count",
-        series_type="line", fill_opacity=20))
+        series_type="line", fill_opacity=20, summary_fallback=True))
     y += _PANEL_H
 
     panels.append(mk_timeseries(
@@ -153,11 +150,58 @@ def build_main_dashboard() -> dict:
     panels.append(_row("Response Times", y))
     y += _ROW_H
 
+    panels.append(mk_timeseries_multi("ES Latency (ms)", [
+        ("Avg", "response.es_took_ms", "avg", ""),
+        ("P50", "response.es_took_ms", "percentile_50", ""),
+        ("P95", "response.es_took_ms", "percentile_95", ""),
+        ("P99", "response.es_took_ms", "percentile_99", ""),
+    ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
+        series_type="line"))
+    y += _PANEL_H
+
+    # ── Latency Percentiles (from summary transform) ────────────────
+    panels.append(_row("Latency Percentiles", y, collapsed=True))
+    y += _ROW_H
+
     panels.append(mk_timeseries(
-        "Avg ES Latency (ms)", None,
+        "p95 ES Latency by Template", "request.template",
+        {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
+        metric_field="pct_es_took_ms.95", metric_op="avg", size=10))
+    panels.append(mk_timeseries(
+        "p99 ES Latency by Template", "request.template",
+        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
+        metric_field="pct_es_took_ms.99", metric_op="avg", size=10))
+    y += _PANEL_H
+
+    panels.append(mk_timeseries(
+        "p95 Gateway Latency by Template", "request.template",
+        {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
+        metric_field="pct_gateway_took_ms.95", metric_op="avg", size=10))
+    panels.append(mk_timeseries(
+        "p95 Stress Score by Template", "request.template",
+        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
+        metric_field="pct_score.95", metric_op="avg", size=10))
+    y += _PANEL_H
+
+    # ── Score Composition ────────────────────────────────────────────
+    panels.append(_row("Score Composition", y, collapsed=True))
+    y += _ROW_H
+
+    panels.append(mk_timeseries(
+        "Avg Base Score by Template", "request.template",
+        {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
+        metric_field="stress.base", metric_op="avg", size=10))
+    panels.append(mk_timeseries(
+        "Avg Multiplier by Template", "request.template",
+        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
+        metric_field="stress.multiplier", metric_op="avg", size=10))
+    y += _PANEL_H
+
+    panels.append(mk_timeseries(
+        "Avg Cost Indicators by Application",
+        "identity.applicative_provider",
         {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-        metric_field="response.es_took_ms", metric_op="avg",
-        series_type="line", fill_opacity=20))
+        metric_field="stress.cost_indicator_count", metric_op="avg", size=8))
     y += _PANEL_H
 
     return _wrap_dashboard(
@@ -321,18 +365,21 @@ def build_cost_indicators_dashboard() -> dict:
     panels.append(_row("Historical Trends", y, collapsed=True))
     y += _ROW_H
 
-    panels.append(mk_summary_timeseries(
-        "Base Score by Template (Historical)", "avg_base", "template",
-        {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H}, size=10))
-    panels.append(mk_summary_timeseries(
-        "Avg Multiplier by Template (Historical)", "avg_multiplier", "template",
-        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H}, size=10))
+    panels.append(mk_timeseries(
+        "Base Score by Template (Historical)", "request.template",
+        {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
+        metric_field="stress.base", metric_op="avg", size=10))
+    panels.append(mk_timeseries(
+        "Avg Multiplier by Template (Historical)", "request.template",
+        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
+        metric_field="stress.multiplier", metric_op="avg", size=10))
     y += _PANEL_H
 
-    panels.append(mk_summary_timeseries(
+    panels.append(mk_timeseries(
         "Avg Cost Indicators by Application (Historical)",
-        "avg_cost_indicator_count", "applicative_provider",
-        {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}, size=8))
+        "identity.applicative_provider",
+        {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
+        metric_field="stress.cost_indicator_count", metric_op="avg", size=8))
 
     return _wrap_dashboard(
         uid="alo-cost-indicators",
@@ -371,7 +418,8 @@ def build_usage_dashboard() -> dict:
             f"Rate by {label}", field,
             {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
             metric_field=None, metric_op="count", size=8,
-            series_type="line", fill_opacity=20))
+            series_type="line", fill_opacity=20,
+            summary_fallback=True))
         y += _PANEL_H
 
     # ── Latency ─────────────────────────────────────────────────────────
@@ -472,109 +520,5 @@ def build_usage_dashboard() -> dict:
         title="ALO — Cluster Usage",
         description="Request rates, latency percentiles, error tracking, "
                     "and data volume analytics.",
-        panels=panels,
-    )
-
-
-# ---------------------------------------------------------------------------
-# Historical Trends dashboard (summary index only — lightweight)
-# ---------------------------------------------------------------------------
-
-def build_historical_dashboard() -> dict:
-    _reset_ids()
-    panels = []
-    y = 0
-
-    # ── Stress Trends ──────────────────────────────────────────────────
-    panels.append(_section_header("Stress Trends", y))
-    y += _HDR_H
-
-    panels.append(mk_summary_timeseries(
-        "Stress Score by Template", "avg_score", "template",
-        {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}, size=10))
-    y += _PANEL_H
-
-    panels.append(mk_summary_timeseries(
-        "Stress Score by Application", "avg_score", "applicative_provider",
-        {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H}, size=8))
-    panels.append(mk_summary_timeseries(
-        "Stress Score by Target Index", "avg_score", "target",
-        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H}, size=8))
-    y += _PANEL_H
-
-    # ── Score Composition ──────────────────────────────────────────────
-    panels.append(_section_header("Score Composition", y))
-    y += _HDR_H
-
-    panels.append(mk_summary_timeseries(
-        "Avg Base Score by Template", "avg_base", "template",
-        {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H}, size=10))
-    panels.append(mk_summary_timeseries(
-        "Avg Multiplier by Template", "avg_multiplier", "template",
-        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H}, size=10))
-    y += _PANEL_H
-
-    panels.append(mk_summary_timeseries(
-        "Avg Cost Indicators by Application",
-        "avg_cost_indicator_count", "applicative_provider",
-        {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}, size=8))
-    y += _PANEL_H
-
-    # ── Volume & Latency ───────────────────────────────────────────────
-    panels.append(_section_header("Volume & Latency", y))
-    y += _HDR_H
-
-    panels.append(mk_summary_timeseries(
-        "Request Volume by Operation", "count", "operation",
-        {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        metric_op="sum", size=8))
-    panels.append(mk_summary_timeseries(
-        "Request Volume by Application", "count", "applicative_provider",
-        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        metric_op="sum", size=8))
-    y += _PANEL_H
-
-    panels.append(mk_summary_timeseries(
-        "Avg ES Latency by Template", "avg_es_took_ms", "template",
-        {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H}, size=10))
-    panels.append(mk_summary_timeseries(
-        "Avg Gateway Latency by Template", "avg_gateway_took_ms", "template",
-        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H}, size=10))
-    y += _PANEL_H
-
-    # ── Top Tables ─────────────────────────────────────────────────────
-    panels.append(_section_header("Top Offenders (All Time)", y))
-    y += _HDR_H
-
-    panels.append(mk_summary_table(
-        "Top Templates by Cumulative Stress", "template", "Template", [
-            ("Total Stress", "sum_score", "sum"),
-            ("Avg Score", "avg_score", "avg"),
-            ("Total Requests", "count", "sum"),
-            ("Avg Latency (ms)", "avg_es_took_ms", "avg"),
-            ("Avg Multiplier", "avg_multiplier", "avg"),
-        ], {"x": 0, "y": y, "w": _FULL_W, "h": _BAR_H}, size=10))
-    y += _BAR_H
-
-    panels.append(mk_summary_table(
-        "Top Applications by Cumulative Stress",
-        "applicative_provider", "Application", [
-            ("Total Stress", "sum_score", "sum"),
-            ("Avg Score", "avg_score", "avg"),
-            ("Total Requests", "count", "sum"),
-            ("Avg Latency (ms)", "avg_es_took_ms", "avg"),
-        ], {"x": 0, "y": y, "w": _HALF_W, "h": _BAR_H}, size=10))
-    panels.append(mk_summary_table(
-        "Top Indices by Cumulative Stress", "target", "Target Index", [
-            ("Total Stress", "sum_score", "sum"),
-            ("Avg Score", "avg_score", "avg"),
-            ("Total Requests", "count", "sum"),
-        ], {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _BAR_H}, size=10))
-
-    return _wrap_dashboard(
-        uid="alo-historical",
-        title="ALO — Historical Trends",
-        description="Long-term trends from hourly summary data. "
-                    "Persists after raw indices are deleted.",
         panels=panels,
     )

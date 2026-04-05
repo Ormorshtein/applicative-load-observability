@@ -1,6 +1,6 @@
 {
   "uid": "alo-usage",
-  "title": "ALO — Cluster Usage",
+  "title": "ALO \u2014 Cluster Usage",
   "description": "Request rates, latency percentiles, error tracking, and data volume analytics.",
   "tags": [
     "alo",
@@ -143,6 +143,42 @@
               }
             }
           ]
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch-summary"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "B",
+          "metrics": [
+            {
+              "type": "sum",
+              "id": "1",
+              "field": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.operation",
+              "id": "2",
+              "settings": {
+                "size": "8",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "1h"
+              }
+            }
+          ]
         }
       ],
       "options": {
@@ -161,7 +197,30 @@
             "fillOpacity": 20
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -213,6 +272,42 @@
               }
             }
           ]
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch-summary"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "B",
+          "metrics": [
+            {
+              "type": "sum",
+              "id": "1",
+              "field": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "identity.applicative_provider",
+              "id": "2",
+              "settings": {
+                "size": "8",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "1h"
+              }
+            }
+          ]
         }
       ],
       "options": {
@@ -231,7 +326,30 @@
             "fillOpacity": 20
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -283,6 +401,42 @@
               }
             }
           ]
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch-summary"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "B",
+          "metrics": [
+            {
+              "type": "sum",
+              "id": "1",
+              "field": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.target",
+              "id": "2",
+              "settings": {
+                "size": "8",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "1h"
+              }
+            }
+          ]
         }
       ],
       "options": {
@@ -301,7 +455,30 @@
             "fillOpacity": 20
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              }
+            ]
+          }
+        ]
       }
     },
     {

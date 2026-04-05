@@ -66,11 +66,12 @@ def _base_panel(title, panel_type, gridpos, targets=None, options=None,
     return panel
 
 
-def _es_target(query="", metrics=None, bucket_aggs=None, ref_id="A"):
+def _es_target(query="", metrics=None, bucket_aggs=None, ref_id="A",
+               datasource=None):
     var_filter = _build_var_query()
     full_query = f"{var_filter} AND {query}" if query else var_filter
     target = {
-        "datasource": DATASOURCE,
+        "datasource": datasource or DATASOURCE,
         "query": full_query,
         "refId": ref_id,
         "metrics": metrics or [],
@@ -106,12 +107,12 @@ def _terms_agg(field, agg_id="2", size=8, order_by="1"):
     }
 
 
-def _date_histogram(agg_id="3"):
+def _date_histogram(agg_id="3", interval="auto"):
     return {
         "type": "date_histogram",
         "field": "@timestamp",
         "id": agg_id,
-        "settings": {"interval": "auto"},
+        "settings": {"interval": interval},
     }
 
 
@@ -223,29 +224,15 @@ def mk_pie(title, field, gridpos, size=8, dashboard_uid="alo-main"):
     return panel
 
 
-def mk_pie_filters(title, filters, gridpos):
-    """Pie chart with Lucene query-filtered slices (one target per slice)."""
-    targets = []
-    for i, (label, query) in enumerate(filters):
-        target = _es_target(
-            query=query,
-            metrics=[_metric("sum", "stress.score")],
-            bucket_aggs=[_date_histogram(agg_id="2")],
-            ref_id=chr(65 + i),
-        )
-        target["alias"] = label
-        targets.append(target)
-    return _base_panel(title, "piechart", gridpos, targets=targets, options={
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": False},
-        "pieType": "pie",
-        "legend": {"displayMode": "list", "placement": "bottom"},
-        "tooltip": {"mode": "multi"},
-    })
-
-
 def mk_timeseries(title, field, gridpos, metric_field="stress.score",
                   metric_op="avg", size=5, series_type="line",
-                  fill_opacity=20):
+                  fill_opacity=20, summary_fallback=False):
+    """Timeseries panel.
+
+    When *summary_fallback* is True, a second query (refId B) reads the
+    equivalent metric from the summary index so the chart stays populated
+    after raw data expires.
+    """
     bucket_aggs = []
     if field:
         bucket_aggs.append(_terms_agg(field, agg_id="2", size=size))
@@ -254,13 +241,38 @@ def mk_timeseries(title, field, gridpos, metric_field="stress.score",
         metrics=[_metric(metric_op, metric_field)],
         bucket_aggs=bucket_aggs,
     )
+    targets = [target]
+    if summary_fallback:
+        summary_bucket_aggs = []
+        if field:
+            summary_bucket_aggs.append(_terms_agg(field, agg_id="2",
+                                                  size=size))
+        summary_bucket_aggs.append(
+            _date_histogram(agg_id="3", interval="1h"))
+        targets.append(_es_target(
+            metrics=[_metric("sum", "count")],
+            bucket_aggs=summary_bucket_aggs,
+            ref_id="B",
+            datasource=SUMMARY_DATASOURCE,
+        ))
     custom = {"drawStyle": series_type, "fillOpacity": fill_opacity}
-    return _base_panel(title, "timeseries", gridpos, targets=[target],
+    overrides = []
+    if summary_fallback:
+        overrides.append({
+            "matcher": {"id": "byFrameRefID", "options": "B"},
+            "properties": [
+                {"id": "custom.lineStyle", "value": {"fill": "dash",
+                                                     "dash": [10, 10]}},
+                {"id": "custom.lineWidth", "value": 1},
+            ],
+        })
+    return _base_panel(title, "timeseries", gridpos, targets=targets,
                        options={
                            "legend": {"displayMode": "list", "placement": "right"},
                            "tooltip": {"mode": "multi"},
                        },
-                       field_config={"defaults": {"custom": custom}, "overrides": []})
+                       field_config={"defaults": {"custom": custom},
+                                     "overrides": overrides})
 
 
 def mk_timeseries_response(title, breakdown_field, latency_field,
@@ -341,59 +353,6 @@ def mk_bar(title, field, metric_field, metric_op, metric_label, gridpos,
     })
     _add_filter_link(panel, field, dashboard_uid)
     return panel
-
-
-def mk_summary_timeseries(title, metric_field, breakdown_field, gridpos,
-                          metric_op="avg", size=10, series_type="line",
-                          fill_opacity=20, stacked=False):
-    """Timeseries panel querying the summary index (long-term trends)."""
-    target = {
-        "datasource": SUMMARY_DATASOURCE,
-        "query": "",
-        "refId": "A",
-        "metrics": [_metric(metric_op, metric_field)],
-        "bucketAggs": ([_terms_agg(breakdown_field, agg_id="2", size=size)]
-                       if breakdown_field else [])
-                      + [_date_histogram(agg_id="3")],
-    }
-    custom = {"drawStyle": series_type, "fillOpacity": fill_opacity}
-    if stacked:
-        custom["stacking"] = {"mode": "normal"}
-        custom["fillOpacity"] = 50
-    return _base_panel(title, "timeseries", gridpos, targets=[target],
-                       options={
-                           "legend": {"displayMode": "list", "placement": "right"},
-                           "tooltip": {"mode": "multi"},
-                       },
-                       field_config={"defaults": {"custom": custom}, "overrides": []})
-
-
-def mk_summary_table(title, bucket_field, bucket_label, metrics_spec,
-                     gridpos, size=10):
-    """Table panel querying the summary index."""
-    metrics = []
-    overrides = []
-    _NAMES = {"sum": "Sum", "avg": "Average", "count": "Count", "max": "Max"}
-    for i, (label, field, op) in enumerate(metrics_spec):
-        metrics.append(_metric(op, field, metric_id=str(i + 1)))
-        default = _NAMES.get(op, op)
-        if field:
-            default = f"{default} {field}"
-        overrides.append({
-            "matcher": {"id": "byName", "options": default},
-            "properties": [{"id": "displayName", "value": label}],
-        })
-    target = {
-        "datasource": SUMMARY_DATASOURCE,
-        "query": "",
-        "refId": "A",
-        "metrics": metrics,
-        "bucketAggs": [_terms_agg(bucket_field, agg_id="99", size=size,
-                                   order_by="1")],
-    }
-    return _base_panel(title, "table", gridpos, targets=[target],
-                       options={"showHeader": True},
-                       field_config={"defaults": {}, "overrides": overrides})
 
 
 def mk_stacked_bar(title, bucket_field, metrics_spec, gridpos, size=10):
@@ -532,7 +491,6 @@ def _wrap_dashboard(uid, title, description, panels):
 def export_dashboards():
     from _dashboard_builders import (
         build_cost_indicators_dashboard,
-        build_historical_dashboard,
         build_main_dashboard,
         build_usage_dashboard,
     )
@@ -543,7 +501,6 @@ def export_dashboards():
         (build_main_dashboard, "alo-main.json"),
         (build_cost_indicators_dashboard, "alo-cost-indicators.json"),
         (build_usage_dashboard, "alo-usage.json"),
-        (build_historical_dashboard, "alo-historical.json"),
     ]:
         dashboard = builder()
         path = os.path.join(PROVISION_DIR, filename)

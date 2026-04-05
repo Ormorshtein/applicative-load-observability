@@ -88,48 +88,6 @@ def mk_pie(vis_id: str, title: str, field: str,
     return vis_id, attrs
 
 
-def mk_pie_filters(
-    vis_id: str, title: str,
-    filters: list[tuple[str, str]],
-    description: str = "",
-) -> tuple[str, dict]:
-    """Pie chart with explicit KQL filters as slices."""
-    filter_params = [{"label": label, "input": {"query": kql, "language": "kuery"}}
-                     for label, kql in filters]
-    columns = {
-        "breakdown": {
-            "label": "Segment", "dataType": "string",
-            "operationType": "filters", "isBucketed": True,
-            "params": {"filters": filter_params},
-        },
-        "metric": {
-            "label": "Total Stress", "dataType": "number",
-            "operationType": "sum", "sourceField": "stress.score", "isBucketed": False,
-        },
-    }
-    attrs = {
-        "title": title, "visualizationType": "lnsPie",
-        "state": {
-            "visualization": {
-                "shape": "donut",
-                "layers": [{"layerId": "layer1", "layerType": "data",
-                            "primaryGroups": ["breakdown"],
-                            "metrics": ["metric"],
-                            "numberDisplay": "percent", "categoryDisplay": "default",
-                            "legendDisplay": "default", "legendPosition": "right"}],
-            },
-            "datasourceStates": {"formBased": {"layers": {"layer1": {
-                "columns": columns,
-                "columnOrder": ["breakdown", "metric"], "incompleteColumns": {},
-            }}}},
-            "query": {"query": "", "language": "kuery"}, "filters": [],
-        },
-    }
-    if description:
-        attrs["description"] = description
-    return vis_id, attrs
-
-
 def mk_ts(vis_id: str, title: str, field: str | None,
            metric_field: str = "stress.score", metric_label: str = "Avg Stress Score",
            metric_op: str = "average", size: int = 5,
@@ -167,45 +125,6 @@ def mk_ts(vis_id: str, title: str, field: str | None,
             "datasourceStates": {"formBased": {"layers": {"layer1": {
                 "columns": columns,
                 "columnOrder": col_order, "incompleteColumns": {},
-            }}}},
-            "query": {"query": "", "language": "kuery"}, "filters": [],
-        },
-    }
-    if description:
-        attrs["description"] = description
-    return vis_id, attrs
-
-
-def mk_ts_response(vis_id: str, title: str, breakdown_field: str,
-                   latency_field: str, latency_label: str,
-                   size: int = 5,
-                   description: str = "") -> tuple[str, dict]:
-    attrs = {
-        "title": title, "visualizationType": "lnsXY",
-        "state": {
-            "visualization": {
-                "preferredSeriesType": "line",
-                "layers": [{"layerId": "layer1", "layerType": "data", "seriesType": "line",
-                            "xAccessor": "time", "accessors": ["latency", "count"], "splitAccessor": "breakdown"}],
-                "legend": {"isVisible": True, "position": "right"},
-                "axisTitlesVisibilitySettings": {"x": False, "yLeft": True, "yRight": True},
-                "yLeftExtent": {"mode": "dataBounds"},
-                "yRightExtent": {"mode": "dataBounds"},
-            },
-            "datasourceStates": {"formBased": {"layers": {"layer1": {
-                "columns": {
-                    "time": {"label": "@timestamp", "dataType": "date", "operationType": "date_histogram",
-                             "sourceField": "@timestamp", "isBucketed": True, "params": {"interval": "auto"}},
-                    "breakdown": {"label": breakdown_field.split(".")[-1], "dataType": "string",
-                                  "operationType": "terms", "sourceField": breakdown_field, "isBucketed": True,
-                                  "params": {"size": size, "orderBy": {"type": "column", "columnId": "latency"},
-                                             "orderDirection": "desc", "otherBucket": False}},
-                    "latency": {"label": latency_label, "dataType": "number",
-                                "operationType": "average", "sourceField": latency_field, "isBucketed": False},
-                    "count": {"label": "Requests", "dataType": "number",
-                              "operationType": "count", "sourceField": "___records___", "isBucketed": False},
-                },
-                "columnOrder": ["time", "breakdown", "latency", "count"], "incompleteColumns": {},
             }}}},
             "query": {"query": "", "language": "kuery"}, "filters": [],
         },

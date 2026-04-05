@@ -8,25 +8,20 @@ from urllib.request import Request, urlopen
 from _client import StackConfig, _build_auth_header, _build_ssl_context, kibana_request, upsert
 from _dashboard_builders import (
     build_ci_visualizations,
-    build_historical_visualizations,
     build_main_visualizations,
     build_usage_visualizations,
 )
 from _visualizations import (
     layout_cost_indicators,
-    layout_historical,
     layout_main,
     layout_usage,
 )
 
-INDEX_PATTERN = "logs-alo.*-*"
-SUMMARY_INDEX_PATTERN = "alo-summary"
+INDEX_PATTERN = "logs-alo.*-*,alo-summary"
 DATA_VIEW_ID = "alo-data-view"
-SUMMARY_DATA_VIEW_ID = "alo-summary-data-view"
 DASHBOARD_ID = "alo-dashboard"
 CI_DASHBOARD_ID = "alo-ci-dashboard"
 USAGE_DASHBOARD_ID = "alo-usage-dashboard"
-HISTORICAL_DASHBOARD_ID = "alo-historical-dashboard"
 
 # Dashboard-level controls (dropdown filters above all panels).
 _CONTROLS = [
@@ -66,13 +61,8 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 NDJSON_PATH = str(_SCRIPT_DIR / "dashboard.ndjson")
 CI_NDJSON_PATH = str(_SCRIPT_DIR / "dashboard-cost-indicators.ndjson")
 USAGE_NDJSON_PATH = str(_SCRIPT_DIR / "dashboard-usage.ndjson")
-HISTORICAL_NDJSON_PATH = str(_SCRIPT_DIR / "dashboard-historical.ndjson")
-
 DV_REF = [{"type": "index-pattern", "id": DATA_VIEW_ID,
            "name": "indexpattern-datasource-layer-layer1"}]
-
-SUMMARY_DV_REF = [{"type": "index-pattern", "id": SUMMARY_DATA_VIEW_ID,
-                   "name": "indexpattern-datasource-layer-layer1"}]
 
 
 # ── import mode ──────────────────────────────────────────────────────────────
@@ -121,8 +111,7 @@ def do_import(cfg: StackConfig) -> bool:
     ok1 = import_ndjson(cfg, NDJSON_PATH, "main dashboard")
     ok2 = import_ndjson(cfg, CI_NDJSON_PATH, "cost indicators dashboard")
     ok3 = import_ndjson(cfg, USAGE_NDJSON_PATH, "usage dashboard")
-    ok4 = import_ndjson(cfg, HISTORICAL_NDJSON_PATH, "historical dashboard")
-    return ok1 and ok2 and ok3 and ok4
+    return ok1 and ok2 and ok3
 
 
 # ── export / build helpers ───────────────────────────────────────────────────
@@ -182,13 +171,6 @@ def _create_data_view(cfg: StackConfig) -> None:
     })
     print(f"  {'OK' if s in (200,201) else 'FAIL'}: Data view")
 
-    kibana_request(cfg, "DELETE", f"/api/data_views/data_view/{SUMMARY_DATA_VIEW_ID}")
-    s, _ = kibana_request(cfg, "POST", "/api/data_views/data_view", {
-        "data_view": {"id": SUMMARY_DATA_VIEW_ID, "title": SUMMARY_INDEX_PATTERN,
-                      "timeFieldName": "@timestamp", "name": "ALO Summary (Historical)"},
-        "override": True,
-    })
-    print(f"  {'OK' if s in (200,201) else 'FAIL'}: Summary data view")
 
 
 def _upsert_visualizations(
@@ -284,17 +266,8 @@ def do_rebuild(cfg: StackConfig) -> bool:
                           usage_ids, layout_usage)
 
     print()
-    hist_vis = build_historical_visualizations()
-    hist_ids = _upsert_visualizations_with_ref(cfg, hist_vis, SUMMARY_DV_REF)
-    ok4 = build_dashboard(cfg, HISTORICAL_DASHBOARD_ID,
-                          "ALO \u2014 Historical Trends",
-                          "Long-term trends from hourly summary data.",
-                          hist_ids, layout_historical)
-
-    print()
     export_dashboard(cfg, DASHBOARD_ID, NDJSON_PATH)
     export_dashboard(cfg, CI_DASHBOARD_ID, CI_NDJSON_PATH)
     export_dashboard(cfg, USAGE_DASHBOARD_ID, USAGE_NDJSON_PATH)
-    export_dashboard(cfg, HISTORICAL_DASHBOARD_ID, HISTORICAL_NDJSON_PATH)
 
-    return ok1 and ok2 and ok3 and ok4
+    return ok1 and ok2 and ok3

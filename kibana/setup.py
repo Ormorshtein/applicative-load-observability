@@ -25,7 +25,7 @@ from _client import (
     wait_kibana,
 )
 from _dashboards import (
-    DASHBOARD_ID, CI_DASHBOARD_ID, HISTORICAL_DASHBOARD_ID,
+    DASHBOARD_ID, CI_DASHBOARD_ID,
     USAGE_DASHBOARD_ID, do_import, do_rebuild,
 )
 
@@ -91,8 +91,7 @@ def main() -> None:
     if ok:
         print(f"\n  Main dashboard:            {cfg.kibana_url}/app/dashboards#/view/{DASHBOARD_ID}")
         print(f"  Cost indicators dashboard: {cfg.kibana_url}/app/dashboards#/view/{CI_DASHBOARD_ID}")
-        print(f"  Cluster usage dashboard:   {cfg.kibana_url}/app/dashboards#/view/{USAGE_DASHBOARD_ID}")
-        print(f"  Historical dashboard:      {cfg.kibana_url}/app/dashboards#/view/{HISTORICAL_DASHBOARD_ID}\n")
+        print(f"  Cluster usage dashboard:   {cfg.kibana_url}/app/dashboards#/view/{USAGE_DASHBOARD_ID}\n")
     sys.exit(0 if ok else 1)
 
 

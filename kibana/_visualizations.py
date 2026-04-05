@@ -15,10 +15,8 @@ from _viz_builders import (  # noqa: F401
     mk_markdown,
     mk_metric,
     mk_pie,
-    mk_pie_filters,
     mk_ts,
     mk_ts_multi,
-    mk_ts_response,
 )
 
 # Ordered per dashboard layout: Application -> Target -> Operation -> Cost Indicator -> Template
@@ -86,14 +84,16 @@ def _add_panel(panels: list[dict], refs: list[dict], vid: str,
 
 def layout_main(vis_ids: list[str], panels: list[dict],
                 refs: list[dict]) -> None:
-    """Layout for main dashboard (23 vis + optional saved search at end).
+    """Layout for main dashboard (32 vis + optional saved search at end).
 
     Vis indices:
       0=cheat, 1=metric, 2-6=pies,
       7=hdr-offenders, 8=top-templates, 9=top-indicators,
       10=hdr-trends, 11-15=stress-ts,
-      16=hdr-volume, 17=vol-template, 18=hits, 19=docs, 20=reqsize,
-      21=hdr-latency, 22=es-latency
+      16=hdr-volume, 17=vol, 18=hits, 19=docs, 20=reqsize,
+      21=hdr-latency, 22=es-latency,
+      23=hdr-pct, 24=pct-es-95, 25=pct-es-99, 26=pct-gw-95, 27=pct-score-95,
+      28=hdr-composition, 29=base, 30=mult, 31=ci-count
     """
     HDR_H = 3
     y = 0
@@ -149,6 +149,27 @@ def layout_main(vis_ids: list[str], panels: list[dict],
                panel_type="visualization")
     y += HDR_H
     _add_panel(panels, refs, vis_ids[22], 0, y, GRID_WIDTH, 12)
+    y += 12
+
+    # Latency Percentiles
+    _add_panel(panels, refs, vis_ids[23], 0, y, GRID_WIDTH, HDR_H,
+               panel_type="visualization")
+    y += HDR_H
+    _add_panel(panels, refs, vis_ids[24], 0, y, 24, 12)
+    _add_panel(panels, refs, vis_ids[25], 24, y, 24, 12)
+    y += 12
+    _add_panel(panels, refs, vis_ids[26], 0, y, 24, 12)
+    _add_panel(panels, refs, vis_ids[27], 24, y, 24, 12)
+    y += 12
+
+    # Score Composition
+    _add_panel(panels, refs, vis_ids[28], 0, y, GRID_WIDTH, HDR_H,
+               panel_type="visualization")
+    y += HDR_H
+    _add_panel(panels, refs, vis_ids[29], 0, y, 24, 12)
+    _add_panel(panels, refs, vis_ids[30], 24, y, 24, 12)
+    y += 12
+    _add_panel(panels, refs, vis_ids[31], 0, y, GRID_WIDTH, 12)
 
 
 # ---------------------------------------------------------------------------
@@ -274,54 +295,3 @@ def layout_usage(vis_ids: list[str], panels: list[dict],
     _add_panel(panels, refs, vis_ids[20], 32, y, 16, 12)
 
 
-def layout_historical(vis_ids: list[str], panels: list[dict],
-                      refs: list[dict]) -> None:
-    """Layout for the historical trends dashboard (17 vis).
-
-    vis_ids order matches build_historical_visualizations():
-      0=hdr-stress, 1=score-template, 2=score-app, 3=score-target,
-      4=hdr-composition, 5=base, 6=mult, 7=ci-count,
-      8=hdr-volume, 9=volume-op, 10=volume-app, 11=latency-es, 12=latency-gw,
-      13=hdr-top, 14=table-templates, 15=table-apps
-    """
-    HDR_H = 3
-    y = 0
-
-    # Stress Trends
-    _add_panel(panels, refs, vis_ids[0], 0, y, GRID_WIDTH, HDR_H,
-               panel_type="visualization")
-    y += HDR_H
-    _add_panel(panels, refs, vis_ids[1], 0, y, GRID_WIDTH, 12)
-    y += 12
-    _add_panel(panels, refs, vis_ids[2], 0, y, 24, 12)
-    _add_panel(panels, refs, vis_ids[3], 24, y, 24, 12)
-    y += 12
-
-    # Score Composition
-    _add_panel(panels, refs, vis_ids[4], 0, y, GRID_WIDTH, HDR_H,
-               panel_type="visualization")
-    y += HDR_H
-    _add_panel(panels, refs, vis_ids[5], 0, y, 24, 12)
-    _add_panel(panels, refs, vis_ids[6], 24, y, 24, 12)
-    y += 12
-    _add_panel(panels, refs, vis_ids[7], 0, y, GRID_WIDTH, 12)
-    y += 12
-
-    # Volume & Latency
-    _add_panel(panels, refs, vis_ids[8], 0, y, GRID_WIDTH, HDR_H,
-               panel_type="visualization")
-    y += HDR_H
-    _add_panel(panels, refs, vis_ids[9], 0, y, 24, 12)
-    _add_panel(panels, refs, vis_ids[10], 24, y, 24, 12)
-    y += 12
-    _add_panel(panels, refs, vis_ids[11], 0, y, 24, 12)
-    _add_panel(panels, refs, vis_ids[12], 24, y, 24, 12)
-    y += 12
-
-    # Top Offenders
-    _add_panel(panels, refs, vis_ids[13], 0, y, GRID_WIDTH, HDR_H,
-               panel_type="visualization")
-    y += HDR_H
-    _add_panel(panels, refs, vis_ids[14], 0, y, GRID_WIDTH, 14)
-    y += 14
-    _add_panel(panels, refs, vis_ids[15], 0, y, GRID_WIDTH, 14)

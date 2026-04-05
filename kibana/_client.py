@@ -189,8 +189,9 @@ def ensure_es_resources(cfg: StackConfig) -> bool:
     all_ok &= ok
 
     # 5. Continuous transform for summary aggregation
-    # Stop existing transform before updating (PUT requires it stopped)
+    # Delete + recreate (PUT update fails when agg fields change)
     es_request(cfg, "POST", f"/_transform/{SUMMARY_TRANSFORM_ID}/_stop")
+    es_request(cfg, "DELETE", f"/_transform/{SUMMARY_TRANSFORM_ID}")
     status, _ = es_request(
         cfg, "PUT", f"/_transform/{SUMMARY_TRANSFORM_ID}",
         SUMMARY_TRANSFORM,
