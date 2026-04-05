@@ -10,8 +10,10 @@
 6. **Sanity checks** — verify if the most recurring templates are also the most stressful; templates with many cost indicators need attention.
 
 **What to focus on:**
-- **High stress slices** in pie charts — optimization targets
+- **High stress slices** in pie charts — click to filter the dashboard
 - **Upward trends** in time series — growing load or degrading patterns
 - **Templates with many cost indicators** — query optimization candidates
 - **Latency spikes** correlating with specific operations or templates
-- **Total hits spikes** — correlate with CPU usage under queue saturation
+
+**Filtering by custom labels:**
+If your requests include `x-alo-*` headers (e.g., `x-alo-team: payments`), filter by them using the **Filters** bar at the top: click `+`, type `identity.labels.team`, set `= payments`.
