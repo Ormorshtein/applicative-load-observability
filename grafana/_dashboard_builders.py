@@ -111,26 +111,12 @@ def build_main_dashboard() -> dict:
     panels.append(_row("Stress Trends", y))
     y += _ROW_H
 
-    # Cost Indicator trend uses raw (needs indicator names)
     for field, label in SECTIONS:
         size = 10 if field == "request.template" else 5
-        if field == "stress.cost_indicator_names":
-            panels.append(mk_timeseries(
-                f"Stress by {label}", field,
-                {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-                size=size, series_type="line", fill_opacity=20))
-        else:
-            # Summary-compatible dimension
-            summary_field = {
-                "identity.applicative_provider": "applicative_provider",
-                "request.target": "target",
-                "request.operation": "operation",
-                "request.template": "template",
-            }[field]
-            panels.append(mk_summary_timeseries(
-                f"Stress by {label}", "avg_score", summary_field,
-                {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-                size=size))
+        panels.append(mk_timeseries(
+            f"Stress by {label}", field,
+            {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
+            size=size, series_type="line", fill_opacity=20))
         y += _PANEL_H
 
     # ── Volume & Throughput ─────────────────────────────────────────────
