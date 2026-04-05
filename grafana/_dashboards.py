@@ -246,12 +246,13 @@ def mk_pie_filters(title, filters, gridpos):
 def mk_timeseries(title, field, gridpos, metric_field="stress.score",
                   metric_op="avg", size=5, series_type="line",
                   fill_opacity=20):
+    bucket_aggs = []
+    if field:
+        bucket_aggs.append(_terms_agg(field, agg_id="2", size=size))
+    bucket_aggs.append(_date_histogram(agg_id="3"))
     target = _es_target(
         metrics=[_metric(metric_op, metric_field)],
-        bucket_aggs=[
-            _terms_agg(field, agg_id="2", size=size),
-            _date_histogram(agg_id="3"),
-        ],
+        bucket_aggs=bucket_aggs,
     )
     custom = {"drawStyle": series_type, "fillOpacity": fill_opacity}
     return _base_panel(title, "timeseries", gridpos, targets=[target],

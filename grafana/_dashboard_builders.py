@@ -123,35 +123,41 @@ def build_main_dashboard() -> dict:
     panels.append(_row("Volume & Throughput", y))
     y += _ROW_H
 
-    panels.append(mk_summary_timeseries(
-        "Request Volume", "count", None,
+    panels.append(mk_timeseries(
+        "Request Volume", None,
         {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-        metric_op="sum"))
+        metric_field=None, metric_op="count",
+        series_type="line", fill_opacity=20))
     y += _PANEL_H
 
-    panels.append(mk_summary_timeseries(
-        "Documents Matched by Queries", "avg_hits", None,
+    panels.append(mk_timeseries(
+        "Documents Matched by Queries", None,
         {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-        metric_op="avg"))
+        metric_field="response.hits", metric_op="sum",
+        series_type="line", fill_opacity=20))
     y += _PANEL_H
 
-    panels.append(mk_summary_timeseries(
-        "Write Volume (Documents)", "avg_docs_affected", None,
+    panels.append(mk_timeseries(
+        "Write Volume (Documents)", None,
         {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        metric_op="avg"))
-    panels.append(mk_summary_timeseries(
-        "Request Size (Bytes)", "avg_request_size_bytes", None,
+        metric_field="response.docs_affected", metric_op="sum",
+        series_type="line", fill_opacity=20))
+    panels.append(mk_timeseries(
+        "Request Size (Bytes)", None,
         {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        metric_op="avg"))
+        metric_field="request.size_bytes", metric_op="sum",
+        series_type="line", fill_opacity=20))
     y += _PANEL_H
 
     # ── Response Times ────────────────────────────────────────────────
     panels.append(_row("Response Times", y))
     y += _ROW_H
 
-    panels.append(mk_summary_timeseries(
-        "Avg ES Latency (ms)", "avg_es_took_ms", None,
-        {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}))
+    panels.append(mk_timeseries(
+        "Avg ES Latency (ms)", None,
+        {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
+        metric_field="response.es_took_ms", metric_op="average",
+        series_type="line", fill_opacity=20))
     y += _PANEL_H
 
     return _wrap_dashboard(
