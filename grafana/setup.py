@@ -159,7 +159,8 @@ def do_provision(elasticsearch_url, grafana_url):
     generate_datasource_yaml(elasticsearch_url)
     export_dashboards()
     print(f"\n  Main dashboard:            {grafana_url}/d/alo-main")
-    print(f"  Cost indicators dashboard: {grafana_url}/d/alo-cost-indicators\n")
+    print(f"  Cost indicators dashboard: {grafana_url}/d/alo-cost-indicators")
+    print(f"  Cluster usage dashboard:   {grafana_url}/d/alo-usage\n")
     print("  Mount grafana/provisioning/ at /etc/grafana/provisioning/.")
     print("  Dashboards will load automatically on startup.\n")
     return True

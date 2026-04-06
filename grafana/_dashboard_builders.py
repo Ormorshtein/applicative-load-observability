@@ -422,10 +422,10 @@ def build_usage_dashboard() -> dict:
     y += _PANEL_H
 
     panels.append(mk_table(
-        "Errors by Application",
+        "Requests by Application",
         "identity.applicative_provider", "Application", [
-            ("Errors", None, "count"),
-            ("Total", None, "count"),
+            ("Requests", None, "count"),
+            ("Avg Latency (ms)", "response.es_took_ms", "avg"),
         ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}, size=10))
     y += _PANEL_H
 

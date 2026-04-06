@@ -1209,7 +1209,7 @@
     },
     {
       "id": 13,
-      "title": "Errors by Application",
+      "title": "Requests by Application",
       "type": "table",
       "datasource": {
         "type": "elasticsearch",
@@ -1235,8 +1235,9 @@
               "id": "1"
             },
             {
-              "type": "count",
-              "id": "2"
+              "type": "avg",
+              "id": "2",
+              "field": "response.es_took_ms"
             }
           ],
           "bucketAggs": [
@@ -1258,7 +1259,7 @@
         "showHeader": true,
         "sortBy": [
           {
-            "displayName": "Errors",
+            "displayName": "Requests",
             "desc": true
           }
         ]
@@ -1282,19 +1283,19 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Errors"
+                "value": "Requests"
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "Count"
+              "options": "Average response.es_took_ms"
             },
             "properties": [
               {
                 "id": "displayName",
-                "value": "Total"
+                "value": "Avg Latency (ms)"
               }
             ]
           }

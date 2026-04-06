@@ -275,42 +275,6 @@ def mk_timeseries(title, field, gridpos, metric_field="stress.score",
                                      "overrides": overrides})
 
 
-def mk_timeseries_response(title, breakdown_field, latency_field,
-                           latency_label, gridpos, size=5):
-    latency_target = _es_target(
-        metrics=[_metric("avg", latency_field, metric_id="1")],
-        bucket_aggs=[
-            _terms_agg(breakdown_field, agg_id="2", size=size),
-            _date_histogram(agg_id="3"),
-        ],
-        ref_id="A",
-    )
-    count_target = _es_target(
-        metrics=[_metric("count", metric_id="1")],
-        bucket_aggs=[_date_histogram(agg_id="2")],
-        ref_id="B",
-    )
-    return _base_panel(title, "timeseries", gridpos,
-                       targets=[latency_target, count_target],
-                       options={
-                           "legend": {"displayMode": "list", "placement": "right"},
-                           "tooltip": {"mode": "multi"},
-                       },
-                       field_config={
-                           "defaults": {"custom": {"drawStyle": "line",
-                                                   "fillOpacity": 0}},
-                           "overrides": [{
-                               "matcher": {"id": "byFrameRefID", "options": "B"},
-                               "properties": [
-                                   {"id": "custom.axisPlacement", "value": "right"},
-                                   {"id": "custom.drawStyle", "value": "bars"},
-                                   {"id": "custom.fillOpacity", "value": 20},
-                                   {"id": "displayName", "value": "Requests"},
-                               ],
-                           }],
-                       })
-
-
 def mk_timeseries_multi(title, metrics_spec, gridpos, series_type="line",
                         stacked=False):
     targets = []

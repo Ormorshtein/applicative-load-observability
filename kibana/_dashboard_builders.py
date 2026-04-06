@@ -288,10 +288,10 @@ def build_usage_visualizations() -> list[tuple[str, dict]]:
         mk_horizontal_bar("alo-usage-bar-status", "Requests by Status Code",
                           "response.status", None, "count", "Count", 10),
 
-        mk_datatable("alo-usage-table-errors-by-app", "Errors by Application",
+        mk_datatable("alo-usage-table-reqs-by-app", "Requests by Application",
                      "identity.applicative_provider", "Application", [
-                         ("errors", "Errors", "response.status", "count"),
-                         ("total",  "Total",  None,              "count"),
+                         ("count",   "Requests",          None,                  "count"),
+                         ("avg_lat", "Avg Latency (ms)",  "response.es_took_ms", "average"),
                      ], size=10),
 
         # ── Data Volume ────────────────────────────────────────────────────
