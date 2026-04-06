@@ -10,6 +10,8 @@ data:
   elasticsearch.yml: |
     apiVersion: 1
     datasources:
+      {{- $esAuth := eq (include "alo.esAuthEnabled" .) "true" }}
+      {{- $esInsecure := eq (include "alo.esInsecure" .) "true" }}
       - name: Elasticsearch (ALO)
         type: elasticsearch
         uid: alo-elasticsearch
@@ -17,6 +19,12 @@ data:
         url: {{ include "alo.elasticsearchUrl" . }}
         database: "logs-alo.*-*,alo-summary"
         isDefault: true
+        {{- if $esAuth }}
+        basicAuth: true
+        basicAuthUser: {{ .Values.elasticsearch.external.auth.username | quote }}
+        secureJsonData:
+          basicAuthPassword: {{ .Values.elasticsearch.external.auth.password | quote }}
+        {{- end }}
         jsonData:
           esVersion: "8.0.0"
           timeField: "@timestamp"
@@ -24,6 +32,9 @@ data:
           logLevelField: ""
           maxConcurrentShardRequests: 5
           interval: ""
+          {{- if $esInsecure }}
+          tlsSkipVerify: true
+          {{- end }}
         editable: true
 
       - name: Elasticsearch (ALO Summary)
@@ -33,10 +44,19 @@ data:
         url: {{ include "alo.elasticsearchUrl" . }}
         database: "alo-summary"
         isDefault: false
+        {{- if $esAuth }}
+        basicAuth: true
+        basicAuthUser: {{ .Values.elasticsearch.external.auth.username | quote }}
+        secureJsonData:
+          basicAuthPassword: {{ .Values.elasticsearch.external.auth.password | quote }}
+        {{- end }}
         jsonData:
           esVersion: "8.0.0"
           timeField: "@timestamp"
           maxConcurrentShardRequests: 5
+          {{- if $esInsecure }}
+          tlsSkipVerify: true
+          {{- end }}
         editable: true
   {{- if .Values.grafana.prometheusUrl }}
   prometheus.yml: |
