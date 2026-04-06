@@ -96,9 +96,23 @@ spec:
             - name: http
               containerPort: {{ .Values.gateway.port }}
               protocol: TCP
+            {{- if .Values.gateway.exporter.enabled }}
             - name: lua-metrics
-              containerPort: 9145
+              containerPort: {{ .Values.gateway.exporter.stubStatusPort }}
               protocol: TCP
+            {{- end }}
+          {{- if .Values.gateway.probes.enabled }}
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: {{ .Values.gateway.probes.liveness.initialDelaySeconds | default 5 }}
+            periodSeconds: {{ .Values.gateway.probes.liveness.periodSeconds | default 10 }}
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: {{ .Values.gateway.probes.readiness.initialDelaySeconds | default 5 }}
+            periodSeconds: {{ .Values.gateway.probes.readiness.periodSeconds | default 5 }}
+          {{- end }}
           volumeMounts:
             - name: nginx-tmp
               mountPath: /tmp/nginx

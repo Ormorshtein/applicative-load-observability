@@ -1,4 +1,4 @@
-{{- if and .Values.route.enabled (eq (include "alo.kibanaEffective" .) "true") .Values.route.kibana.enabled }}
+{{- if and (eq (include "alo.kibanaEffective" .) "true") .Values.route.enabled .Values.route.kibana.enabled }}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
@@ -6,10 +6,7 @@ metadata:
   labels:
     {{- include "alo.labels" . | nindent 4 }}
     {{- include "alo.selectorLabels" (dict "ctx" . "component" "kibana") | nindent 4 }}
-  {{- with .Values.route.annotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+  {{- include "alo.routeAnnotations" (dict "global" .Values.route.annotations "local" .Values.route.kibana.annotations) | nindent 2 }}
 spec:
   {{- if .Values.route.kibana.host }}
   host: {{ .Values.route.kibana.host }}
@@ -20,11 +17,5 @@ spec:
     weight: 100
   port:
     targetPort: http
-  {{- with .Values.route.tls }}
-  tls:
-    termination: {{ .termination }}
-    {{- if .insecureEdgeTerminationPolicy }}
-    insecureEdgeTerminationPolicy: {{ .insecureEdgeTerminationPolicy }}
-    {{- end }}
-  {{- end }}
+  {{- include "alo.routeTls" (dict "global" .Values.route.tls "local" .Values.route.kibana.tls) | nindent 2 }}
 {{- end }}

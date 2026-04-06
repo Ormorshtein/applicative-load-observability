@@ -28,6 +28,7 @@ from _dashboards import (
     DASHBOARD_ID, CI_DASHBOARD_ID,
     USAGE_DASHBOARD_ID, do_import, do_rebuild,
 )
+from _index_template import IndexSettings, apply_index_settings
 
 
 def main() -> None:
@@ -61,7 +62,37 @@ def main() -> None:
     parser.add_argument(
         "--rebuild", action="store_true",
         help="Recreate all objects via API and re-export dashboard.ndjson")
+
+    idx = IndexSettings()
+    perf = parser.add_argument_group("index performance settings")
+    perf.add_argument(
+        "--shards", type=int, default=idx.shards,
+        help="Number of primary shards (default: %(default)s)")
+    perf.add_argument(
+        "--replicas", type=int, default=idx.replicas,
+        help="Number of replicas (default: %(default)s)")
+    perf.add_argument(
+        "--refresh-interval", default=idx.refresh_interval,
+        help="Index refresh interval (default: %(default)s)")
+    perf.add_argument(
+        "--raw-retention", default=idx.raw_retention,
+        help="Raw data retention before ILM delete (default: %(default)s)")
+    perf.add_argument(
+        "--rollover-max-age", default=idx.rollover_max_age,
+        help="Max index age before rollover (default: %(default)s)")
+    perf.add_argument(
+        "--summary-retention", default=idx.summary_retention,
+        help="Summary transform retention (default: %(default)s)")
     args = parser.parse_args()
+
+    apply_index_settings(IndexSettings(
+        shards=args.shards,
+        replicas=args.replicas,
+        refresh_interval=args.refresh_interval,
+        raw_retention=args.raw_retention,
+        rollover_max_age=args.rollover_max_age,
+        summary_retention=args.summary_retention,
+    ))
 
     cfg = StackConfig(
         kibana_url=args.kibana,

@@ -1,0 +1,21 @@
+{{- if and (eq (include "alo.grafanaEffective" .) "true") .Values.route.enabled .Values.route.grafana.enabled }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "alo.fullname" . }}-grafana
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "grafana") | nindent 4 }}
+  {{- include "alo.routeAnnotations" (dict "global" .Values.route.annotations "local" .Values.route.grafana.annotations) | nindent 2 }}
+spec:
+  {{- if .Values.route.grafana.host }}
+  host: {{ .Values.route.grafana.host }}
+  {{- end }}
+  to:
+    kind: Service
+    name: {{ include "alo.fullname" . }}-grafana
+    weight: 100
+  port:
+    targetPort: http
+  {{- include "alo.routeTls" (dict "global" .Values.route.tls "local" .Values.route.grafana.tls) | nindent 2 }}
+{{- end }}

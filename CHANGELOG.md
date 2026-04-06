@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.17.2
+
+### Helm Chart
+
+- **Per-service route TLS overrides** — each route (gateway, kibana, etc.) can override the global TLS termination, certs, and annotations. Shared `alo.routeTls` and `alo.routeAnnotations` helpers.
+- **Grafana route** — new `grafana/route.yaml` template + `route.grafana` values.
+- **Grafana admin password from Secret** — `grafana.adminPasswordExistingSecret` for deployment and setup job.
+- **Prometheus datasource fix** — configurable `grafana.prometheusUrl` (was referencing nonexistent `alo-prometheus` service). Empty = skip.
+- **Grafana ES datasource** — updated to combined `logs-alo.*-*,alo-summary` pattern + summary datasource in configmap.
+- **Gateway lua-prometheus** — added `lua_shared_dict`, counter init, `metric_events_total`/`metric_events_dropped` increments, and `/metrics` endpoint to Helm configmap (was Docker Compose only).
+- **Gateway cluster_name** — added to Lua payload in Helm configmap (was missing).
+- **Gateway probes** — optional liveness/readiness TCP probes (disabled by default).
+- **Gateway proxyConnectTimeout** — added to values.yaml (was only `| default` in template).
+- **Logstash exporter** — `workingDir: /tmp` to suppress `.env` file error.
+- **Logstash _msearch fan-out** — added to Helm configmap, fixed output condition (`else if` guard).
+- **Index performance settings** — `indexSettings.shards`, `.replicas`, `.refreshInterval`, `.rawRetention`, `.rolloverMaxAge`, `.summaryRetention` passed as CLI args to kibana setup job.
+- **Grafana setup ES auth** — ES credentials and TLS settings passed to Grafana setup job for datasource creation.
+- **PodDisruptionBudgets** — optional PDB for gateway, logstash, analyzer (disabled by default).
+- **Image tags** — all updated to 1.17.1.
+- **values.schema.json** — updated for all new fields.
+
 ## 1.17.1
 
 ### Dashboard

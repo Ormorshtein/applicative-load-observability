@@ -1,0 +1,18 @@
+{{- if and .Values.analyzer.enabled .Values.analyzer.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "alo.fullname" . }}-analyzer
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "analyzer") | nindent 4 }}
+spec:
+  {{- if .Values.analyzer.pdb.minAvailable }}
+  minAvailable: {{ .Values.analyzer.pdb.minAvailable }}
+  {{- else }}
+  maxUnavailable: {{ .Values.analyzer.pdb.maxUnavailable | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "alo.selectorLabels" (dict "ctx" . "component" "analyzer") | nindent 6 }}
+{{- end }}

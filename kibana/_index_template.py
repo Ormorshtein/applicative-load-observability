@@ -24,6 +24,43 @@ automatically deletes summary docs older than 120 days (rolling, not
 bulk — unlike ILM on a regular index which would drop the entire index).
 """
 
+# ── Tunable index settings ─────────────────────────────────────────────────
+
+from dataclasses import dataclass
+
+
+@dataclass
+class IndexSettings:
+    """Performance-related settings exposed as CLI args."""
+    shards:             int = 1
+    replicas:           int = 0
+    refresh_interval:   str = "5s"
+    raw_retention:      str = "3d"
+    rollover_max_age:   str = "3d"
+    summary_retention:  str = "120d"
+
+
+_SETTINGS = IndexSettings()
+
+
+def apply_index_settings(settings: IndexSettings) -> None:
+    """Apply user-provided settings to the module-level templates."""
+    global _SETTINGS
+    _SETTINGS = settings
+
+    COMPONENT_TEMPLATE["template"]["settings"].update({
+        "number_of_shards": settings.shards,
+        "number_of_replicas": settings.replicas,
+        "refresh_interval": settings.refresh_interval,
+    })
+    for policy in ILM_POLICIES.values():
+        policy["policy"]["phases"]["hot"]["actions"]["rollover"]["max_age"] = (
+            settings.rollover_max_age)
+        policy["policy"]["phases"]["delete"]["min_age"] = settings.raw_retention
+    SUMMARY_TRANSFORM["retention_policy"]["time"]["max_age"] = (
+        settings.summary_retention)
+
+
 # ── Component template (shared mappings + settings) ─────────────────────────
 
 COMPONENT_TEMPLATE: dict = {

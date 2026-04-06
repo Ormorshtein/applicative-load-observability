@@ -39,6 +39,19 @@ from .stress import (
 def _utc_timestamp() -> str:
     now = datetime.now(UTC)
     return now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"
+
+# ES keyword fields have a 32 766-byte UTF-8 limit.  Leave room for the
+# truncation suffix so the stored value is always under the limit.
+_MAX_BODY_BYTES = 32_000
+_TRUNCATION_SUFFIX = "…[TRUNCATED]"
+
+
+def _truncate_body(body: str) -> str:
+    if len(body.encode("utf-8")) <= _MAX_BODY_BYTES:
+        return body
+    truncated = body.encode("utf-8")[:_MAX_BODY_BYTES].decode("utf-8", errors="ignore")
+    return truncated + _TRUNCATION_SUFFIX
+
 _STRESS_PRECISION = 4
 
 
@@ -249,8 +262,10 @@ def _build_request_section(
         "operation": operation,
         "target": target,
         "template": template,
-        "body": json.dumps(raw.request_body, ensure_ascii=False) if raw.request_body
-               else raw.request_body_raw,
+        "body": _truncate_body(
+            json.dumps(raw.request_body, ensure_ascii=False) if raw.request_body
+            else raw.request_body_raw
+        ),
         "size_bytes": raw.request_size_bytes,
     }
     if geo_vertex_count > 0:

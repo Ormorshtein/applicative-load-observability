@@ -1,0 +1,18 @@
+{{- if and .Values.gateway.enabled .Values.gateway.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "alo.fullname" . }}-gateway
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "gateway") | nindent 4 }}
+spec:
+  {{- if .Values.gateway.pdb.minAvailable }}
+  minAvailable: {{ .Values.gateway.pdb.minAvailable }}
+  {{- else }}
+  maxUnavailable: {{ .Values.gateway.pdb.maxUnavailable | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "alo.selectorLabels" (dict "ctx" . "component" "gateway") | nindent 6 }}
+{{- end }}

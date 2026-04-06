@@ -20,6 +20,16 @@ global:
   # Observability data stream pattern written by the pipeline
   observabilityIndex: alo
 
+# ── Index Performance Settings ──────────────────────────────────────────────
+# Passed to kibana setup.py as CLI args. Controls ES index templates and ILM.
+indexSettings:
+  shards: 1
+  replicas: 0
+  refreshInterval: "5s"
+  rawRetention: "3d"
+  rolloverMaxAge: "3d"
+  summaryRetention: "120d"
+
 # ── Elasticsearch (ALO storage) ────────────────────────────────────────────
 # The ES cluster where ALO observability data is stored.
 # Used by: logstash (writes), kibana (reads), setup job.
@@ -181,7 +191,7 @@ logstash:
   # ── Internal deployment (ignored when external.enabled=true) ──
   image:
     repository: oracle1012/applicative-load-observability
-    tag: logstash-1.14.0
+    tag: logstash-1.17.1
     pullPolicy: IfNotPresent
   replicas: 1
   resources:
@@ -221,13 +231,17 @@ logstash:
   tolerations: []
   affinity: {}
   podAnnotations: {}
+  pdb:
+    enabled: false
+    # minAvailable: 1
+    # maxUnavailable: 1
 
 # ── Analyzer ────────────────────────────────────────────────────────────────
 analyzer:
   enabled: true
   image:
     repository: oracle1012/applicative-load-observability
-    tag: analyzer-1.14.0
+    tag: analyzer-1.17.1
     pullPolicy: IfNotPresent
   replicas: 2
   port: 8000
@@ -255,6 +269,10 @@ analyzer:
   affinity: {}
   podAnnotations: {}
   extraEnv: []
+  pdb:
+    enabled: false
+    # minAvailable: 1
+    # maxUnavailable: 1
 
 # ── Gateway ─────────────────────────────────────────────────────────────────
 gateway:
@@ -282,7 +300,7 @@ gateway:
   dnsResolver: ""
   image:
     repository: oracle1012/applicative-load-observability
-    tag: gateway-1.14.0
+    tag: gateway-1.17.1
     pullPolicy: IfNotPresent
   replicas: 2
   port: 9200
@@ -307,8 +325,17 @@ gateway:
   workerConnections: 4096
   # Timeout for ES proxy
   proxyReadTimeout: 60s
+  proxyConnectTimeout: 10s
   # Timeout for pipeline notification (ms)
   pipelineTimeout: 1000
+  probes:
+    enabled: false
+    liveness:
+      initialDelaySeconds: 5
+      periodSeconds: 10
+    readiness:
+      initialDelaySeconds: 5
+      periodSeconds: 5
   service:
     type: ClusterIP
     port: 9200
@@ -335,6 +362,10 @@ gateway:
         memory: 64Mi
   podAnnotations: {}
   extraEnv: []
+  pdb:
+    enabled: false
+    # minAvailable: 1
+    # maxUnavailable: 1
 
 # ── Kibana ──────────────────────────────────────────────────────────────────
 kibana:
@@ -366,7 +397,7 @@ kibana:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: kibana-setup-1.14.0
+      tag: kibana-setup-1.17.1
       pullPolicy: IfNotPresent
   nodeSelector: {}
   tolerations: []
@@ -393,6 +424,12 @@ grafana:
     pullPolicy: IfNotPresent
   replicas: 1
   adminPassword: admin
+  # Reference a pre-existing Secret for the admin password (key: password).
+  # When set, adminPassword above is ignored.
+  adminPasswordExistingSecret: ""
+  # Prometheus URL for the Grafana datasource. Leave empty to skip.
+  # Example: http://prometheus:9090
+  prometheusUrl: ""
   resources:
     requests:
       cpu: 100m
@@ -410,7 +447,7 @@ grafana:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: grafana-setup-1.14.0
+      tag: grafana-setup-1.17.1
       pullPolicy: IfNotPresent
   nodeSelector: {}
   tolerations: []
@@ -431,6 +468,9 @@ ingress:
   elasticsearch:
     host: ""
     path: /
+  grafana:
+    host: ""
+    path: /
   analyzer:
     host: ""
     path: /
@@ -446,29 +486,61 @@ ingress:
 route:
   enabled: false
   annotations: {}
-  # TLS termination: edge, passthrough, or reencrypt
+  # TLS settings. Set tls.enabled=false for plain HTTP routes.
+  # termination: edge, passthrough, or reencrypt
   tls:
+    enabled: true
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
+    # Optional certs — if empty, OpenShift uses its default router cert.
+    certificate: ""
+    key: ""
+    caCertificate: ""
+    # Required for reencrypt termination (cert of the upstream service).
+    destinationCACertificate: ""
   # Per-service routes.  host is optional — OpenShift assigns one when empty.
+  # Each service can override tls and annotations from the global defaults above.
+  # Example: gateway with passthrough while others use edge:
+  #   gateway:
+  #     tls:
+  #       termination: passthrough
+  #     annotations:
+  #       haproxy.router.openshift.io/timeout: 120s
   gateway:
     enabled: true
     host: ""
+    tls: {}
+    annotations: {}
   kibana:
     enabled: true
     host: ""
+    tls: {}
+    annotations: {}
   elasticsearch:
     enabled: false
     host: ""
+    tls: {}
+    annotations: {}
   analyzer:
     enabled: false
     host: ""
+    tls: {}
+    annotations: {}
   logstash:
     enabled: false
     host: ""
+    tls: {}
+    annotations: {}
+  grafana:
+    enabled: true
+    host: ""
+    tls: {}
+    annotations: {}
   nifi:
     enabled: false
     host: ""
+    tls: {}
+    annotations: {}
 
 # ── Service accounts ───────────────────────────────────────────────────────
 serviceAccount:

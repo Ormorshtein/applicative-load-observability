@@ -15,7 +15,7 @@ data:
         uid: alo-elasticsearch
         access: proxy
         url: {{ include "alo.elasticsearchUrl" . }}
-        database: "logs-alo.*-*"
+        database: "logs-alo.*-*,alo-summary"
         isDefault: true
         jsonData:
           esVersion: "8.0.0"
@@ -25,7 +25,20 @@ data:
           maxConcurrentShardRequests: 5
           interval: ""
         editable: true
-  {{- if or .Values.gateway.exporter.enabled .Values.logstash.exporter.enabled }}
+
+      - name: Elasticsearch (ALO Summary)
+        type: elasticsearch
+        uid: alo-elasticsearch-summary
+        access: proxy
+        url: {{ include "alo.elasticsearchUrl" . }}
+        database: "alo-summary"
+        isDefault: false
+        jsonData:
+          esVersion: "8.0.0"
+          timeField: "@timestamp"
+          maxConcurrentShardRequests: 5
+        editable: true
+  {{- if .Values.grafana.prometheusUrl }}
   prometheus.yml: |
     apiVersion: 1
     datasources:
@@ -33,7 +46,7 @@ data:
         type: prometheus
         uid: alo-prometheus
         access: proxy
-        url: http://{{ include "alo.fullname" . }}-prometheus:9090
+        url: {{ .Values.grafana.prometheusUrl }}
         isDefault: false
         jsonData:
           httpMethod: POST

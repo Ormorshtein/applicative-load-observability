@@ -364,3 +364,53 @@ affinity:
   {{- toYaml . | nindent 2 }}
 {{- end }}
 {{- end }}
+
+{{/*
+Route TLS block — merges per-service overrides with global route.tls.
+Usage: {{ include "alo.routeTls" (dict "global" .Values.route.tls "local" .Values.route.gateway.tls) }}
+*/}}
+{{- define "alo.routeTls" -}}
+{{- $g := .global -}}
+{{- $l := .local -}}
+{{- $enabled := ternary $l.enabled $g.enabled (hasKey $l "enabled") -}}
+{{- if $enabled }}
+tls:
+  termination: {{ $l.termination | default $g.termination }}
+  {{- $iep := $l.insecureEdgeTerminationPolicy | default $g.insecureEdgeTerminationPolicy }}
+  {{- if $iep }}
+  insecureEdgeTerminationPolicy: {{ $iep }}
+  {{- end }}
+  {{- $cert := $l.certificate | default $g.certificate }}
+  {{- if $cert }}
+  certificate: |
+    {{- $cert | nindent 4 }}
+  {{- end }}
+  {{- $key := $l.key | default $g.key }}
+  {{- if $key }}
+  key: |
+    {{- $key | nindent 4 }}
+  {{- end }}
+  {{- $ca := $l.caCertificate | default $g.caCertificate }}
+  {{- if $ca }}
+  caCertificate: |
+    {{- $ca | nindent 4 }}
+  {{- end }}
+  {{- $destCa := $l.destinationCACertificate | default $g.destinationCACertificate }}
+  {{- if $destCa }}
+  destinationCACertificate: |
+    {{- $destCa | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+Route annotations — merges per-service annotations with global route.annotations.
+Usage: {{ include "alo.routeAnnotations" (dict "global" .Values.route.annotations "local" .Values.route.gateway.annotations) }}
+*/}}
+{{- define "alo.routeAnnotations" -}}
+{{- $merged := merge (.local | default dict) (.global | default dict) -}}
+{{- if $merged }}
+annotations:
+  {{- toYaml $merged | nindent 2 }}
+{{- end }}
+{{- end }}

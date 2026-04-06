@@ -36,7 +36,14 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           env:
             - name: GF_SECURITY_ADMIN_PASSWORD
+              {{- if .Values.grafana.adminPasswordExistingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.grafana.adminPasswordExistingSecret }}
+                  key: password
+              {{- else }}
               value: {{ .Values.grafana.adminPassword | quote }}
+              {{- end }}
           ports:
             - name: http
               containerPort: 3000

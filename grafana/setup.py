@@ -81,7 +81,24 @@ def wait_grafana(grafana_url, username, password):
     return False
 
 
-def create_datasource(grafana_url, elasticsearch_url, username, password):
+def create_datasource(grafana_url, elasticsearch_url, username, password,
+                      es_username="", es_password="", es_ca_cert="",
+                      es_insecure=False):
+    json_data = {
+        "esVersion": "8.0.0",
+        "timeField": "@timestamp",
+        "maxConcurrentShardRequests": 5,
+    }
+    secure_json = {}
+    if es_username:
+        json_data["basicAuth"] = True
+        json_data["basicAuthUser"] = es_username
+        secure_json["basicAuthPassword"] = es_password
+    if es_ca_cert:
+        json_data["tlsAuthWithCACert"] = True
+        secure_json["tlsCACert"] = es_ca_cert
+    if es_insecure:
+        json_data["tlsSkipVerify"] = True
     body = {
         "name": "Elasticsearch (ALO)",
         "type": "elasticsearch",
@@ -90,12 +107,10 @@ def create_datasource(grafana_url, elasticsearch_url, username, password):
         "url": elasticsearch_url,
         "database": INDEX_PATTERN,
         "isDefault": False,
-        "jsonData": {
-            "esVersion": "8.0.0",
-            "timeField": "@timestamp",
-            "maxConcurrentShardRequests": 5,
-        },
+        "jsonData": json_data,
     }
+    if secure_json:
+        body["secureJsonData"] = secure_json
     # Try update first, then create
     status, _ = _grafana_request(
         grafana_url, "PUT", f"/api/datasources/uid/{DATASOURCE_UID}",
@@ -132,13 +147,17 @@ def import_dashboard(grafana_url, dashboard, username, password):
     return ok
 
 
-def do_api_setup(grafana_url, elasticsearch_url, username, password):
+def do_api_setup(grafana_url, elasticsearch_url, username, password,
+                 es_username="", es_password="", es_ca_cert="",
+                 es_insecure=False):
     if not wait_grafana(grafana_url, username, password):
         return False
 
     print()
     all_ok = create_datasource(grafana_url, elasticsearch_url, username,
-                               password)
+                               password, es_username=es_username,
+                               es_password=es_password, es_ca_cert=es_ca_cert,
+                               es_insecure=es_insecure)
 
     for builder in [build_main_dashboard, build_cost_indicators_dashboard,
                      build_usage_dashboard]:
@@ -191,6 +210,21 @@ def main():
     parser.add_argument(
         "--password", default=os.getenv("GRAFANA_ADMIN_PASSWORD", "admin"),
         help="Grafana admin password (default: admin)")
+
+    es_auth = parser.add_argument_group("Elasticsearch datasource auth/TLS")
+    es_auth.add_argument(
+        "--es-username", default=os.getenv("ES_USERNAME", ""),
+        help="ES username for Grafana datasource (default: ES_USERNAME env)")
+    es_auth.add_argument(
+        "--es-password", default=os.getenv("ES_PASSWORD", ""),
+        help="ES password for Grafana datasource (default: ES_PASSWORD env)")
+    es_auth.add_argument(
+        "--es-ca-cert", default=os.getenv("ES_CA_CERT", ""),
+        help="Path to CA cert for ES TLS (default: ES_CA_CERT env)")
+    es_auth.add_argument(
+        "--es-insecure", action="store_true",
+        default=os.getenv("ES_INSECURE", "").lower() in ("1", "true", "yes"),
+        help="Skip ES TLS verification")
     args = parser.parse_args()
 
     print(f"\n  Elasticsearch: {args.elasticsearch}")
@@ -199,7 +233,10 @@ def main():
 
     if args.mode == "api":
         ok = do_api_setup(args.grafana, args.elasticsearch, args.username,
-                          args.password)
+                          args.password, es_username=args.es_username,
+                          es_password=args.es_password,
+                          es_ca_cert=args.es_ca_cert,
+                          es_insecure=args.es_insecure)
     else:
         ok = do_provision(args.elasticsearch, args.grafana)
 

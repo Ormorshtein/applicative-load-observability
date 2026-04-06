@@ -39,6 +39,22 @@ spec:
               value: {{ include "alo.grafanaUrl" . | quote }}
             - name: ELASTICSEARCH_URL
               value: {{ include "alo.elasticsearchUrl" . | quote }}
+            {{- if eq (include "alo.esAuthEnabled" .) "true" }}
+            - name: ES_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.esAuthSecretName" . }}
+                  key: username
+            - name: ES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.esAuthSecretName" . }}
+                  key: password
+            {{- end }}
+            {{- if and .Values.elasticsearch.external.enabled .Values.elasticsearch.external.tls.insecureSkipVerify }}
+            - name: ES_INSECURE
+              value: "true"
+            {{- end }}
             {{- if .Values.grafana.external.enabled }}
             {{- if .Values.grafana.external.auth.existingSecret }}
             - name: GRAFANA_USERNAME
@@ -61,7 +77,14 @@ spec:
             - name: GRAFANA_USERNAME
               value: "admin"
             - name: GRAFANA_ADMIN_PASSWORD
+              {{- if .Values.grafana.adminPasswordExistingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.grafana.adminPasswordExistingSecret }}
+                  key: password
+              {{- else }}
               value: {{ .Values.grafana.adminPassword | quote }}
+              {{- end }}
             {{- end }}
       {{- include "alo.scheduling" .Values.grafana | nindent 6 }}
 {{- end }}

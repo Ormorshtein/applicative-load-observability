@@ -6,10 +6,7 @@ metadata:
   labels:
     {{- include "alo.labels" . | nindent 4 }}
     {{- include "alo.selectorLabels" (dict "ctx" . "component" "analyzer") | nindent 4 }}
-  {{- with .Values.route.annotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+  {{- include "alo.routeAnnotations" (dict "global" .Values.route.annotations "local" .Values.route.analyzer.annotations) | nindent 2 }}
 spec:
   {{- if .Values.route.analyzer.host }}
   host: {{ .Values.route.analyzer.host }}
@@ -20,11 +17,5 @@ spec:
     weight: 100
   port:
     targetPort: http
-  {{- with .Values.route.tls }}
-  tls:
-    termination: {{ .termination }}
-    {{- if .insecureEdgeTerminationPolicy }}
-    insecureEdgeTerminationPolicy: {{ .insecureEdgeTerminationPolicy }}
-    {{- end }}
-  {{- end }}
+  {{- include "alo.routeTls" (dict "global" .Values.route.tls "local" .Values.route.analyzer.tls) | nindent 2 }}
 {{- end }}

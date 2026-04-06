@@ -91,6 +91,7 @@ spec:
         - name: logstash-exporter
           image: "{{ .Values.logstash.exporter.image.repository }}:{{ .Values.logstash.exporter.image.tag }}"
           imagePullPolicy: {{ .Values.logstash.exporter.image.pullPolicy }}
+          workingDir: /tmp
           env:
             - name: LOGSTASH_URL
               value: "http://localhost:{{ .Values.logstash.service.monitoringPort }}"

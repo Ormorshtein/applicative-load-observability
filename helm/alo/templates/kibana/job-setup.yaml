@@ -33,7 +33,16 @@ spec:
           imagePullPolicy: {{ .Values.kibana.setup.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          command: ["python", "/app/setup.py"]
+          command:
+            - python
+            - /app/setup.py
+            - --rebuild
+            - --shards={{ .Values.indexSettings.shards }}
+            - --replicas={{ .Values.indexSettings.replicas }}
+            - --refresh-interval={{ .Values.indexSettings.refreshInterval }}
+            - --raw-retention={{ .Values.indexSettings.rawRetention }}
+            - --rollover-max-age={{ .Values.indexSettings.rolloverMaxAge }}
+            - --summary-retention={{ .Values.indexSettings.summaryRetention }}
           env:
             - name: KIBANA_URL
               value: {{ include "alo.kibanaUrl" . | quote }}
