@@ -50,7 +50,7 @@ services:
     build:
       context: .
       dockerfile: analyzer/Dockerfile
-    image: oracle1012/applicative-load-observability:analyzer-1.17.1
+    image: oracle1012/applicative-load-observability:analyzer-1.17.2
     environment:
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       # Dynamic baselines — P50 from recent search traffic (requires ELASTICSEARCH_URL):

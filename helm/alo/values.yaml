@@ -241,7 +241,7 @@ analyzer:
   enabled: true
   image:
     repository: oracle1012/applicative-load-observability
-    tag: analyzer-1.17.1
+    tag: analyzer-1.17.2
     pullPolicy: IfNotPresent
   replicas: 2
   port: 8000
@@ -397,7 +397,7 @@ kibana:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: kibana-setup-1.17.1
+      tag: kibana-setup-1.17.2
       pullPolicy: IfNotPresent
   nodeSelector: {}
   tolerations: []
