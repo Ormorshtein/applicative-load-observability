@@ -397,7 +397,7 @@ kibana:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: kibana-setup-1.17.4
+      tag: kibana-setup-1.17.5
       pullPolicy: IfNotPresent
   nodeSelector: {}
   tolerations: []
@@ -447,7 +447,7 @@ grafana:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: grafana-setup-1.17.4
+      tag: grafana-setup-1.17.5
       pullPolicy: IfNotPresent
   nodeSelector: {}
   tolerations: []

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.17.5
+
+### Dashboard
+
+- **Configurable datasources** — all Grafana panels use `$datasource` template variable. Switch ES instance from the dashboard dropdown.
+- **Rate by Template** panel added to Cluster Usage dashboard.
+- **Measurement units** — latency panels show "ms", size panels show auto-scaled bytes.
+- Various panel fixes (percentile types, pie chart dimensions, status code field type).
+
 ## 1.17.2
 
 ### Helm Chart
