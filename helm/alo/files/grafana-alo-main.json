@@ -1220,7 +1220,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "${datasource_summary}"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "B",
@@ -1645,18 +1645,6 @@
           "value": "alo-elasticsearch"
         },
         "regex": ""
-      },
-      {
-        "type": "datasource",
-        "name": "datasource_summary",
-        "label": "ES Summary",
-        "query": "elasticsearch",
-        "current": {
-          "text": "Elasticsearch (ALO Summary)",
-          "value": "alo-elasticsearch-summary"
-        },
-        "regex": "",
-        "hide": 2
       },
       {
         "type": "datasource",

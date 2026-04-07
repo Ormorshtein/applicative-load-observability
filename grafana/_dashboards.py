@@ -9,7 +9,7 @@ import json
 import os
 
 DATASOURCE = {"type": "elasticsearch", "uid": "${datasource}"}
-SUMMARY_DATASOURCE = {"type": "elasticsearch", "uid": "${datasource_summary}"}
+SUMMARY_DATASOURCE = DATASOURCE
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROVISION_DIR = os.path.join(SCRIPT_DIR, "provisioning", "dashboards")
 
@@ -444,16 +444,6 @@ def _wrap_dashboard(uid, title, description, panels):
             "current": {"text": "Elasticsearch (ALO)",
                         "value": "alo-elasticsearch"},
             "regex": "",
-        },
-        {
-            "type": "datasource",
-            "name": "datasource_summary",
-            "label": "ES Summary",
-            "query": "elasticsearch",
-            "current": {"text": "Elasticsearch (ALO Summary)",
-                        "value": "alo-elasticsearch-summary"},
-            "regex": "",
-            "hide": 2,
         },
         {
             "type": "datasource",
