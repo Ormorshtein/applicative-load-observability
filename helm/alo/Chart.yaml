@@ -3,7 +3,7 @@ name: alo
 description: Applicative Load Observability — transparent ES proxy with stress-score pipeline
 type: application
 version: 0.7.1
-appVersion: "1.17.3"
+appVersion: "1.17.4"
 keywords:
   - elasticsearch
   - observability
