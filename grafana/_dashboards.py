@@ -82,7 +82,7 @@ def _es_target(query="", metrics=None, bucket_aggs=None, ref_id="A",
 
 def _metric(metric_type, field=None, metric_id="1", settings=None):
     if metric_type.startswith("percentile_"):
-        pct = metric_type.split("_", 1)[1]
+        pct = int(metric_type.split("_", 1)[1])
         return {"type": "percentiles", "field": field, "id": metric_id,
                 "settings": {"percents": [pct]}}
     m = {"type": metric_type, "id": metric_id}
@@ -226,7 +226,7 @@ def mk_pie(title, field, gridpos, size=8, dashboard_uid="alo-main"):
 
 def mk_timeseries(title, field, gridpos, metric_field="stress.score",
                   metric_op="avg", size=5, series_type="line",
-                  fill_opacity=20, summary_fallback=False):
+                  fill_opacity=20, summary_fallback=False, unit=None):
     """Timeseries panel.
 
     When *summary_fallback* is True, a second query (refId B) reads the
@@ -266,17 +266,20 @@ def mk_timeseries(title, field, gridpos, metric_field="stress.score",
                 {"id": "custom.lineWidth", "value": 1},
             ],
         })
+    defaults = {"custom": custom}
+    if unit:
+        defaults["unit"] = unit
     return _base_panel(title, "timeseries", gridpos, targets=targets,
                        options={
                            "legend": {"displayMode": "list", "placement": "right"},
                            "tooltip": {"mode": "multi"},
                        },
-                       field_config={"defaults": {"custom": custom},
+                       field_config={"defaults": defaults,
                                      "overrides": overrides})
 
 
 def mk_timeseries_multi(title, metrics_spec, gridpos, series_type="line",
-                        stacked=False):
+                        stacked=False, unit=None):
     targets = []
     for i, (label, field, op, query) in enumerate(metrics_spec):
         ref = chr(65 + i)
@@ -293,12 +296,15 @@ def mk_timeseries_multi(title, metrics_spec, gridpos, series_type="line",
     if stacked:
         custom["stacking"] = {"mode": "normal"}
         custom["fillOpacity"] = 50
+    defaults = {"custom": custom}
+    if unit:
+        defaults["unit"] = unit
     return _base_panel(title, "timeseries", gridpos, targets=targets,
                        options={
                            "legend": {"displayMode": "list", "placement": "right"},
                            "tooltip": {"mode": "multi"},
                        },
-                       field_config={"defaults": {"custom": custom}, "overrides": []})
+                       field_config={"defaults": defaults, "overrides": []})
 
 
 def mk_bar(title, field, metric_field, metric_op, metric_label, gridpos,

@@ -447,7 +447,7 @@ grafana:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: grafana-setup-1.17.1
+      tag: grafana-setup-1.17.3
       pullPolicy: IfNotPresent
   nodeSelector: {}
   tolerations: []

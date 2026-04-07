@@ -1407,7 +1407,7 @@
     },
     {
       "id": 19,
-      "title": "Request Size (Bytes)",
+      "title": "Request Size",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1460,7 +1460,8 @@
           "custom": {
             "drawStyle": "line",
             "fillOpacity": 20
-          }
+          },
+          "unit": "decbytes"
         },
         "overrides": []
       }
@@ -1478,7 +1479,7 @@
     },
     {
       "id": 20,
-      "title": "ES Latency (ms)",
+      "title": "ES Latency",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1531,7 +1532,7 @@
               "id": "1",
               "settings": {
                 "percents": [
-                  "50"
+                  50
                 ]
               }
             }
@@ -1562,7 +1563,7 @@
               "id": "1",
               "settings": {
                 "percents": [
-                  "95"
+                  95
                 ]
               }
             }
@@ -1593,7 +1594,7 @@
               "id": "1",
               "settings": {
                 "percents": [
-                  "99"
+                  99
                 ]
               }
             }
@@ -1625,7 +1626,8 @@
           "custom": {
             "drawStyle": "line",
             "fillOpacity": 0
-          }
+          },
+          "unit": "ms"
         },
         "overrides": []
       }

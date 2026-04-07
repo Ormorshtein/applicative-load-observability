@@ -5,6 +5,25 @@ Each mk_* function returns (vis_id, attrs_dict) for a Kibana saved object.
 
 import json
 
+# Kibana Lens unit formats keyed by short name
+_LENS_FORMATS: dict[str, dict] = {
+    "ms":       {"id": "suffix", "params": {"suffix": " ms"}},
+    "bytes":    {"id": "bytes", "params": {"decimals": 1}},
+    "percent":  {"id": "percent", "params": {"decimals": 1}},
+}
+
+
+def _lens_metric_col(label: str, op: str, field: str,
+                     unit: str = "") -> dict:
+    """Build a Kibana Lens metric column with optional unit format."""
+    col: dict = {
+        "label": label, "customLabel": True, "dataType": "number",
+        "operationType": op, "sourceField": field, "isBucketed": False,
+    }
+    if unit and unit in _LENS_FORMATS:
+        col["params"] = {"format": _LENS_FORMATS[unit]}
+    return col
+
 
 def mk_metric(vis_id: str, title: str, source_field: str,
               operation: str,
@@ -88,12 +107,11 @@ def mk_pie(vis_id: str, title: str, field: str,
 def mk_ts(vis_id: str, title: str, field: str | None,
            metric_field: str = "stress.score", metric_label: str = "Avg Stress Score",
            metric_op: str = "average", size: int = 5,
-           description: str = "") -> tuple[str, dict]:
+           description: str = "", unit: str = "") -> tuple[str, dict]:
     columns = {
         "time": {"label": "@timestamp", "dataType": "date", "operationType": "date_histogram",
                  "sourceField": "@timestamp", "isBucketed": True, "params": {"interval": "auto"}},
-        "metric": {"label": metric_label, "customLabel": True, "dataType": "number",
-                   "operationType": metric_op, "sourceField": metric_field, "isBucketed": False},
+        "metric": _lens_metric_col(metric_label, metric_op, metric_field, unit),
     }
     col_order = ["time", "metric"]
     layer = {"layerId": "layer1", "layerType": "data", "seriesType": "area",
@@ -182,7 +200,7 @@ def mk_horizontal_bar(vis_id: str, title: str, field: str,
 
 
 def mk_ts_multi(vis_id: str, title: str, metrics: list[tuple],
-                series_type: str = "line") -> tuple[str, dict]:
+                series_type: str = "line", unit: str = "") -> tuple[str, dict]:
     cols = {
         "time": {"label": "@timestamp", "dataType": "date", "operationType": "date_histogram",
                  "sourceField": "@timestamp", "isBucketed": True, "params": {"interval": "auto"}},
@@ -190,7 +208,8 @@ def mk_ts_multi(vis_id: str, title: str, metrics: list[tuple],
     col_order = ["time"]
     accessors = []
     for col_id, label, field, op in metrics:
-        c = {"label": label, "dataType": "number", "operationType": op, "sourceField": field, "isBucketed": False}
+        c: dict = {"label": label, "dataType": "number", "operationType": op,
+                   "sourceField": field, "isBucketed": False}
         if op == "count":
             c["sourceField"] = "___records___"
             if field:
@@ -199,6 +218,10 @@ def mk_ts_multi(vis_id: str, title: str, metrics: list[tuple],
             pct = int(op.split("_")[1])
             c["operationType"] = "percentile"
             c["params"] = {"percentile": pct}
+        if unit and unit in _LENS_FORMATS and "params" not in c:
+            c["params"] = {"format": _LENS_FORMATS[unit]}
+        elif unit and unit in _LENS_FORMATS and "params" in c:
+            c["params"]["format"] = _LENS_FORMATS[unit]
         cols[col_id] = c
         col_order.append(col_id)
         accessors.append(col_id)

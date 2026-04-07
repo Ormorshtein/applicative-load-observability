@@ -120,12 +120,12 @@ def build_main_visualizations() -> list[tuple[str, dict]]:
     vis.append(_section_header("alo-hdr-latency", "Response Times"))
 
     vis.append(mk_ts_multi(
-        "alo-resp-es", "ES Latency (ms)", [
+        "alo-resp-es", "ES Latency", [
             ("avg",  "Avg",  "response.es_took_ms", "average"),
             ("p50",  "P50",  "response.es_took_ms", "percentile_50"),
             ("p95",  "P95",  "response.es_took_ms", "percentile_95"),
             ("p99",  "P99",  "response.es_took_ms", "percentile_99"),
-        ], "line"))
+        ], "line", unit="ms"))
 
     return vis
 
@@ -259,7 +259,7 @@ def build_usage_visualizations() -> list[tuple[str, dict]]:
             ("p95", "P95", "response.es_took_ms", "percentile_95"),
             ("p99", "P99", "response.es_took_ms", "percentile_99"),
             ("max", "Max", "response.es_took_ms", "max"),
-        ], "line"),
+        ], "line", unit="ms"),
 
         mk_ts_multi("alo-usage-ts-gw-latency", "Gateway Latency", [
             ("min", "Min", "response.gateway_took_ms", "min"),
@@ -269,13 +269,13 @@ def build_usage_visualizations() -> list[tuple[str, dict]]:
             ("p95", "P95", "response.gateway_took_ms", "percentile_95"),
             ("p99", "P99", "response.gateway_took_ms", "percentile_99"),
             ("max", "Max", "response.gateway_took_ms", "max"),
-        ], "line"),
+        ], "line", unit="ms"),
 
         mk_ts("alo-usage-ts-latency-by-op", "Avg ES Latency by Operation",
                "request.operation",
                metric_field="response.es_took_ms",
-               metric_label="Avg ES Latency (ms)",
-               metric_op="average", size=8),
+               metric_label="Avg ES Latency",
+               metric_op="average", size=8, unit="ms"),
 
         # ── Errors ─────────────────────────────────────────────────────────
         _section_header("alo-usage-hdr-errors", "Errors"),
@@ -311,7 +311,7 @@ def build_usage_visualizations() -> list[tuple[str, dict]]:
         mk_ts_multi("alo-usage-ts-payload", "Payload Sizes", [
             ("req", "Avg Request Size", "request.size_bytes", "average"),
             ("resp", "Avg Response Size", "response.size_bytes", "average"),
-        ], "line"),
+        ], "line", unit="bytes"),
 
         # ── Activity ───────────────────────────────────────────────────────
         _section_header("alo-usage-hdr-activity", "Top Activity"),

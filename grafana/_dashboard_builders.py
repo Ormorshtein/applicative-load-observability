@@ -140,23 +140,23 @@ def build_main_dashboard() -> dict:
         metric_field="response.docs_affected", metric_op="sum",
         series_type="line", fill_opacity=20))
     panels.append(mk_timeseries(
-        "Request Size (Bytes)", None,
+        "Request Size", None,
         {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
         metric_field="request.size_bytes", metric_op="sum",
-        series_type="line", fill_opacity=20))
+        series_type="line", fill_opacity=20, unit="decbytes"))
     y += _PANEL_H
 
     # ── Response Times ────────────────────────────────────────────────
     panels.append(_row("Response Times", y))
     y += _ROW_H
 
-    panels.append(mk_timeseries_multi("ES Latency (ms)", [
+    panels.append(mk_timeseries_multi("ES Latency", [
         ("Avg", "response.es_took_ms", "avg", ""),
         ("P50", "response.es_took_ms", "percentile_50", ""),
         ("P95", "response.es_took_ms", "percentile_95", ""),
         ("P99", "response.es_took_ms", "percentile_99", ""),
     ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-        series_type="line"))
+        series_type="line", unit="ms"))
     y += _PANEL_H
 
     return _wrap_dashboard(
@@ -394,14 +394,14 @@ def build_usage_dashboard() -> dict:
             ("P99", latency_field, "percentile_99", ""),
             ("Max", latency_field, "max", ""),
         ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-            series_type="line"))
+            series_type="line", unit="ms"))
         y += _PANEL_H
 
     panels.append(mk_timeseries(
         "Avg ES Latency by Operation", "request.operation",
         {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
         metric_field="response.es_took_ms", metric_op="avg", size=8,
-        series_type="line", fill_opacity=20))
+        series_type="line", fill_opacity=20, unit="ms"))
     y += _PANEL_H
 
     # ── Errors ──────────────────────────────────────────────────────────
@@ -450,7 +450,7 @@ def build_usage_dashboard() -> dict:
             ("Avg Request Size", "request.size_bytes", "avg", ""),
             ("Avg Response Size", "response.size_bytes", "avg", ""),
         ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-        series_type="line"))
+        series_type="line", unit="decbytes"))
     y += _PANEL_H
 
     # ── Top Activity ────────────────────────────────────────────────────
