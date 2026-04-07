@@ -1655,8 +1655,7 @@
           "text": "Prometheus (ALO)",
           "value": "alo-prometheus"
         },
-        "regex": "",
-        "hide": 2
+        "regex": ""
       },
       {
         "type": "query",

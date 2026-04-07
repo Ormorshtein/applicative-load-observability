@@ -453,7 +453,6 @@ def _wrap_dashboard(uid, title, description, panels):
             "current": {"text": "Prometheus (ALO)",
                         "value": "alo-prometheus"},
             "regex": "",
-            "hide": 2,
         },
     ]
     template_vars += [_make_query_var(n, l, f) for n, l, f in _VARIABLES]
