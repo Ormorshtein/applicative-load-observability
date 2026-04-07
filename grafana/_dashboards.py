@@ -8,8 +8,8 @@ dashboards, using Grafana's Elasticsearch datasource query format.
 import json
 import os
 
-DATASOURCE = {"type": "elasticsearch", "uid": "alo-elasticsearch"}
-SUMMARY_DATASOURCE = {"type": "elasticsearch", "uid": "alo-elasticsearch-summary"}
+DATASOURCE = {"type": "elasticsearch", "uid": "${datasource}"}
+SUMMARY_DATASOURCE = {"type": "elasticsearch", "uid": "${datasource_summary}"}
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROVISION_DIR = os.path.join(SCRIPT_DIR, "provisioning", "dashboards")
 
@@ -116,7 +116,7 @@ def _date_histogram(agg_id="3", interval="auto"):
     }
 
 
-PROMETHEUS_DS = {"type": "prometheus", "uid": "alo-prometheus"}
+PROMETHEUS_DS = {"type": "prometheus", "uid": "${datasource_prometheus}"}
 
 
 # ---------------------------------------------------------------------------
@@ -435,7 +435,38 @@ def _build_var_query():
 
 
 def _wrap_dashboard(uid, title, description, panels):
-    template_vars = [_make_query_var(n, l, f) for n, l, f in _VARIABLES]
+    template_vars = [
+        {
+            "type": "datasource",
+            "name": "datasource",
+            "label": "Elasticsearch",
+            "query": "elasticsearch",
+            "current": {"text": "Elasticsearch (ALO)",
+                        "value": "alo-elasticsearch"},
+            "regex": "",
+        },
+        {
+            "type": "datasource",
+            "name": "datasource_summary",
+            "label": "ES Summary",
+            "query": "elasticsearch",
+            "current": {"text": "Elasticsearch (ALO Summary)",
+                        "value": "alo-elasticsearch-summary"},
+            "regex": "",
+            "hide": 2,
+        },
+        {
+            "type": "datasource",
+            "name": "datasource_prometheus",
+            "label": "Prometheus",
+            "query": "prometheus",
+            "current": {"text": "Prometheus (ALO)",
+                        "value": "alo-prometheus"},
+            "regex": "",
+            "hide": 2,
+        },
+    ]
+    template_vars += [_make_query_var(n, l, f) for n, l, f in _VARIABLES]
     template_vars.append({
         "type": "adhoc",
         "name": "Filters",

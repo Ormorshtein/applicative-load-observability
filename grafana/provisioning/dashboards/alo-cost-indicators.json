@@ -21,7 +21,7 @@
       "type": "stat",
       "datasource": {
         "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "x": 0,
@@ -33,7 +33,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene}) AND stress.cost_indicator_count:[1 TO *]",
           "refId": "A",
@@ -79,7 +79,7 @@
       "type": "stat",
       "datasource": {
         "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "x": 6,
@@ -91,7 +91,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
@@ -137,7 +137,7 @@
       "type": "stat",
       "datasource": {
         "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "x": 12,
@@ -149,7 +149,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
@@ -195,7 +195,7 @@
       "type": "stat",
       "datasource": {
         "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "x": 18,
@@ -207,7 +207,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
@@ -264,7 +264,7 @@
       "type": "barchart",
       "datasource": {
         "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "x": 0,
@@ -276,7 +276,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
@@ -389,7 +389,7 @@
       "type": "table",
       "datasource": {
         "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "x": 0,
@@ -401,7 +401,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
@@ -535,7 +535,7 @@
       "type": "table",
       "datasource": {
         "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "x": 12,
@@ -547,7 +547,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
@@ -675,7 +675,7 @@
       "type": "table",
       "datasource": {
         "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "x": 0,
@@ -687,7 +687,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
@@ -917,7 +917,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "x": 0,
@@ -929,7 +929,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
@@ -955,7 +955,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "B",
@@ -981,7 +981,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "C",
@@ -1007,7 +1007,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "D",
@@ -1059,7 +1059,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "x": 0,
@@ -1071,7 +1071,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene}) AND stress.cost_indicator_count:[1 TO *]",
           "refId": "A",
@@ -1096,7 +1096,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "B",
@@ -1155,7 +1155,7 @@
       "type": "barchart",
       "datasource": {
         "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "x": 0,
@@ -1167,7 +1167,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
@@ -1221,7 +1221,7 @@
       "type": "barchart",
       "datasource": {
         "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "x": 12,
@@ -1233,7 +1233,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
@@ -1288,7 +1288,7 @@
       "type": "barchart",
       "datasource": {
         "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "x": 0,
@@ -1300,7 +1300,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
@@ -1355,7 +1355,7 @@
       "type": "barchart",
       "datasource": {
         "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "x": 12,
@@ -1367,7 +1367,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
@@ -1433,7 +1433,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "x": 0,
@@ -1445,7 +1445,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
@@ -1471,7 +1471,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "B",
@@ -1497,7 +1497,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "C",
@@ -1523,7 +1523,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "D",
@@ -1572,7 +1572,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "x": 14,
@@ -1584,7 +1584,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
@@ -1610,7 +1610,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "B",
@@ -1636,7 +1636,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "C",
@@ -1662,7 +1662,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "D",
@@ -1725,7 +1725,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "x": 0,
@@ -1737,7 +1737,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
@@ -1796,7 +1796,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "x": 12,
@@ -1808,7 +1808,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
@@ -1867,7 +1867,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
+        "uid": "${datasource}"
       },
       "gridPos": {
         "x": 0,
@@ -1879,7 +1879,7 @@
         {
           "datasource": {
             "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
+            "uid": "${datasource}"
           },
           "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
@@ -1936,12 +1936,47 @@
   "templating": {
     "list": [
       {
+        "type": "datasource",
+        "name": "datasource",
+        "label": "Elasticsearch",
+        "query": "elasticsearch",
+        "current": {
+          "text": "Elasticsearch (ALO)",
+          "value": "alo-elasticsearch"
+        },
+        "regex": ""
+      },
+      {
+        "type": "datasource",
+        "name": "datasource_summary",
+        "label": "ES Summary",
+        "query": "elasticsearch",
+        "current": {
+          "text": "Elasticsearch (ALO Summary)",
+          "value": "alo-elasticsearch-summary"
+        },
+        "regex": "",
+        "hide": 2
+      },
+      {
+        "type": "datasource",
+        "name": "datasource_prometheus",
+        "label": "Prometheus",
+        "query": "prometheus",
+        "current": {
+          "text": "Prometheus (ALO)",
+          "value": "alo-prometheus"
+        },
+        "regex": "",
+        "hide": 2
+      },
+      {
         "type": "query",
         "name": "cluster",
         "label": "Cluster",
         "datasource": {
           "type": "elasticsearch",
-          "uid": "alo-elasticsearch"
+          "uid": "${datasource}"
         },
         "query": "{\"find\": \"terms\", \"field\": \"cluster_name\"}",
         "includeAll": true,
@@ -1961,7 +1996,7 @@
         "label": "Application",
         "datasource": {
           "type": "elasticsearch",
-          "uid": "alo-elasticsearch"
+          "uid": "${datasource}"
         },
         "query": "{\"find\": \"terms\", \"field\": \"identity.applicative_provider\"}",
         "includeAll": true,
@@ -1981,7 +2016,7 @@
         "label": "Target",
         "datasource": {
           "type": "elasticsearch",
-          "uid": "alo-elasticsearch"
+          "uid": "${datasource}"
         },
         "query": "{\"find\": \"terms\", \"field\": \"request.target\"}",
         "includeAll": true,
@@ -2001,7 +2036,7 @@
         "label": "Operation",
         "datasource": {
           "type": "elasticsearch",
-          "uid": "alo-elasticsearch"
+          "uid": "${datasource}"
         },
         "query": "{\"find\": \"terms\", \"field\": \"request.operation\"}",
         "includeAll": true,
@@ -2021,7 +2056,7 @@
         "label": "Username",
         "datasource": {
           "type": "elasticsearch",
-          "uid": "alo-elasticsearch"
+          "uid": "${datasource}"
         },
         "query": "{\"find\": \"terms\", \"field\": \"identity.username\"}",
         "includeAll": true,
@@ -2041,7 +2076,7 @@
         "label": "Cost Indicator",
         "datasource": {
           "type": "elasticsearch",
-          "uid": "alo-elasticsearch"
+          "uid": "${datasource}"
         },
         "query": "{\"find\": \"terms\", \"field\": \"stress.cost_indicator_names\"}",
         "includeAll": true,
@@ -2061,7 +2096,7 @@
         "label": "Client Host",
         "datasource": {
           "type": "elasticsearch",
-          "uid": "alo-elasticsearch"
+          "uid": "${datasource}"
         },
         "query": "{\"find\": \"terms\", \"field\": \"identity.client_host\"}",
         "includeAll": true,
@@ -2081,7 +2116,7 @@
         "label": "Template",
         "datasource": {
           "type": "elasticsearch",
-          "uid": "alo-elasticsearch"
+          "uid": "${datasource}"
         },
         "query": "{\"find\": \"terms\", \"field\": \"request.template\"}",
         "includeAll": true,
@@ -2100,7 +2135,7 @@
         "name": "Filters",
         "datasource": {
           "type": "elasticsearch",
-          "uid": "alo-elasticsearch"
+          "uid": "${datasource}"
         }
       }
     ]
