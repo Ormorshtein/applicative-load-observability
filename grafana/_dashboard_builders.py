@@ -368,6 +368,7 @@ def build_usage_dashboard() -> dict:
         ("request.operation", "Operation"),
         ("identity.applicative_provider", "Application"),
         ("request.target", "Target Index"),
+        ("request.template", "Template"),
     ]:
         panels.append(mk_timeseries(
             f"Rate by {label}", field,
@@ -381,24 +382,8 @@ def build_usage_dashboard() -> dict:
     panels.append(_section_header("Latency", y))
     y += _HDR_H
 
-    for latency_field, title in [
-        ("response.es_took_ms", "ES Latency"),
-        ("response.gateway_took_ms", "Gateway Latency"),
-    ]:
-        panels.append(mk_timeseries_multi(title, [
-            ("Min", latency_field, "min", ""),
-            ("Avg", latency_field, "avg", ""),
-            ("P50", latency_field, "percentile_50", ""),
-            ("P75", latency_field, "percentile_75", ""),
-            ("P95", latency_field, "percentile_95", ""),
-            ("P99", latency_field, "percentile_99", ""),
-            ("Max", latency_field, "max", ""),
-        ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-            series_type="line", unit="ms"))
-        y += _PANEL_H
-
     panels.append(mk_timeseries(
-        "Avg ES Latency by Operation", "request.operation",
+        "ES Latency by Operation", "request.operation",
         {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
         metric_field="response.es_took_ms", metric_op="avg", size=8,
         series_type="line", fill_opacity=20, unit="ms"))
@@ -415,10 +400,11 @@ def build_usage_dashboard() -> dict:
             ("Total Requests", None, "count", ""),
         ], {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
         series_type="line"))
-    panels.append(mk_bar(
+    panels.append(mk_table(
         "Requests by Status Code",
-        "response.status", None, "count", "Count",
-        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H}, size=10))
+        "response.status", "Status Code", [
+            ("Requests", None, "count"),
+        ], {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H}, size=10))
     y += _PANEL_H
 
     panels.append(mk_table(

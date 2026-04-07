@@ -483,11 +483,140 @@
     },
     {
       "id": 6,
+      "title": "Rate by Template",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "alo-elasticsearch"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 34,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.template",
+              "id": "2",
+              "settings": {
+                "size": "8",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "alo-elasticsearch-summary"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "B",
+          "metrics": [
+            {
+              "type": "sum",
+              "id": "1",
+              "field": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.template",
+              "id": "2",
+              "settings": {
+                "size": "8",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "1h"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 7,
       "title": "Latency",
       "type": "text",
       "gridPos": {
         "x": 0,
-        "y": 34,
+        "y": 42,
         "w": 24,
         "h": 2
       },
@@ -501,246 +630,8 @@
       }
     },
     {
-      "id": 7,
-      "title": "ES Latency",
-      "type": "timeseries",
-      "datasource": {
-        "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 36,
-        "w": 24,
-        "h": 8
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "A",
-          "metrics": [
-            {
-              "type": "min",
-              "id": "1",
-              "field": "response.es_took_ms"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ],
-          "alias": "Min"
-        },
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "B",
-          "metrics": [
-            {
-              "type": "avg",
-              "id": "1",
-              "field": "response.es_took_ms"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ],
-          "alias": "Avg"
-        },
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "C",
-          "metrics": [
-            {
-              "type": "percentiles",
-              "field": "response.es_took_ms",
-              "id": "1",
-              "settings": {
-                "percents": [
-                  50
-                ]
-              }
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ],
-          "alias": "P50"
-        },
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "D",
-          "metrics": [
-            {
-              "type": "percentiles",
-              "field": "response.es_took_ms",
-              "id": "1",
-              "settings": {
-                "percents": [
-                  75
-                ]
-              }
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ],
-          "alias": "P75"
-        },
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "E",
-          "metrics": [
-            {
-              "type": "percentiles",
-              "field": "response.es_took_ms",
-              "id": "1",
-              "settings": {
-                "percents": [
-                  95
-                ]
-              }
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ],
-          "alias": "P95"
-        },
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "F",
-          "metrics": [
-            {
-              "type": "percentiles",
-              "field": "response.es_took_ms",
-              "id": "1",
-              "settings": {
-                "percents": [
-                  99
-                ]
-              }
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ],
-          "alias": "P99"
-        },
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "G",
-          "metrics": [
-            {
-              "type": "max",
-              "id": "1",
-              "field": "response.es_took_ms"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ],
-          "alias": "Max"
-        }
-      ],
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "right"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 0
-          },
-          "unit": "ms"
-        },
-        "overrides": []
-      }
-    },
-    {
       "id": 8,
-      "title": "Gateway Latency",
+      "title": "ES Latency by Operation",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -749,244 +640,6 @@
       "gridPos": {
         "x": 0,
         "y": 44,
-        "w": 24,
-        "h": 8
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "A",
-          "metrics": [
-            {
-              "type": "min",
-              "id": "1",
-              "field": "response.gateway_took_ms"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ],
-          "alias": "Min"
-        },
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "B",
-          "metrics": [
-            {
-              "type": "avg",
-              "id": "1",
-              "field": "response.gateway_took_ms"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ],
-          "alias": "Avg"
-        },
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "C",
-          "metrics": [
-            {
-              "type": "percentiles",
-              "field": "response.gateway_took_ms",
-              "id": "1",
-              "settings": {
-                "percents": [
-                  50
-                ]
-              }
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ],
-          "alias": "P50"
-        },
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "D",
-          "metrics": [
-            {
-              "type": "percentiles",
-              "field": "response.gateway_took_ms",
-              "id": "1",
-              "settings": {
-                "percents": [
-                  75
-                ]
-              }
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ],
-          "alias": "P75"
-        },
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "E",
-          "metrics": [
-            {
-              "type": "percentiles",
-              "field": "response.gateway_took_ms",
-              "id": "1",
-              "settings": {
-                "percents": [
-                  95
-                ]
-              }
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ],
-          "alias": "P95"
-        },
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "F",
-          "metrics": [
-            {
-              "type": "percentiles",
-              "field": "response.gateway_took_ms",
-              "id": "1",
-              "settings": {
-                "percents": [
-                  99
-                ]
-              }
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ],
-          "alias": "P99"
-        },
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "alo-elasticsearch"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "G",
-          "metrics": [
-            {
-              "type": "max",
-              "id": "1",
-              "field": "response.gateway_took_ms"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ],
-          "alias": "Max"
-        }
-      ],
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "right"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 0
-          },
-          "unit": "ms"
-        },
-        "overrides": []
-      }
-    },
-    {
-      "id": 9,
-      "title": "Avg ES Latency by Operation",
-      "type": "timeseries",
-      "datasource": {
-        "type": "elasticsearch",
-        "uid": "alo-elasticsearch"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 52,
         "w": 24,
         "h": 8
       },
@@ -1049,12 +702,12 @@
       }
     },
     {
-      "id": 10,
+      "id": 9,
       "title": "Errors",
       "type": "text",
       "gridPos": {
         "x": 0,
-        "y": 60,
+        "y": 52,
         "w": 24,
         "h": 2
       },
@@ -1068,7 +721,7 @@
       }
     },
     {
-      "id": 11,
+      "id": 10,
       "title": "Error Rate",
       "type": "timeseries",
       "datasource": {
@@ -1077,7 +730,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 62,
+        "y": 54,
         "w": 12,
         "h": 8
       },
@@ -1153,16 +806,16 @@
       }
     },
     {
-      "id": 12,
+      "id": 11,
       "title": "Requests by Status Code",
-      "type": "barchart",
+      "type": "table",
       "datasource": {
         "type": "elasticsearch",
         "uid": "alo-elasticsearch"
       },
       "gridPos": {
         "x": 12,
-        "y": 62,
+        "y": 54,
         "w": 12,
         "h": 8
       },
@@ -1184,7 +837,7 @@
             {
               "type": "terms",
               "field": "response.status",
-              "id": "2",
+              "id": "99",
               "settings": {
                 "size": "10",
                 "order": "desc",
@@ -1196,22 +849,34 @@
         }
       ],
       "options": {
-        "orientation": "horizontal",
-        "showValue": "always",
-        "legend": {
-          "displayMode": "hidden"
-        },
-        "tooltip": {
-          "mode": "single"
-        }
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Requests",
+            "desc": true
+          }
+        ]
       },
       "fieldConfig": {
         "defaults": {},
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Count"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Requests"
+              }
+            ]
+          }
+        ]
       }
     },
     {
-      "id": 13,
+      "id": 12,
       "title": "Requests by Application",
       "type": "table",
       "datasource": {
@@ -1220,7 +885,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 70,
+        "y": 62,
         "w": 24,
         "h": 8
       },
@@ -1306,12 +971,12 @@
       }
     },
     {
-      "id": 14,
+      "id": 13,
       "title": "Data Volume",
       "type": "text",
       "gridPos": {
         "x": 0,
-        "y": 78,
+        "y": 70,
         "w": 24,
         "h": 2
       },
@@ -1325,7 +990,7 @@
       }
     },
     {
-      "id": 15,
+      "id": 14,
       "title": "Read Volume (Total Hits)",
       "type": "timeseries",
       "datasource": {
@@ -1334,7 +999,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 80,
+        "y": 72,
         "w": 12,
         "h": 8
       },
@@ -1396,7 +1061,7 @@
       }
     },
     {
-      "id": 16,
+      "id": 15,
       "title": "Write Volume (Docs Affected)",
       "type": "timeseries",
       "datasource": {
@@ -1405,7 +1070,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 80,
+        "y": 72,
         "w": 12,
         "h": 8
       },
@@ -1467,7 +1132,7 @@
       }
     },
     {
-      "id": 17,
+      "id": 16,
       "title": "Payload Sizes",
       "type": "timeseries",
       "datasource": {
@@ -1476,7 +1141,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 88,
+        "y": 80,
         "w": 24,
         "h": 8
       },
@@ -1555,12 +1220,12 @@
       }
     },
     {
-      "id": 18,
+      "id": 17,
       "title": "Top Activity",
       "type": "text",
       "gridPos": {
         "x": 0,
-        "y": 96,
+        "y": 88,
         "w": 24,
         "h": 2
       },
@@ -1574,7 +1239,7 @@
       }
     },
     {
-      "id": 19,
+      "id": 18,
       "title": "Top 10 Applications",
       "type": "barchart",
       "datasource": {
@@ -1583,7 +1248,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 98,
+        "y": 90,
         "w": 8,
         "h": 10
       },
@@ -1640,7 +1305,7 @@
       }
     },
     {
-      "id": 20,
+      "id": 19,
       "title": "Top 10 Indices",
       "type": "barchart",
       "datasource": {
@@ -1649,7 +1314,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 98,
+        "y": 90,
         "w": 8,
         "h": 10
       },
@@ -1706,7 +1371,7 @@
       }
     },
     {
-      "id": 21,
+      "id": 20,
       "title": "Top 10 Users",
       "type": "barchart",
       "datasource": {
@@ -1715,7 +1380,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 98,
+        "y": 90,
         "w": 8,
         "h": 10
       },

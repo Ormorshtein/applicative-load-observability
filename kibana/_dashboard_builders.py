@@ -248,30 +248,15 @@ def build_usage_visualizations() -> list[tuple[str, dict]]:
                metric_field="___records___", metric_label="Requests",
                metric_op="count", size=8),
 
+        mk_ts("alo-usage-ts-rate-by-template", "Rate by Template",
+               "request.template",
+               metric_field="___records___", metric_label="Requests",
+               metric_op="count", size=10),
+
         # ── Latency ────────────────────────────────────────────────────────
         _section_header("alo-usage-hdr-latency", "Latency"),
 
-        mk_ts_multi("alo-usage-ts-es-latency", "ES Latency", [
-            ("min", "Min", "response.es_took_ms", "min"),
-            ("avg", "Avg", "response.es_took_ms", "average"),
-            ("p50", "P50", "response.es_took_ms", "percentile_50"),
-            ("p75", "P75", "response.es_took_ms", "percentile_75"),
-            ("p95", "P95", "response.es_took_ms", "percentile_95"),
-            ("p99", "P99", "response.es_took_ms", "percentile_99"),
-            ("max", "Max", "response.es_took_ms", "max"),
-        ], "line", unit="ms"),
-
-        mk_ts_multi("alo-usage-ts-gw-latency", "Gateway Latency", [
-            ("min", "Min", "response.gateway_took_ms", "min"),
-            ("avg", "Avg", "response.gateway_took_ms", "average"),
-            ("p50", "P50", "response.gateway_took_ms", "percentile_50"),
-            ("p75", "P75", "response.gateway_took_ms", "percentile_75"),
-            ("p95", "P95", "response.gateway_took_ms", "percentile_95"),
-            ("p99", "P99", "response.gateway_took_ms", "percentile_99"),
-            ("max", "Max", "response.gateway_took_ms", "max"),
-        ], "line", unit="ms"),
-
-        mk_ts("alo-usage-ts-latency-by-op", "Avg ES Latency by Operation",
+        mk_ts("alo-usage-ts-latency-by-op", "ES Latency by Operation",
                "request.operation",
                metric_field="response.es_took_ms",
                metric_label="Avg ES Latency",

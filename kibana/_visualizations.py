@@ -207,11 +207,12 @@ def layout_usage(vis_ids: list[str], panels: list[dict],
                  refs: list[dict]) -> None:
     """
     Vis indices:
-      0=hdr-rates, 1=total-rate, 2=rate-by-op, 3=rate-by-app, 4=rate-by-index,
-      5=hdr-latency, 6=es-latency, 7=gw-latency, 8=latency-by-op,
-      9=hdr-errors, 10=error-rate, 11=status-bar, 12=errors-by-app,
-      13=hdr-volume, 14=hits, 15=docs, 16=payload,
-      17=hdr-activity, 18=top-apps, 19=top-indices, 20=top-users
+      0=hdr-rates, 1=total-rate, 2=rate-by-op, 3=rate-by-app,
+      4=rate-by-index, 5=rate-by-template,
+      6=hdr-latency, 7=latency-by-op,
+      8=hdr-errors, 9=error-rate, 10=status-bar, 11=reqs-by-app,
+      12=hdr-volume, 13=hits, 14=docs, 15=payload,
+      16=hdr-activity, 17=top-apps, 18=top-indices, 19=top-users
     """
     HDR_H = 3
     y = 0
@@ -227,48 +228,45 @@ def layout_usage(vis_ids: list[str], panels: list[dict],
     _add_panel(panels, refs, vis_ids[3], 24, y, 24, 12)
     y += 12
 
-    _add_panel(panels, refs, vis_ids[4], 0, y, GRID_WIDTH, 12)
+    _add_panel(panels, refs, vis_ids[4], 0, y, 24, 12)
+    _add_panel(panels, refs, vis_ids[5], 24, y, 24, 12)
     y += 12
 
     # ── Latency ────────────────────────────────────────────────────────────
-    _add_panel(panels, refs, vis_ids[5], 0, y, GRID_WIDTH, HDR_H, panel_type="visualization")
+    _add_panel(panels, refs, vis_ids[6], 0, y, GRID_WIDTH, HDR_H, panel_type="visualization")
     y += HDR_H
 
-    _add_panel(panels, refs, vis_ids[6], 0, y, 24, 12)
-    _add_panel(panels, refs, vis_ids[7], 24, y, 24, 12)
-    y += 12
-
-    _add_panel(panels, refs, vis_ids[8], 0, y, GRID_WIDTH, 12)
+    _add_panel(panels, refs, vis_ids[7], 0, y, GRID_WIDTH, 12)
     y += 12
 
     # ── Errors ─────────────────────────────────────────────────────────────
-    _add_panel(panels, refs, vis_ids[9], 0, y, GRID_WIDTH, HDR_H, panel_type="visualization")
+    _add_panel(panels, refs, vis_ids[8], 0, y, GRID_WIDTH, HDR_H, panel_type="visualization")
     y += HDR_H
 
-    _add_panel(panels, refs, vis_ids[10], 0, y, 24, 12)
-    _add_panel(panels, refs, vis_ids[11], 24, y, 24, 12)
+    _add_panel(panels, refs, vis_ids[9], 0, y, 24, 12)
+    _add_panel(panels, refs, vis_ids[10], 24, y, 24, 12)
     y += 12
 
-    _add_panel(panels, refs, vis_ids[12], 0, y, GRID_WIDTH, 12)
+    _add_panel(panels, refs, vis_ids[11], 0, y, GRID_WIDTH, 12)
     y += 12
 
     # ── Data Volume ────────────────────────────────────────────────────────
-    _add_panel(panels, refs, vis_ids[13], 0, y, GRID_WIDTH, HDR_H, panel_type="visualization")
+    _add_panel(panels, refs, vis_ids[12], 0, y, GRID_WIDTH, HDR_H, panel_type="visualization")
     y += HDR_H
 
-    _add_panel(panels, refs, vis_ids[14], 0, y, 24, 12)
-    _add_panel(panels, refs, vis_ids[15], 24, y, 24, 12)
+    _add_panel(panels, refs, vis_ids[13], 0, y, 24, 12)
+    _add_panel(panels, refs, vis_ids[14], 24, y, 24, 12)
     y += 12
 
-    _add_panel(panels, refs, vis_ids[16], 0, y, GRID_WIDTH, 12)
+    _add_panel(panels, refs, vis_ids[15], 0, y, GRID_WIDTH, 12)
     y += 12
 
     # ── Activity ───────────────────────────────────────────────────────────
-    _add_panel(panels, refs, vis_ids[17], 0, y, GRID_WIDTH, HDR_H, panel_type="visualization")
+    _add_panel(panels, refs, vis_ids[16], 0, y, GRID_WIDTH, HDR_H, panel_type="visualization")
     y += HDR_H
 
-    _add_panel(panels, refs, vis_ids[18], 0, y, 16, 12)
-    _add_panel(panels, refs, vis_ids[19], 16, y, 16, 12)
-    _add_panel(panels, refs, vis_ids[20], 32, y, 16, 12)
+    _add_panel(panels, refs, vis_ids[17], 0, y, 16, 12)
+    _add_panel(panels, refs, vis_ids[18], 16, y, 16, 12)
+    _add_panel(panels, refs, vis_ids[19], 32, y, 16, 12)
 
 
