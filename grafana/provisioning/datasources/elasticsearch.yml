@@ -1,10 +1,9 @@
 apiVersion: 1
 
-# The primary datasource queries both raw indices and the summary index.
-# While raw data exists, it outnumbers summary docs ~50:1 so the summary
-# adds <2% noise to aggregations.  After ILM deletes raw indices, the
-# summary docs seamlessly provide avg metrics and percentiles at hourly
-# granularity — giving indefinite retention without panel changes.
+# Primary datasource queries raw + summary. While raw data exists it
+# outnumbers summary docs ~50:1 (<2% noise). After ILM deletes raw,
+# summary seamlessly provides avg metrics and percentiles at hourly
+# granularity.
 datasources:
   - name: Elasticsearch (ALO)
     type: elasticsearch

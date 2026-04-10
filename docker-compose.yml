@@ -124,6 +124,9 @@ services:
         condition: service_healthy
 
   # ── Prometheus monitoring stack (activate with: docker compose --profile prometheus up) ──
+  # To wire the Prometheus datasource into Grafana, generate the provisioning file first:
+  #   PROMETHEUS_URL=http://prometheus:9090 python grafana/setup.py
+  # (Mirrors the Helm chart's opt-in `grafana.prometheusUrl`. Empty/unset = no datasource.)
 
   prometheus:
     image: prom/prometheus:v2.51.0

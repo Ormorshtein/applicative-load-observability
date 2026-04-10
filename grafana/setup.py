@@ -8,6 +8,7 @@ Two modes:
 
 Usage:
     python grafana/setup.py                                          # generate provisioning files
+    python grafana/setup.py --prometheus-url http://prometheus:9090  # also generate Prometheus datasource
     python grafana/setup.py --mode api --grafana http://grafana:3000 # push to external Grafana
     python grafana/setup.py --mode api --grafana http://grafana:3000 --elasticsearch http://es:9200
 """
@@ -27,7 +28,7 @@ from _dashboard_builders import (
     build_usage_dashboard,
 )
 from _dashboards import export_dashboards
-from _datasource import generate_datasource_yaml
+from _datasource import generate_datasource_yaml, generate_prometheus_datasource_yaml
 
 INDEX_PATTERN = "logs-alo.*-*"
 DATASOURCE_UID = "alo-elasticsearch"
@@ -173,9 +174,10 @@ def do_api_setup(grafana_url, elasticsearch_url, username, password,
 # Provision mode — generate files
 # ---------------------------------------------------------------------------
 
-def do_provision(elasticsearch_url, grafana_url):
+def do_provision(elasticsearch_url, grafana_url, prometheus_url=""):
     print("  Generating provisioning files:\n")
     generate_datasource_yaml(elasticsearch_url)
+    generate_prometheus_datasource_yaml(prometheus_url)
     export_dashboards()
     print(f"\n  Main dashboard:            {grafana_url}/d/alo-main")
     print(f"  Cost indicators dashboard: {grafana_url}/d/alo-cost-indicators")
@@ -192,6 +194,7 @@ def do_provision(elasticsearch_url, grafana_url):
 def main():
     default_es = os.getenv("ELASTICSEARCH_URL", "http://elasticsearch:9200")
     default_grafana = os.getenv("GRAFANA_URL", "http://localhost:3000")
+    default_prometheus = os.getenv("PROMETHEUS_URL", "")
 
     parser = argparse.ArgumentParser(
         description="Set up Grafana for ALO (provisioning or API)")
@@ -204,6 +207,11 @@ def main():
     parser.add_argument(
         "--grafana", default=default_grafana,
         help="Grafana URL (default: %(default)s)")
+    parser.add_argument(
+        "--prometheus-url", default=default_prometheus,
+        help="Prometheus URL for Grafana datasource (provision mode). "
+             "Empty to skip — re-running with empty also removes any "
+             "previously generated prometheus.yml. (default: %(default)r)")
     parser.add_argument(
         "--username", default=os.getenv("GRAFANA_USERNAME", "admin"),
         help="Grafana admin username (default: admin)")
@@ -238,7 +246,7 @@ def main():
                           es_ca_cert=args.es_ca_cert,
                           es_insecure=args.es_insecure)
     else:
-        ok = do_provision(args.elasticsearch, args.grafana)
+        ok = do_provision(args.elasticsearch, args.grafana, args.prometheus_url)
 
     sys.exit(0 if ok else 1)
 
