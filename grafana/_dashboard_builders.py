@@ -258,6 +258,23 @@ def build_cost_indicators_dashboard() -> dict:
         series_type="line", stacked=True))
     y += _PANEL_H
 
+    panels.append(mk_timeseries(
+        "Avg Base Score by Template", "request.template",
+        {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
+        metric_field="stress.base", metric_op="avg", size=10))
+    panels.append(mk_timeseries(
+        "Avg Multiplier by Template", "request.template",
+        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
+        metric_field="stress.multiplier", metric_op="avg", size=10))
+    y += _PANEL_H
+
+    panels.append(mk_timeseries(
+        "Avg Cost Indicators by Application",
+        "identity.applicative_provider",
+        {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
+        metric_field="stress.cost_indicator_count", metric_op="avg", size=8))
+    y += _PANEL_H
+
     panels.append(mk_timeseries_multi(
         "Flagged vs Total Requests", [
             ("Flagged Requests", None, "count",
@@ -315,26 +332,6 @@ def build_cost_indicators_dashboard() -> dict:
         ], {"x": _HALF_W + 2, "y": y, "w": _HALF_W - 2, "h": _BAR_H},
         series_type="line", stacked=True))
     y += _BAR_H
-
-    # ── Historical Trends ──────────────────────────────────────────
-    panels.append(_row("Historical Trends", y, collapsed=True))
-    y += _ROW_H
-
-    panels.append(mk_timeseries(
-        "Base Score by Template (Historical)", "request.template",
-        {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        metric_field="stress.base", metric_op="avg", size=10))
-    panels.append(mk_timeseries(
-        "Avg Multiplier by Template (Historical)", "request.template",
-        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        metric_field="stress.multiplier", metric_op="avg", size=10))
-    y += _PANEL_H
-
-    panels.append(mk_timeseries(
-        "Avg Cost Indicators by Application (Historical)",
-        "identity.applicative_provider",
-        {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-        metric_field="stress.cost_indicator_count", metric_op="avg", size=8))
 
     return _wrap_dashboard(
         uid="alo-cost-indicators",

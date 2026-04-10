@@ -8,6 +8,7 @@
 - **Rate by Template** panel added to Cluster Usage dashboard.
 - **Measurement units** — latency panels show "ms", size panels show auto-scaled bytes.
 - Various panel fixes (percentile types, pie chart dimensions, status code field type).
+- **Cost Indicators dashboard** — removed redundant "Historical Trends" collapsed row. The three timeseries (Avg Base Score by Template, Avg Multiplier by Template, Avg Cost Indicators by Application) are now first-class panels in the Trends section. With the unified `logs-alo.*-*,alo-summary` datasource (1.17.0) every panel already serves long windows, so the "(Historical)" labeling was misleading.
 
 ## 1.17.2
 
