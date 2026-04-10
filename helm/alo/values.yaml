@@ -191,7 +191,7 @@ logstash:
   # ── Internal deployment (ignored when external.enabled=true) ──
   image:
     repository: oracle1012/applicative-load-observability
-    tag: logstash-1.17.1
+    tag: logstash-1.18.0
     pullPolicy: IfNotPresent
   replicas: 1
   resources:
@@ -241,7 +241,7 @@ analyzer:
   enabled: true
   image:
     repository: oracle1012/applicative-load-observability
-    tag: analyzer-1.17.2
+    tag: analyzer-1.18.0
     pullPolicy: IfNotPresent
   replicas: 2
   port: 8000
@@ -300,7 +300,7 @@ gateway:
   dnsResolver: ""
   image:
     repository: oracle1012/applicative-load-observability
-    tag: gateway-1.17.1
+    tag: gateway-1.18.0
     pullPolicy: IfNotPresent
   replicas: 2
   port: 9200
@@ -397,7 +397,7 @@ kibana:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: kibana-setup-1.17.5
+      tag: kibana-setup-1.18.0
       pullPolicy: IfNotPresent
   nodeSelector: {}
   tolerations: []
@@ -447,7 +447,7 @@ grafana:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: grafana-setup-1.17.5
+      tag: grafana-setup-1.18.0
       pullPolicy: IfNotPresent
   nodeSelector: {}
   tolerations: []

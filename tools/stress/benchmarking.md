@@ -12,7 +12,7 @@ We need empirical proof that this extra hop does not degrade throughput or laten
 ## Prerequisites
 
 - A running Kubernetes cluster with the ALO Helm chart deployed
-- The stress tool image available: `oracle1012/applicative-load-observability:stress-1.15.0`
+- The stress tool image available: `oracle1012/applicative-load-observability:stress-1.18.0`
 - `kubectl` configured and pointing at the cluster
 - Adjust service names (`alo-gateway`, `alo-elasticsearch`) to match your Helm release
 
@@ -54,14 +54,14 @@ done
 ```bash
 # Through gateway
 kubectl run stress-gw-mixed-30 --rm -it \
-  --image=oracle1012/applicative-load-observability:stress-1.15.0 \
+  --image=oracle1012/applicative-load-observability:stress-1.18.0 \
   --restart=Never -- \
   --workload mixed --rate 0 --threads 30 --duration 120 --warmup 10 \
   --gateway http://alo-gateway:9200
 
 # Direct to ES
 kubectl run stress-direct-mixed-30 --rm -it \
-  --image=oracle1012/applicative-load-observability:stress-1.15.0 \
+  --image=oracle1012/applicative-load-observability:stress-1.18.0 \
   --restart=Never -- \
   --workload mixed --rate 0 --threads 30 --duration 120 --warmup 10 \
   --gateway http://alo-elasticsearch:9200
@@ -72,14 +72,14 @@ kubectl run stress-direct-mixed-30 --rm -it \
 ```bash
 # Through gateway
 kubectl run stress-gw-mixed-50 --rm -it \
-  --image=oracle1012/applicative-load-observability:stress-1.15.0 \
+  --image=oracle1012/applicative-load-observability:stress-1.18.0 \
   --restart=Never -- \
   --workload mixed --rate 0 --threads 50 --duration 120 --warmup 10 \
   --gateway http://alo-gateway:9200
 
 # Direct to ES
 kubectl run stress-direct-mixed-50 --rm -it \
-  --image=oracle1012/applicative-load-observability:stress-1.15.0 \
+  --image=oracle1012/applicative-load-observability:stress-1.18.0 \
   --restart=Never -- \
   --workload mixed --rate 0 --threads 50 --duration 120 --warmup 10 \
   --gateway http://alo-elasticsearch:9200
@@ -90,14 +90,14 @@ kubectl run stress-direct-mixed-50 --rm -it \
 ```bash
 # Through gateway
 kubectl run stress-gw-search-40 --rm -it \
-  --image=oracle1012/applicative-load-observability:stress-1.15.0 \
+  --image=oracle1012/applicative-load-observability:stress-1.18.0 \
   --restart=Never -- \
   --workload search --rate 0 --threads 40 --duration 120 --warmup 10 \
   --gateway http://alo-gateway:9200
 
 # Direct to ES
 kubectl run stress-direct-search-40 --rm -it \
-  --image=oracle1012/applicative-load-observability:stress-1.15.0 \
+  --image=oracle1012/applicative-load-observability:stress-1.18.0 \
   --restart=Never -- \
   --workload search --rate 0 --threads 40 --duration 120 --warmup 10 \
   --gateway http://alo-elasticsearch:9200
@@ -108,14 +108,14 @@ kubectl run stress-direct-search-40 --rm -it \
 ```bash
 # Through gateway
 kubectl run stress-gw-bulk-50 --rm -it \
-  --image=oracle1012/applicative-load-observability:stress-1.15.0 \
+  --image=oracle1012/applicative-load-observability:stress-1.18.0 \
   --restart=Never -- \
   --workload bulk --rate 0 --threads 50 --duration 120 --warmup 10 \
   --gateway http://alo-gateway:9200
 
 # Direct to ES
 kubectl run stress-direct-bulk-50 --rm -it \
-  --image=oracle1012/applicative-load-observability:stress-1.15.0 \
+  --image=oracle1012/applicative-load-observability:stress-1.18.0 \
   --restart=Never -- \
   --workload bulk --rate 0 --threads 50 --duration 120 --warmup 10 \
   --gateway http://alo-elasticsearch:9200
