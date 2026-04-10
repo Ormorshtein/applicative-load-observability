@@ -2,12 +2,7 @@
 
 ## 1.18.0
 
-### Release
-
-- **Full multi-image release.** All 6 images (analyzer, logstash, gateway, kibana-setup, grafana-setup, stress) rebuilt and pushed at the same tag. Releases 1.17.1–1.17.5 had drifted, with only a subset of images bumped per release; this release re-aligns everything.
-- `pyproject.toml`, `helm/alo/Chart.yaml` (`appVersion` + chart `version`), `docker-compose.yml`, `helm/alo/values.yaml`, `CONTRIBUTING.md`, `README.md`, and `tools/stress/benchmarking.md` now consistently reference `1.18.0`.
-
-(No code changes since 1.17.5 — the dashboard polish below was authored under 1.17.5 but never fully shipped because not all images were rebuilt at that tag.)
+All 6 images (analyzer, logstash, gateway, kibana-setup, grafana-setup, stress) rebuilt and pushed at `1.18.0`. 1.17.1–1.17.5 only bumped a subset of images per release, so the dashboard work landing under 1.17.5 never reached users running the analyzer/logstash/gateway tags. Every version reference is now consistent: `pyproject.toml`, `helm/alo/Chart.yaml` (`appVersion` and chart `version`), `helm/alo/values.yaml`, `docker-compose.yml`, `CONTRIBUTING.md`, `README.md`, `tools/stress/benchmarking.md`. No code changes since 1.17.5.
 
 ## 1.17.5
 
