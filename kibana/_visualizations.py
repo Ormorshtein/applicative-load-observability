@@ -47,16 +47,6 @@ PANEL_DESCRIPTIONS = {
         "Cost Indicator": "Average stress score over time, broken down by cost indicator.",
         "Template": "Average stress score over time, broken down by request template.",
     },
-    "resp_es": {
-        "Cost Indicator": "Average Elasticsearch response time over time by cost indicator, with request count.",
-        "Operation": "Average Elasticsearch response time over time by operation type, with request count.",
-        "Template": "Average Elasticsearch response time over time by request template, with request count.",
-    },
-    "resp_gw": {
-        "Cost Indicator": "Average gateway response time over time by cost indicator, with request count.",
-        "Operation": "Average gateway response time over time by operation type, with request count.",
-        "Template": "Average gateway response time over time by request template, with request count.",
-    },
 }
 
 _CHEAT_SHEET_PATH = Path(__file__).resolve().parent / "cheat_sheet.md"

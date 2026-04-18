@@ -82,6 +82,7 @@
         "w": 6,
         "h": 6
       },
+      "description": "Sum of all stress scores in the selected time period.",
       "targets": [
         {
           "datasource": {
@@ -136,6 +137,7 @@
         "w": 24,
         "h": 8
       },
+      "description": "Quick reference guide for examining this dashboard.",
       "fieldConfig": {
         "defaults": {},
         "overrides": []
@@ -159,6 +161,7 @@
         "w": 8,
         "h": 10
       },
+      "description": "Shows stress distribution across applicative providers. Click a slice to filter the dashboard.",
       "targets": [
         {
           "datasource": {
@@ -233,6 +236,7 @@
         "w": 8,
         "h": 10
       },
+      "description": "Shows stress distribution across target indices/databases. Click a slice to filter the dashboard.",
       "targets": [
         {
           "datasource": {
@@ -307,6 +311,7 @@
         "w": 8,
         "h": 10
       },
+      "description": "Shows stress distribution across operation types (search, index, bulk, etc.). Click a slice to filter.",
       "targets": [
         {
           "datasource": {
@@ -381,6 +386,7 @@
         "w": 12,
         "h": 10
       },
+      "description": "Stress distribution across cost indicator types. 'unflagged' = requests with no cost indicators.",
       "targets": [
         {
           "datasource": {
@@ -455,6 +461,7 @@
         "w": 12,
         "h": 10
       },
+      "description": "Shows stress distribution across request templates. Click a slice to filter the dashboard.",
       "targets": [
         {
           "datasource": {
@@ -540,6 +547,7 @@
         "w": 24,
         "h": 8
       },
+      "description": "Top 10 request templates ranked by total stress score, with latency percentiles and cost-indicator averages.",
       "targets": [
         {
           "datasource": {
@@ -560,18 +568,43 @@
               "field": "stress.score"
             },
             {
-              "type": "avg",
+              "type": "percentiles",
+              "field": "response.es_took_ms",
               "id": "3",
-              "field": "response.es_took_ms"
+              "settings": {
+                "percents": [
+                  50
+                ]
+              }
+            },
+            {
+              "type": "percentiles",
+              "field": "response.es_took_ms",
+              "id": "4",
+              "settings": {
+                "percents": [
+                  95
+                ]
+              }
+            },
+            {
+              "type": "percentiles",
+              "field": "response.es_took_ms",
+              "id": "5",
+              "settings": {
+                "percents": [
+                  99
+                ]
+              }
             },
             {
               "type": "avg",
-              "id": "4",
+              "id": "6",
               "field": "stress.cost_indicator_count"
             },
             {
               "type": "count",
-              "id": "5"
+              "id": "7"
             }
           ],
           "bucketAggs": [
@@ -636,12 +669,36 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Average response.es_took_ms"
+              "options": "p50 response.es_took_ms"
             },
             "properties": [
               {
                 "id": "displayName",
-                "value": "Avg ES Latency (ms)"
+                "value": "P50 ES Latency (ms)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p95 response.es_took_ms"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "P95 ES Latency (ms)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p99 response.es_took_ms"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "P99 ES Latency (ms)"
               }
             ]
           },
@@ -674,7 +731,7 @@
     },
     {
       "id": 10,
-      "title": "Top 10 Cost Indicators by Stress Score",
+      "title": "Top 10 Heaviest Operations",
       "type": "table",
       "datasource": {
         "type": "elasticsearch",
@@ -684,8 +741,166 @@
         "x": 0,
         "y": 43,
         "w": 24,
+        "h": 10
+      },
+      "description": "Individual requests with the highest stress scores in the selected time range. Click column headers to re-sort.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${datasource}"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "raw_data",
+              "id": "1",
+              "settings": {
+                "size": "50"
+              }
+            }
+          ],
+          "bucketAggs": []
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Stress",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Application"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter by Application",
+                    "url": "/d/alo-main?${__url_time_range}&var-application=${__value.raw}",
+                    "targetBlank": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Operation"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter by Operation",
+                    "url": "/d/alo-main?${__url_time_range}&var-operation=${__value.raw}",
+                    "targetBlank": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Target"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter by Target",
+                    "url": "/d/alo-main?${__url_time_range}&var-target=${__value.raw}",
+                    "targetBlank": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cost Indicators"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter by Cost Indicators",
+                    "url": "/d/alo-main?${__url_time_range}&var-cost_indicator=${__value.raw}",
+                    "targetBlank": false
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "includeByName": {
+              "identity.applicative_provider": true,
+              "request.operation": true,
+              "request.target": true,
+              "request.path": true,
+              "stress.score": true,
+              "response.es_took_ms": true,
+              "stress.cost_indicator_names": true
+            },
+            "indexByName": {
+              "identity.applicative_provider": 0,
+              "request.operation": 1,
+              "request.target": 2,
+              "request.path": 3,
+              "stress.score": 4,
+              "response.es_took_ms": 5,
+              "stress.cost_indicator_names": 6
+            },
+            "renameByName": {
+              "identity.applicative_provider": "Application",
+              "request.operation": "Operation",
+              "request.target": "Target",
+              "request.path": "Path",
+              "stress.score": "Stress",
+              "response.es_took_ms": "ES Latency (ms)",
+              "stress.cost_indicator_names": "Cost Indicators"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Top 10 Cost Indicators by Stress Score",
+      "type": "table",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 53,
+        "w": 24,
         "h": 8
       },
+      "description": "Cost indicator types ranked by total stress contribution, with latency percentiles.",
       "targets": [
         {
           "datasource": {
@@ -706,13 +921,38 @@
               "field": "stress.score"
             },
             {
-              "type": "avg",
+              "type": "percentiles",
+              "field": "response.es_took_ms",
               "id": "3",
-              "field": "response.es_took_ms"
+              "settings": {
+                "percents": [
+                  50
+                ]
+              }
+            },
+            {
+              "type": "percentiles",
+              "field": "response.es_took_ms",
+              "id": "4",
+              "settings": {
+                "percents": [
+                  95
+                ]
+              }
+            },
+            {
+              "type": "percentiles",
+              "field": "response.es_took_ms",
+              "id": "5",
+              "settings": {
+                "percents": [
+                  99
+                ]
+              }
             },
             {
               "type": "count",
-              "id": "4"
+              "id": "6"
             }
           ],
           "bucketAggs": [
@@ -777,12 +1017,36 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Average response.es_took_ms"
+              "options": "p50 response.es_took_ms"
             },
             "properties": [
               {
                 "id": "displayName",
-                "value": "Avg ES Latency (ms)"
+                "value": "P50 ES Latency (ms)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p95 response.es_took_ms"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "P95 ES Latency (ms)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p99 response.es_took_ms"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "P99 ES Latency (ms)"
               }
             ]
           },
@@ -809,11 +1073,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 51
+        "y": 61
       }
     },
     {
-      "id": 11,
+      "id": 12,
       "title": "Stress by Application",
       "type": "timeseries",
       "datasource": {
@@ -822,10 +1086,11 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 52,
+        "y": 62,
         "w": 24,
         "h": 8
       },
+      "description": "Average stress score over time, broken down by applicative provider.",
       "targets": [
         {
           "datasource": {
@@ -884,7 +1149,7 @@
       }
     },
     {
-      "id": 12,
+      "id": 13,
       "title": "Stress by Target",
       "type": "timeseries",
       "datasource": {
@@ -893,10 +1158,11 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 60,
+        "y": 70,
         "w": 24,
         "h": 8
       },
+      "description": "Average stress score over time, broken down by target index/database.",
       "targets": [
         {
           "datasource": {
@@ -955,7 +1221,7 @@
       }
     },
     {
-      "id": 13,
+      "id": 14,
       "title": "Stress by Operation",
       "type": "timeseries",
       "datasource": {
@@ -964,10 +1230,11 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 68,
+        "y": 78,
         "w": 24,
         "h": 8
       },
+      "description": "Average stress score over time, broken down by operation type.",
       "targets": [
         {
           "datasource": {
@@ -1026,7 +1293,7 @@
       }
     },
     {
-      "id": 14,
+      "id": 15,
       "title": "Stress by Cost Indicator",
       "type": "timeseries",
       "datasource": {
@@ -1035,10 +1302,11 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 76,
+        "y": 86,
         "w": 24,
         "h": 8
       },
+      "description": "Average stress score over time, broken down by cost indicator.",
       "targets": [
         {
           "datasource": {
@@ -1097,7 +1365,7 @@
       }
     },
     {
-      "id": 15,
+      "id": 16,
       "title": "Stress by Template",
       "type": "timeseries",
       "datasource": {
@@ -1106,10 +1374,11 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 84,
+        "y": 94,
         "w": 24,
         "h": 8
       },
+      "description": "Average stress score over time, broken down by request template.",
       "targets": [
         {
           "datasource": {
@@ -1175,11 +1444,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 92
+        "y": 102
       }
     },
     {
-      "id": 16,
+      "id": 17,
       "title": "Request Volume",
       "type": "timeseries",
       "datasource": {
@@ -1188,10 +1457,11 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 93,
+        "y": 103,
         "w": 24,
         "h": 8
       },
+      "description": "Total request count over time. Dashed series = hourly summary-index fallback (survives raw-data ILM expiry).",
       "targets": [
         {
           "datasource": {
@@ -1286,7 +1556,7 @@
       }
     },
     {
-      "id": 17,
+      "id": 18,
       "title": "Documents Matched by Queries",
       "type": "timeseries",
       "datasource": {
@@ -1295,10 +1565,11 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 101,
+        "y": 111,
         "w": 24,
         "h": 8
       },
+      "description": "Total documents matched by queries. Correlates with ES CPU under queue saturation.",
       "targets": [
         {
           "datasource": {
@@ -1346,7 +1617,7 @@
       }
     },
     {
-      "id": 18,
+      "id": 19,
       "title": "Write Volume (Documents)",
       "type": "timeseries",
       "datasource": {
@@ -1355,10 +1626,11 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 109,
+        "y": 119,
         "w": 12,
         "h": 8
       },
+      "description": "Total documents written (index / bulk / update).",
       "targets": [
         {
           "datasource": {
@@ -1406,7 +1678,7 @@
       }
     },
     {
-      "id": 19,
+      "id": 20,
       "title": "Request Size",
       "type": "timeseries",
       "datasource": {
@@ -1415,10 +1687,11 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 109,
+        "y": 119,
         "w": 12,
         "h": 8
       },
+      "description": "Total inbound request payload size.",
       "targets": [
         {
           "datasource": {
@@ -1474,11 +1747,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 117
+        "y": 127
       }
     },
     {
-      "id": 20,
+      "id": 21,
       "title": "ES Latency",
       "type": "timeseries",
       "datasource": {
@@ -1487,10 +1760,11 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 118,
+        "y": 128,
         "w": 24,
         "h": 8
       },
+      "description": "Elasticsearch response-time trend with Avg / P50 / P95 / P99 \u2014 rising P95/P99 signals tail-latency issues.",
       "targets": [
         {
           "datasource": {

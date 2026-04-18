@@ -46,9 +46,8 @@ def build_main_visualizations() -> list[tuple[str, dict]]:
         if label == "Cost Indicator":
             vis.append(mk_pie(
                 "alo-pie-cost-indicators", "Stress by Cost Indicator (Selected Period)",
-                field, size=10, include_missing=True,
-                description="Stress by cost indicator type. "
-                "(missing) = requests with no cost indicators."))
+                field, size=10,
+                description="Stress by cost indicator type."))
             continue
         size = 10 if field == "request.template" else 8
         slug = label.lower().replace(" ", "-")
@@ -66,8 +65,9 @@ def build_main_visualizations() -> list[tuple[str, dict]]:
         "request.template", "Template", [
             ("sum_stress",      "Sum Stress",              "stress.score",                "sum"),
             ("avg_stress",      "Avg Stress",              "stress.score",                "average"),
-            ("avg_es_latency",  "Avg ES Latency (ms)",     "response.es_took_ms",         "average"),
-            ("avg_gw_latency",  "Avg Gateway Latency (ms)", "response.gateway_took_ms",   "average"),
+            ("p50_es_latency",  "P50 ES Latency (ms)",     "response.es_took_ms",         "percentile_50"),
+            ("p95_es_latency",  "P95 ES Latency (ms)",     "response.es_took_ms",         "percentile_95"),
+            ("p99_es_latency",  "P99 ES Latency (ms)",     "response.es_took_ms",         "percentile_99"),
             ("cost_indicators", "Avg Cost Indicators",     "stress.cost_indicator_count",  "average"),
             ("requests",        "Requests",                None,                           "count"),
         ], size=10))
@@ -77,7 +77,9 @@ def build_main_visualizations() -> list[tuple[str, dict]]:
         "stress.cost_indicator_names", "Cost Indicator", [
             ("sum_stress",     "Sum Stress",              "stress.score",             "sum"),
             ("avg_stress",     "Avg Stress",              "stress.score",             "average"),
-            ("avg_es_latency", "Avg ES Latency (ms)",     "response.es_took_ms",      "average"),
+            ("p50_es_latency", "P50 ES Latency (ms)",     "response.es_took_ms",      "percentile_50"),
+            ("p95_es_latency", "P95 ES Latency (ms)",     "response.es_took_ms",      "percentile_95"),
+            ("p99_es_latency", "P99 ES Latency (ms)",     "response.es_took_ms",      "percentile_99"),
             ("requests",       "Requests",                None,                        "count"),
         ], size=10))
 
@@ -156,7 +158,9 @@ def build_ci_visualizations() -> list[tuple[str, dict]]:
                          ("avg_score",      "Avg Score",         "stress.score",             "average"),
                          ("avg_mult",       "Multiplier",        "stress.multiplier",        "average"),
                          ("avg_took_w",     "ES Took (weighted)", "stress.components.took",   "average"),
-                         ("avg_took_raw",   "ES Latency (ms)",   "response.es_took_ms",      "average"),
+                         ("p50_took_raw",   "P50 ES Latency (ms)", "response.es_took_ms",     "percentile_50"),
+                         ("p95_took_raw",   "P95 ES Latency (ms)", "response.es_took_ms",     "percentile_95"),
+                         ("p99_took_raw",   "P99 ES Latency (ms)", "response.es_took_ms",     "percentile_99"),
                          ("avg_shards_w",   "Shards (weighted)", "stress.components.shards", "average"),
                          ("avg_shards_raw", "Shards (raw)",      "response.shards_total",    "average"),
                          ("avg_hits_w",     "Hits (weighted)",   "stress.components.hits",   "average"),
@@ -256,11 +260,12 @@ def build_usage_visualizations() -> list[tuple[str, dict]]:
         # ── Latency ────────────────────────────────────────────────────────
         _section_header("alo-usage-hdr-latency", "Latency"),
 
-        mk_ts("alo-usage-ts-latency-by-op", "ES Latency by Operation",
-               "request.operation",
-               metric_field="response.es_took_ms",
-               metric_label="Avg ES Latency",
-               metric_op="average", size=8, unit="ms"),
+        mk_ts_multi("alo-usage-ts-latency", "ES Latency", [
+            ("avg",  "Avg",  "response.es_took_ms", "average"),
+            ("p50",  "P50",  "response.es_took_ms", "percentile_50"),
+            ("p95",  "P95",  "response.es_took_ms", "percentile_95"),
+            ("p99",  "P99",  "response.es_took_ms", "percentile_99"),
+        ], "line", unit="ms"),
 
         # ── Errors ─────────────────────────────────────────────────────────
         _section_header("alo-usage-hdr-errors", "Errors"),
@@ -275,8 +280,10 @@ def build_usage_visualizations() -> list[tuple[str, dict]]:
 
         mk_datatable("alo-usage-table-reqs-by-app", "Requests by Application",
                      "identity.applicative_provider", "Application", [
-                         ("count",   "Requests",          None,                  "count"),
-                         ("avg_lat", "Avg Latency (ms)",  "response.es_took_ms", "average"),
+                         ("count",   "Requests",             None,                  "count"),
+                         ("p50_lat", "P50 ES Latency (ms)",  "response.es_took_ms", "percentile_50"),
+                         ("p95_lat", "P95 ES Latency (ms)",  "response.es_took_ms", "percentile_95"),
+                         ("p99_lat", "P99 ES Latency (ms)",  "response.es_took_ms", "percentile_99"),
                      ], size=10),
 
         # ── Data Volume ────────────────────────────────────────────────────

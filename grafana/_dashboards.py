@@ -26,6 +26,29 @@ with open(_CHEAT_SHEET_PATH, encoding="utf-8") as _f:
     CHEAT_SHEET = _f.read()
 
 
+PANEL_DESCRIPTIONS = {
+    "pie": {
+        "Application": "Shows stress distribution across applicative providers. "
+                       "Click a slice to filter the dashboard.",
+        "Target": "Shows stress distribution across target indices/databases. "
+                  "Click a slice to filter the dashboard.",
+        "Operation": "Shows stress distribution across operation types "
+                     "(search, index, bulk, etc.). Click a slice to filter.",
+        "Cost Indicator": "Stress distribution across cost indicator types. "
+                          "'unflagged' = requests with no cost indicators.",
+        "Template": "Shows stress distribution across request templates. "
+                    "Click a slice to filter the dashboard.",
+    },
+    "ts": {
+        "Application": "Average stress score over time, broken down by applicative provider.",
+        "Target": "Average stress score over time, broken down by target index/database.",
+        "Operation": "Average stress score over time, broken down by operation type.",
+        "Cost Indicator": "Average stress score over time, broken down by cost indicator.",
+        "Template": "Average stress score over time, broken down by request template.",
+    },
+}
+
+
 # ---------------------------------------------------------------------------
 # Panel builder helpers
 # ---------------------------------------------------------------------------
@@ -43,7 +66,7 @@ def _reset_ids():
 
 
 def _base_panel(title, panel_type, gridpos, targets=None, options=None,
-                field_config=None, transformations=None):
+                field_config=None, transformations=None, description=None):
     panel = {
         "id": _next_id(),
         "title": title,
@@ -51,6 +74,8 @@ def _base_panel(title, panel_type, gridpos, targets=None, options=None,
         "datasource": DATASOURCE,
         "gridPos": gridpos,
     }
+    if description:
+        panel["description"] = description
     if targets:
         panel["targets"] = targets
     if options:
@@ -157,8 +182,8 @@ def mk_cpu_panel(gridpos):
     }
 
 
-def mk_text(title, content, gridpos):
-    panel = _base_panel(title, "text", gridpos)
+def mk_text(title, content, gridpos, description=None):
+    panel = _base_panel(title, "text", gridpos, description=description)
     panel["options"] = {
         "mode": "markdown",
         "content": content,
@@ -171,7 +196,7 @@ def mk_text(title, content, gridpos):
 _STAT_CALC = {"sum": "sum", "count": "sum", "avg": "mean", "max": "max"}
 
 
-def mk_stat(title, field, operation, gridpos, query=""):
+def mk_stat(title, field, operation, gridpos, query="", description=None):
     target = _es_target(
         query=query,
         metrics=[_metric(operation, field)],
@@ -183,7 +208,7 @@ def mk_stat(title, field, operation, gridpos, query=""):
         "colorMode": "value",
         "graphMode": "none",
         "textMode": "auto",
-    })
+    }, description=description)
 
 
 _FIELD_TO_VAR = {
@@ -209,7 +234,8 @@ def _add_filter_link(panel, field, dashboard_uid="alo-main"):
         }]
 
 
-def mk_pie(title, field, gridpos, size=8, dashboard_uid="alo-main"):
+def mk_pie(title, field, gridpos, size=8, dashboard_uid="alo-main",
+           description=None):
     target = _es_target(
         metrics=[_metric("sum", "stress.score")],
         bucket_aggs=[_terms_agg(field, size=size)],
@@ -219,14 +245,15 @@ def mk_pie(title, field, gridpos, size=8, dashboard_uid="alo-main"):
         "pieType": "pie",
         "legend": {"displayMode": "list", "placement": "bottom"},
         "tooltip": {"mode": "multi"},
-    })
+    }, description=description)
     _add_filter_link(panel, field, dashboard_uid)
     return panel
 
 
 def mk_timeseries(title, field, gridpos, metric_field="stress.score",
                   metric_op="avg", size=5, series_type="line",
-                  fill_opacity=20, summary_fallback=False, unit=None):
+                  fill_opacity=20, summary_fallback=False, unit=None,
+                  description=None):
     """Timeseries panel.
 
     When *summary_fallback* is True, a second query (refId B) reads the
@@ -275,11 +302,12 @@ def mk_timeseries(title, field, gridpos, metric_field="stress.score",
                            "tooltip": {"mode": "multi"},
                        },
                        field_config={"defaults": defaults,
-                                     "overrides": overrides})
+                                     "overrides": overrides},
+                       description=description)
 
 
 def mk_timeseries_multi(title, metrics_spec, gridpos, series_type="line",
-                        stacked=False, unit=None):
+                        stacked=False, unit=None, description=None):
     targets = []
     for i, (label, field, op, query) in enumerate(metrics_spec):
         ref = chr(65 + i)
@@ -304,11 +332,12 @@ def mk_timeseries_multi(title, metrics_spec, gridpos, series_type="line",
                            "legend": {"displayMode": "list", "placement": "right"},
                            "tooltip": {"mode": "multi"},
                        },
-                       field_config={"defaults": defaults, "overrides": []})
+                       field_config={"defaults": defaults, "overrides": []},
+                       description=description)
 
 
 def mk_bar(title, field, metric_field, metric_op, metric_label, gridpos,
-           size=10, dashboard_uid="alo-main"):
+           size=10, dashboard_uid="alo-main", description=None):
     metrics = [_metric(metric_op, metric_field)] if metric_field else [
         _metric("count")]
     target = _es_target(
@@ -320,12 +349,13 @@ def mk_bar(title, field, metric_field, metric_op, metric_label, gridpos,
         "showValue": "always",
         "legend": {"displayMode": "hidden"},
         "tooltip": {"mode": "single"},
-    })
+    }, description=description)
     _add_filter_link(panel, field, dashboard_uid)
     return panel
 
 
-def mk_stacked_bar(title, bucket_field, metrics_spec, gridpos, size=10):
+def mk_stacked_bar(title, bucket_field, metrics_spec, gridpos, size=10,
+                   description=None):
     """Stacked horizontal bar chart with multiple metrics per bucket.
 
     metrics_spec: [(label, field, op), ...]
@@ -358,11 +388,12 @@ def mk_stacked_bar(title, bucket_field, metrics_spec, gridpos, size=10):
                        field_config={
                            "defaults": {},
                            "overrides": overrides,
-                       })
+                       },
+                       description=description)
 
 
 def mk_table(title, bucket_field, bucket_label, metrics_spec, gridpos,
-             size=10, dashboard_uid="alo-main"):
+             size=10, dashboard_uid="alo-main", description=None):
     metrics = []
     overrides = []
     for i, (label, field, op) in enumerate(metrics_spec):
@@ -376,9 +407,13 @@ def mk_table(title, bucket_field, bucket_label, metrics_spec, gridpos,
     # on Grafana 11's ES plugin).
     _GRAFANA_DEFAULT_NAMES = {"sum": "Sum", "avg": "Average", "count": "Count"}
     for i, (label, field, op) in enumerate(metrics_spec):
-        default = _GRAFANA_DEFAULT_NAMES.get(op, op)
-        if field:
-            default = f"{default} {field}"
+        if op.startswith("percentile_"):
+            pct = op.split("_", 1)[1]
+            default = f"p{pct} {field}" if field else f"p{pct}"
+        else:
+            default = _GRAFANA_DEFAULT_NAMES.get(op, op)
+            if field:
+                default = f"{default} {field}"
         overrides.append({
             "matcher": {"id": "byName", "options": default},
             "properties": [{"id": "displayName", "value": label}],
@@ -389,8 +424,67 @@ def mk_table(title, bucket_field, bucket_label, metrics_spec, gridpos,
                             "sortBy": [{"displayName": metrics_spec[0][0],
                                         "desc": True}],
                         },
-                        field_config={"defaults": {}, "overrides": overrides})
+                        field_config={"defaults": {}, "overrides": overrides},
+                        description=description)
     _add_filter_link(panel, bucket_field, dashboard_uid)
+    return panel
+
+
+def mk_raw_docs_table(title, columns, gridpos, size=50, query="",
+                      sort_field="stress.score", dashboard_uid="alo-main",
+                      description=None):
+    """Table panel that lists individual ES documents.
+
+    *columns* is an ordered list of (source_field, display_label). Only these
+    fields are kept; the rest are dropped via a Grafana organize transform.
+    The panel sorts descending by *sort_field* client-side — the ES query
+    itself returns by @timestamp desc, so *size* should comfortably exceed
+    the number of rows we want to display after sorting.
+
+    Columns whose source field is in ``_FIELD_TO_VAR`` get per-cell data
+    links that re-open the main dashboard filtered by the clicked value.
+    """
+    target = _es_target(
+        query=query,
+        metrics=[{"type": "raw_data", "id": "1",
+                  "settings": {"size": str(size)}}],
+        bucket_aggs=[],
+    )
+    include_by_name = {src: True for src, _ in columns}
+    rename_by_name = {src: label for src, label in columns}
+    index_by_name = {src: i for i, (src, _) in enumerate(columns)}
+    transformations = [{
+        "id": "organize",
+        "options": {
+            "excludeByName": {},
+            "includeByName": include_by_name,
+            "indexByName": index_by_name,
+            "renameByName": rename_by_name,
+        },
+    }]
+    overrides = []
+    for src, label in columns:
+        var_name = _FIELD_TO_VAR.get(src)
+        if not var_name:
+            continue
+        overrides.append({
+            "matcher": {"id": "byName", "options": label},
+            "properties": [{"id": "links", "value": [{
+                "title": f"Filter by {label}",
+                "url": f"/d/{dashboard_uid}?${{__url_time_range}}"
+                       f"&var-{var_name}=${{__value.raw}}",
+                "targetBlank": False,
+            }]}],
+        })
+    panel = _base_panel(title, "table", gridpos, targets=[target],
+                        options={
+                            "showHeader": True,
+                            "sortBy": [{"displayName": rename_by_name.get(
+                                sort_field, sort_field), "desc": True}],
+                        },
+                        field_config={"defaults": {}, "overrides": overrides},
+                        transformations=transformations,
+                        description=description)
     return panel
 
 

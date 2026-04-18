@@ -50,16 +50,16 @@ There are **6 images**. Build and push **all of them** on every release, even if
 
 ```bash
 # Build
-docker build -t oracle1012/applicative-load-observability:analyzer-1.18.0 -f analyzer/Dockerfile .
-docker build -t oracle1012/applicative-load-observability:logstash-1.18.0 -f logstash/Dockerfile .
-docker build -t oracle1012/applicative-load-observability:gateway-1.18.0 -f gateway/Dockerfile gateway/
-docker build -t oracle1012/applicative-load-observability:kibana-setup-1.18.0 -f kibana/Dockerfile kibana/
-docker build -t oracle1012/applicative-load-observability:grafana-setup-1.18.0 -f grafana/Dockerfile grafana/
-docker build -t oracle1012/applicative-load-observability:stress-1.18.0 -f tools/stress/Dockerfile .
+docker build -t oracle1012/applicative-load-observability:analyzer-1.18.1 -f analyzer/Dockerfile .
+docker build -t oracle1012/applicative-load-observability:logstash-1.18.1 -f logstash/Dockerfile .
+docker build -t oracle1012/applicative-load-observability:gateway-1.18.1 -f gateway/Dockerfile gateway/
+docker build -t oracle1012/applicative-load-observability:kibana-setup-1.18.1 -f kibana/Dockerfile kibana/
+docker build -t oracle1012/applicative-load-observability:grafana-setup-1.18.1 -f grafana/Dockerfile grafana/
+docker build -t oracle1012/applicative-load-observability:stress-1.18.1 -f tools/stress/Dockerfile .
 
 # Push
 for img in analyzer logstash gateway kibana-setup grafana-setup stress; do
-  docker push oracle1012/applicative-load-observability:${img}-1.18.0
+  docker push oracle1012/applicative-load-observability:${img}-1.18.1
 done
 ```
 

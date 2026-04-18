@@ -256,9 +256,13 @@ def mk_datatable(vis_id: str, title: str, bucket_field: str,
     col_order = ["bucket"]
     vis_columns = [{"columnId": "bucket"}]
     for col_id, label, field, op in metrics:
-        c = {"label": label, "customLabel": True, "dataType": "number",
-             "operationType": op, "isBucketed": False}
+        c: dict = {"label": label, "customLabel": True, "dataType": "number",
+                   "operationType": op, "isBucketed": False}
         c["sourceField"] = "___records___" if op == "count" else field
+        if op.startswith("percentile_"):
+            pct = int(op.split("_")[1])
+            c["operationType"] = "percentile"
+            c["params"] = {"percentile": pct}
         cols[col_id] = c
         col_order.append(col_id)
         vis_columns.append({"columnId": col_id})

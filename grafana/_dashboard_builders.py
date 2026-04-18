@@ -6,12 +6,14 @@ Panel helpers (mk_*) are imported from _dashboards.
 
 from _dashboards import (
     CHEAT_SHEET,
+    PANEL_DESCRIPTIONS,
     SECTIONS,
     _reset_ids,
     _wrap_dashboard,
     mk_bar,
     mk_cpu_panel,
     mk_pie,
+    mk_raw_docs_table,
     mk_stacked_bar,
     mk_stat,
     mk_table,
@@ -57,26 +59,31 @@ def build_main_dashboard() -> dict:
     # ── ES CPU + KPI ─────────────────────────────────────────────────────
     panels.append(mk_cpu_panel({"x": 0, "y": y, "w": 18, "h": 6}))
     panels.append(mk_stat("Total Stress Score", "stress.score", "sum",
-                          {"x": 18, "y": y, "w": _QUARTER_W, "h": 6}))
+                          {"x": 18, "y": y, "w": _QUARTER_W, "h": 6},
+                          description="Sum of all stress scores in the selected time period."))
     y += 6
 
     # ── Overview ────────────────────────────────────────────────────────
     panels.append(mk_text("Dashboard Guide", CHEAT_SHEET,
-                          {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}))
+                          {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
+                          description="Quick reference guide for examining this dashboard."))
     y += _PANEL_H
 
     # 5 pie charts — Cost Indicator pie uses raw (needs indicator names)
     for i, (field, label) in enumerate(SECTIONS[:3]):
         panels.append(mk_pie(f"Stress by {label} (Selected Period)", field,
                              {"x": i * _THIRD_W, "y": y, "w": _THIRD_W, "h": _PIE_H},
-                             size=8))
+                             size=8,
+                             description=PANEL_DESCRIPTIONS["pie"][label]))
     y += _PIE_H
     panels.append(mk_pie("Stress by Cost Indicator (Selected Period)",
                          "stress.cost_indicator_names",
-                         {"x": 0, "y": y, "w": _HALF_W, "h": _PIE_H}, size=10))
+                         {"x": 0, "y": y, "w": _HALF_W, "h": _PIE_H}, size=10,
+                         description=PANEL_DESCRIPTIONS["pie"]["Cost Indicator"]))
     panels.append(mk_pie("Stress by Template (Selected Period)",
                          "request.template",
-                         {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PIE_H}, size=10))
+                         {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PIE_H}, size=10,
+                         description=PANEL_DESCRIPTIONS["pie"]["Template"]))
     y += _PIE_H
 
     # ── Highest Impact ──────────────────────────────────────────────────
@@ -87,11 +94,31 @@ def build_main_dashboard() -> dict:
         "Top 10 Templates by Stress Score", "request.template", "Template", [
             ("Sum Stress", "stress.score", "sum"),
             ("Avg Stress", "stress.score", "avg"),
-            ("Avg ES Latency (ms)", "response.es_took_ms", "avg"),
+            ("P50 ES Latency (ms)", "response.es_took_ms", "percentile_50"),
+            ("P95 ES Latency (ms)", "response.es_took_ms", "percentile_95"),
+            ("P99 ES Latency (ms)", "response.es_took_ms", "percentile_99"),
             ("Avg Cost Indicators", "stress.cost_indicator_count", "avg"),
             ("Requests", None, "count"),
-        ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}, size=10))
+        ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}, size=10,
+        description="Top 10 request templates ranked by total stress score, with "
+                    "latency percentiles and cost-indicator averages."))
     y += _PANEL_H
+
+    panels.append(mk_raw_docs_table(
+        "Top 10 Heaviest Operations", [
+            ("identity.applicative_provider", "Application"),
+            ("request.operation", "Operation"),
+            ("request.target", "Target"),
+            ("request.path", "Path"),
+            ("stress.score", "Stress"),
+            ("response.es_took_ms", "ES Latency (ms)"),
+            ("stress.cost_indicator_names", "Cost Indicators"),
+        ],
+        {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H + 2},
+        size=50, sort_field="stress.score",
+        description="Individual requests with the highest stress scores in the "
+                    "selected time range. Click column headers to re-sort."))
+    y += _PANEL_H + 2
 
     # Uses raw — needs cost_indicator_names as bucket
     panels.append(mk_table(
@@ -99,9 +126,13 @@ def build_main_dashboard() -> dict:
         "stress.cost_indicator_names", "Cost Indicator", [
             ("Sum Stress", "stress.score", "sum"),
             ("Avg Stress", "stress.score", "avg"),
-            ("Avg ES Latency (ms)", "response.es_took_ms", "avg"),
+            ("P50 ES Latency (ms)", "response.es_took_ms", "percentile_50"),
+            ("P95 ES Latency (ms)", "response.es_took_ms", "percentile_95"),
+            ("P99 ES Latency (ms)", "response.es_took_ms", "percentile_99"),
             ("Requests", None, "count"),
-        ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}, size=10))
+        ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}, size=10,
+        description="Cost indicator types ranked by total stress contribution, "
+                    "with latency percentiles."))
     y += _PANEL_H
 
     # ── Stress Trends ───────────────────────────────────────────────────
@@ -113,7 +144,8 @@ def build_main_dashboard() -> dict:
         panels.append(mk_timeseries(
             f"Stress by {label}", field,
             {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-            size=size, series_type="line", fill_opacity=20))
+            size=size, series_type="line", fill_opacity=20,
+            description=PANEL_DESCRIPTIONS["ts"][label]))
         y += _PANEL_H
 
     # ── Volume & Throughput ─────────────────────────────────────────────
@@ -124,26 +156,32 @@ def build_main_dashboard() -> dict:
         "Request Volume", None,
         {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
         metric_field=None, metric_op="count",
-        series_type="line", fill_opacity=20, summary_fallback=True))
+        series_type="line", fill_opacity=20, summary_fallback=True,
+        description="Total request count over time. Dashed series = hourly "
+                    "summary-index fallback (survives raw-data ILM expiry)."))
     y += _PANEL_H
 
     panels.append(mk_timeseries(
         "Documents Matched by Queries", None,
         {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
         metric_field="response.hits", metric_op="sum",
-        series_type="line", fill_opacity=20))
+        series_type="line", fill_opacity=20,
+        description="Total documents matched by queries. Correlates with ES "
+                    "CPU under queue saturation."))
     y += _PANEL_H
 
     panels.append(mk_timeseries(
         "Write Volume (Documents)", None,
         {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
         metric_field="response.docs_affected", metric_op="sum",
-        series_type="line", fill_opacity=20))
+        series_type="line", fill_opacity=20,
+        description="Total documents written (index / bulk / update)."))
     panels.append(mk_timeseries(
         "Request Size", None,
         {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
         metric_field="request.size_bytes", metric_op="sum",
-        series_type="line", fill_opacity=20, unit="decbytes"))
+        series_type="line", fill_opacity=20, unit="decbytes",
+        description="Total inbound request payload size."))
     y += _PANEL_H
 
     # ── Response Times ────────────────────────────────────────────────
@@ -156,7 +194,9 @@ def build_main_dashboard() -> dict:
         ("P95", "response.es_took_ms", "percentile_95", ""),
         ("P99", "response.es_took_ms", "percentile_99", ""),
     ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-        series_type="line", unit="ms"))
+        series_type="line", unit="ms",
+        description="Elasticsearch response-time trend with Avg / P50 / P95 / "
+                    "P99 — rising P95/P99 signals tail-latency issues."))
     y += _PANEL_H
 
     return _wrap_dashboard(
@@ -180,16 +220,20 @@ def build_cost_indicators_dashboard() -> dict:
     # Row 0: KPIs
     kpis = [
         ("Flagged Requests", "stress.cost_indicator_count", "count",
-         "stress.cost_indicator_count:[1 TO *]"),
-        ("Avg Indicator Count", "stress.cost_indicator_count", "avg", ""),
-        ("Avg Stress Multiplier", "stress.multiplier", "avg", ""),
-        ("Max Stress Multiplier", "stress.multiplier", "max", ""),
+         "stress.cost_indicator_count:[1 TO *]",
+         "Requests with at least one cost indicator firing."),
+        ("Avg Indicator Count", "stress.cost_indicator_count", "avg", "",
+         "Mean number of cost indicators per request."),
+        ("Avg Stress Multiplier", "stress.multiplier", "avg", "",
+         "Mean stress multiplier applied to base score."),
+        ("Max Stress Multiplier", "stress.multiplier", "max", "",
+         "Largest stress multiplier observed in the selected period."),
     ]
-    for i, (title, field, op, query) in enumerate(kpis):
+    for i, (title, field, op, query, desc) in enumerate(kpis):
         panels.append(mk_stat(title, field, op,
                               {"x": i * _QUARTER_W, "y": y, "w": _QUARTER_W,
                                "h": _KPI_H},
-                              query=query))
+                              query=query, description=desc))
     y += _KPI_H
 
     # ── Score Composition ─────────────────────────────────────────────
@@ -203,7 +247,9 @@ def build_cost_indicators_dashboard() -> dict:
             ("Shards", "stress.components.shards", "avg"),
             ("Hits", "stress.components.hits", "avg"),
             ("Bonus", "stress.components.bonus", "avg"),
-        ], {"x": 0, "y": y, "w": _FULL_W, "h": _BAR_H}))
+        ], {"x": 0, "y": y, "w": _FULL_W, "h": _BAR_H},
+        description="Stacked contribution of each base-score component (Took / "
+                    "Shards / Hits / Bonus) per template — shows what drives the score."))
     y += _BAR_H
 
     # Base vs Final score + Multiplier breakdown
@@ -214,7 +260,9 @@ def build_cost_indicators_dashboard() -> dict:
             ("Avg Multiplier", "stress.multiplier", "avg"),
             ("Avg Final Score", "stress.score", "avg"),
             ("Avg Indicators", "stress.cost_indicator_count", "avg"),
-        ], {"x": 0, "y": y, "w": _HALF_W, "h": _BAR_H}))
+        ], {"x": 0, "y": y, "w": _HALF_W, "h": _BAR_H},
+        description="Base score vs multiplier vs final score per template — "
+                    "reveals whether stress is driven by the base or the multiplier."))
     panels.append(mk_table(
         "Top Templates by Cost Indicator Count",
         "request.template", "Template", [
@@ -222,7 +270,9 @@ def build_cost_indicators_dashboard() -> dict:
             ("Avg Multiplier", "stress.multiplier", "avg"),
             ("Avg Stress", "stress.score", "avg"),
             ("Requests", None, "count"),
-        ], {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _BAR_H}))
+        ], {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _BAR_H},
+        description="Templates ranked by average cost indicator count — "
+                    "query optimization candidates."))
     y += _BAR_H
 
     # ── Score Breakdown ──────────────────────────────────────────────
@@ -235,13 +285,17 @@ def build_cost_indicators_dashboard() -> dict:
             ("Avg Score", "stress.score", "avg"),
             ("Multiplier", "stress.multiplier", "avg"),
             ("ES Took (weighted)", "stress.components.took", "avg"),
-            ("ES Latency (ms)", "response.es_took_ms", "avg"),
+            ("P50 ES Latency (ms)", "response.es_took_ms", "percentile_50"),
+            ("P95 ES Latency (ms)", "response.es_took_ms", "percentile_95"),
+            ("P99 ES Latency (ms)", "response.es_took_ms", "percentile_99"),
             ("Shards (weighted)", "stress.components.shards", "avg"),
             ("Shards (raw)", "response.shards_total", "avg"),
             ("Hits (weighted)", "stress.components.hits", "avg"),
             ("Hits (raw)", "response.hits", "avg"),
             ("Bonus", "stress.components.bonus", "avg"),
-        ], {"x": 0, "y": y, "w": _FULL_W, "h": _BAR_H}))
+        ], {"x": 0, "y": y, "w": _FULL_W, "h": _BAR_H},
+        description="Full per-template breakdown: score, multiplier, weighted "
+                    "components, and raw ES metrics (latency percentiles, shards, hits)."))
     y += _BAR_H
 
     # ── Trends ──────────────────────────────────────────────────────
@@ -255,24 +309,30 @@ def build_cost_indicators_dashboard() -> dict:
             ("Avg Hits", "stress.components.hits", "avg", ""),
             ("Avg Bonus", "stress.components.bonus", "avg", ""),
         ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-        series_type="line", stacked=True))
+        series_type="line", stacked=True,
+        description="Stacked trend of the four base-score components (Took, "
+                    "Shards, Hits, Bonus) over time."))
     y += _PANEL_H
 
     panels.append(mk_timeseries(
         "Avg Base Score by Template", "request.template",
         {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        metric_field="stress.base", metric_op="avg", size=10))
+        metric_field="stress.base", metric_op="avg", size=10,
+        description="Average base stress score over time, per template."))
     panels.append(mk_timeseries(
         "Avg Multiplier by Template", "request.template",
         {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        metric_field="stress.multiplier", metric_op="avg", size=10))
+        metric_field="stress.multiplier", metric_op="avg", size=10,
+        description="Average stress multiplier over time, per template."))
     y += _PANEL_H
 
     panels.append(mk_timeseries(
         "Avg Cost Indicators by Application",
         "identity.applicative_provider",
         {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-        metric_field="stress.cost_indicator_count", metric_op="avg", size=8))
+        metric_field="stress.cost_indicator_count", metric_op="avg", size=8,
+        description="Average number of cost indicators per request over time, "
+                    "broken down by applicative provider."))
     y += _PANEL_H
 
     panels.append(mk_timeseries_multi(
@@ -281,7 +341,9 @@ def build_cost_indicators_dashboard() -> dict:
              "stress.cost_indicator_count:[1 TO *]"),
             ("Total Requests", None, "count", ""),
         ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-        series_type="line"))
+        series_type="line",
+        description="Count of flagged (≥1 cost indicator) vs total requests — "
+                    "the ratio indicates how many queries are suboptimal."))
     y += _PANEL_H
 
     # ── Cost Indicator Deep Dive ──────────────────────────────────────
@@ -291,24 +353,28 @@ def build_cost_indicators_dashboard() -> dict:
     panels.append(mk_bar(
         "Cost Indicator Types - Frequency",
         "stress.cost_indicator_names", None, "count", "Count",
-        {"x": 0, "y": y, "w": _HALF_W, "h": _BAR_H}))
+        {"x": 0, "y": y, "w": _HALF_W, "h": _BAR_H},
+        description="How often each cost indicator type fires in the selected period."))
     panels.append(mk_bar(
         "Stress Multiplier by Application",
         "identity.applicative_provider", "stress.multiplier", "avg",
         "Avg Stress Multiplier",
-        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _BAR_H}, size=8))
+        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _BAR_H}, size=8,
+        description="Average stress multiplier per applicative provider."))
     y += _BAR_H
 
     panels.append(mk_bar(
         "Cost Indicator Count by Target Index",
         "request.target", "stress.cost_indicator_count", "avg",
         "Avg Indicator Count",
-        {"x": 0, "y": y, "w": _HALF_W, "h": _BAR_H}, size=8))
+        {"x": 0, "y": y, "w": _HALF_W, "h": _BAR_H}, size=8,
+        description="Average cost indicators per request, per target index."))
     panels.append(mk_bar(
         "Stress Multiplier by Target Index",
         "request.target", "stress.multiplier", "avg",
         "Avg Multiplier",
-        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _BAR_H}, size=8))
+        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _BAR_H}, size=8,
+        description="Average stress multiplier per target index."))
     y += _BAR_H
 
     # ── Clause Patterns ──────────────────────────────────────────────
@@ -322,7 +388,8 @@ def build_cost_indicators_dashboard() -> dict:
             ("Avg script", "clause_counts.script", "avg", ""),
             ("Avg wildcard", "clause_counts.wildcard", "avg", ""),
         ], {"x": 0, "y": y, "w": _HALF_W + 2, "h": _BAR_H},
-        series_type="line"))
+        series_type="line",
+        description="Average per-request counts of heavy clause types over time."))
     panels.append(mk_timeseries_multi(
         "Bool Clause Breakdown", [
             ("Avg must", "clause_counts.bool_must", "avg", ""),
@@ -330,7 +397,9 @@ def build_cost_indicators_dashboard() -> dict:
             ("Avg filter", "clause_counts.bool_filter", "avg", ""),
             ("Avg must_not", "clause_counts.bool_must_not", "avg", ""),
         ], {"x": _HALF_W + 2, "y": y, "w": _HALF_W - 2, "h": _BAR_H},
-        series_type="line", stacked=True))
+        series_type="line", stacked=True,
+        description="Stacked trend of bool clause types per request "
+                    "(must / should / filter / must_not)."))
     y += _BAR_H
 
     return _wrap_dashboard(
@@ -358,7 +427,8 @@ def build_usage_dashboard() -> dict:
         "Total Request Rate", [
             ("Requests", None, "count", ""),
         ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-        series_type="line"))
+        series_type="line",
+        description="Total request count over time across the selected filters."))
     y += _PANEL_H
 
     for field, label in [
@@ -372,18 +442,25 @@ def build_usage_dashboard() -> dict:
             {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
             metric_field=None, metric_op="count", size=8,
             series_type="line", fill_opacity=20,
-            summary_fallback=True))
+            summary_fallback=True,
+            description=f"Request rate over time, broken down by {label.lower()}. "
+                        "Dashed series = hourly summary-index fallback "
+                        "(survives raw-data ILM expiry)."))
         y += _PANEL_H
 
     # ── Latency ─────────────────────────────────────────────────────────
     panels.append(_section_header("Latency", y))
     y += _HDR_H
 
-    panels.append(mk_timeseries(
-        "ES Latency by Operation", "request.operation",
-        {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-        metric_field="response.es_took_ms", metric_op="avg", size=8,
-        series_type="line", fill_opacity=20, unit="ms"))
+    panels.append(mk_timeseries_multi("ES Latency", [
+        ("Avg", "response.es_took_ms", "avg", ""),
+        ("P50", "response.es_took_ms", "percentile_50", ""),
+        ("P95", "response.es_took_ms", "percentile_95", ""),
+        ("P99", "response.es_took_ms", "percentile_99", ""),
+    ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
+        series_type="line", unit="ms",
+        description="Elasticsearch response-time trend with Avg / P50 / P95 / "
+                    "P99. Rising P95/P99 signals tail-latency issues."))
     y += _PANEL_H
 
     # ── Errors ──────────────────────────────────────────────────────────
@@ -396,20 +473,25 @@ def build_usage_dashboard() -> dict:
              "response.status:[400 TO *]"),
             ("Total Requests", None, "count", ""),
         ], {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        series_type="line"))
+        series_type="line",
+        description="Count of error responses (status ≥ 400) vs total requests."))
     panels.append(mk_table(
         "Requests by Status Code",
         "response.status", "Status Code", [
             ("Requests", None, "count"),
-        ], {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H}, size=10))
+        ], {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H}, size=10,
+        description="Top 10 response status codes by request count."))
     y += _PANEL_H
 
     panels.append(mk_table(
         "Requests by Application",
         "identity.applicative_provider", "Application", [
             ("Requests", None, "count"),
-            ("Avg Latency (ms)", "response.es_took_ms", "avg"),
-        ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}, size=10))
+            ("P50 ES Latency (ms)", "response.es_took_ms", "percentile_50"),
+            ("P95 ES Latency (ms)", "response.es_took_ms", "percentile_95"),
+            ("P99 ES Latency (ms)", "response.es_took_ms", "percentile_99"),
+        ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}, size=10,
+        description="Per-application request counts and ES latency percentiles."))
     y += _PANEL_H
 
     # ── Data Volume ─────────────────────────────────────────────────────
@@ -420,12 +502,15 @@ def build_usage_dashboard() -> dict:
         "Read Volume (Total Hits)", "request.operation",
         {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
         metric_field="response.hits", metric_op="sum", size=8,
-        series_type="line", fill_opacity=20))
+        series_type="line", fill_opacity=20,
+        description="Total documents matched by queries, split by operation type."))
     panels.append(mk_timeseries(
         "Write Volume (Docs Affected)", "request.operation",
         {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
         metric_field="response.docs_affected", metric_op="sum", size=8,
-        series_type="line", fill_opacity=20))
+        series_type="line", fill_opacity=20,
+        description="Total documents written (indexed / updated / deleted), "
+                    "split by operation type."))
     y += _PANEL_H
 
     panels.append(mk_timeseries_multi(
@@ -433,7 +518,8 @@ def build_usage_dashboard() -> dict:
             ("Avg Request Size", "request.size_bytes", "avg", ""),
             ("Avg Response Size", "response.size_bytes", "avg", ""),
         ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-        series_type="line", unit="decbytes"))
+        series_type="line", unit="decbytes",
+        description="Average request and response payload sizes over time."))
     y += _PANEL_H
 
     # ── Top Activity ────────────────────────────────────────────────────
@@ -443,15 +529,18 @@ def build_usage_dashboard() -> dict:
     panels.append(mk_bar(
         "Top 10 Applications",
         "identity.applicative_provider", None, "count", "Requests",
-        {"x": 0, "y": y, "w": _THIRD_W, "h": _BAR_H}, size=10))
+        {"x": 0, "y": y, "w": _THIRD_W, "h": _BAR_H}, size=10,
+        description="Top 10 applicative providers by request count."))
     panels.append(mk_bar(
         "Top 10 Indices",
         "request.target", None, "count", "Requests",
-        {"x": _THIRD_W, "y": y, "w": _THIRD_W, "h": _BAR_H}, size=10))
+        {"x": _THIRD_W, "y": y, "w": _THIRD_W, "h": _BAR_H}, size=10,
+        description="Top 10 target indices by request count."))
     panels.append(mk_bar(
         "Top 10 Users",
         "identity.username", None, "count", "Requests",
-        {"x": 2 * _THIRD_W, "y": y, "w": _THIRD_W, "h": _BAR_H}, size=10))
+        {"x": 2 * _THIRD_W, "y": y, "w": _THIRD_W, "h": _BAR_H}, size=10,
+        description="Top 10 users by request count."))
 
     return _wrap_dashboard(
         uid="alo-usage",

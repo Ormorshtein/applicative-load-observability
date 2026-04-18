@@ -29,6 +29,7 @@
         "w": 6,
         "h": 5
       },
+      "description": "Requests with at least one cost indicator firing.",
       "targets": [
         {
           "datasource": {
@@ -87,6 +88,7 @@
         "w": 6,
         "h": 5
       },
+      "description": "Mean number of cost indicators per request.",
       "targets": [
         {
           "datasource": {
@@ -145,6 +147,7 @@
         "w": 6,
         "h": 5
       },
+      "description": "Mean stress multiplier applied to base score.",
       "targets": [
         {
           "datasource": {
@@ -203,6 +206,7 @@
         "w": 6,
         "h": 5
       },
+      "description": "Largest stress multiplier observed in the selected period.",
       "targets": [
         {
           "datasource": {
@@ -272,6 +276,7 @@
         "w": 24,
         "h": 10
       },
+      "description": "Stacked contribution of each base-score component (Took / Shards / Hits / Bonus) per template \u2014 shows what drives the score.",
       "targets": [
         {
           "datasource": {
@@ -397,6 +402,7 @@
         "w": 12,
         "h": 10
       },
+      "description": "Base score vs multiplier vs final score per template \u2014 reveals whether stress is driven by the base or the multiplier.",
       "targets": [
         {
           "datasource": {
@@ -543,6 +549,7 @@
         "w": 12,
         "h": 10
       },
+      "description": "Templates ranked by average cost indicator count \u2014 query optimization candidates.",
       "targets": [
         {
           "datasource": {
@@ -683,6 +690,7 @@
         "w": 24,
         "h": 10
       },
+      "description": "Full per-template breakdown: score, multiplier, weighted components, and raw ES metrics (latency percentiles, shards, hits).",
       "targets": [
         {
           "datasource": {
@@ -712,33 +720,58 @@
               "field": "stress.components.took"
             },
             {
-              "type": "avg",
+              "type": "percentiles",
+              "field": "response.es_took_ms",
               "id": "5",
-              "field": "response.es_took_ms"
+              "settings": {
+                "percents": [
+                  50
+                ]
+              }
             },
             {
-              "type": "avg",
+              "type": "percentiles",
+              "field": "response.es_took_ms",
               "id": "6",
-              "field": "stress.components.shards"
+              "settings": {
+                "percents": [
+                  95
+                ]
+              }
             },
             {
-              "type": "avg",
+              "type": "percentiles",
+              "field": "response.es_took_ms",
               "id": "7",
-              "field": "response.shards_total"
+              "settings": {
+                "percents": [
+                  99
+                ]
+              }
             },
             {
               "type": "avg",
               "id": "8",
-              "field": "stress.components.hits"
+              "field": "stress.components.shards"
             },
             {
               "type": "avg",
               "id": "9",
-              "field": "response.hits"
+              "field": "response.shards_total"
             },
             {
               "type": "avg",
               "id": "10",
+              "field": "stress.components.hits"
+            },
+            {
+              "type": "avg",
+              "id": "11",
+              "field": "response.hits"
+            },
+            {
+              "type": "avg",
+              "id": "12",
               "field": "stress.components.bonus"
             }
           ],
@@ -828,12 +861,36 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Average response.es_took_ms"
+              "options": "p50 response.es_took_ms"
             },
             "properties": [
               {
                 "id": "displayName",
-                "value": "ES Latency (ms)"
+                "value": "P50 ES Latency (ms)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p95 response.es_took_ms"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "P95 ES Latency (ms)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p99 response.es_took_ms"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "P99 ES Latency (ms)"
               }
             ]
           },
@@ -925,6 +982,7 @@
         "w": 24,
         "h": 8
       },
+      "description": "Stacked trend of the four base-score components (Took, Shards, Hits, Bonus) over time.",
       "targets": [
         {
           "datasource": {
@@ -1067,6 +1125,7 @@
         "w": 12,
         "h": 8
       },
+      "description": "Average base stress score over time, per template.",
       "targets": [
         {
           "datasource": {
@@ -1138,6 +1197,7 @@
         "w": 12,
         "h": 8
       },
+      "description": "Average stress multiplier over time, per template.",
       "targets": [
         {
           "datasource": {
@@ -1209,6 +1269,7 @@
         "w": 24,
         "h": 8
       },
+      "description": "Average number of cost indicators per request over time, broken down by applicative provider.",
       "targets": [
         {
           "datasource": {
@@ -1280,6 +1341,7 @@
         "w": 24,
         "h": 8
       },
+      "description": "Count of flagged (\u22651 cost indicator) vs total requests \u2014 the ratio indicates how many queries are suboptimal.",
       "targets": [
         {
           "datasource": {
@@ -1376,6 +1438,7 @@
         "w": 12,
         "h": 10
       },
+      "description": "How often each cost indicator type fires in the selected period.",
       "targets": [
         {
           "datasource": {
@@ -1442,6 +1505,7 @@
         "w": 12,
         "h": 10
       },
+      "description": "Average stress multiplier per applicative provider.",
       "targets": [
         {
           "datasource": {
@@ -1509,6 +1573,7 @@
         "w": 12,
         "h": 10
       },
+      "description": "Average cost indicators per request, per target index.",
       "targets": [
         {
           "datasource": {
@@ -1576,6 +1641,7 @@
         "w": 12,
         "h": 10
       },
+      "description": "Average stress multiplier per target index.",
       "targets": [
         {
           "datasource": {
@@ -1654,6 +1720,7 @@
         "w": 14,
         "h": 10
       },
+      "description": "Average per-request counts of heavy clause types over time.",
       "targets": [
         {
           "datasource": {
@@ -1793,6 +1860,7 @@
         "w": 10,
         "h": 10
       },
+      "description": "Stacked trend of bool clause types per request (must / should / filter / must_not).",
       "targets": [
         {
           "datasource": {

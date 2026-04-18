@@ -48,6 +48,7 @@
         "w": 24,
         "h": 8
       },
+      "description": "Total request count over time across the selected filters.",
       "targets": [
         {
           "datasource": {
@@ -108,6 +109,7 @@
         "w": 24,
         "h": 8
       },
+      "description": "Request rate over time, broken down by operation. Dashed series = hourly summary-index fallback (survives raw-data ILM expiry).",
       "targets": [
         {
           "datasource": {
@@ -237,6 +239,7 @@
         "w": 24,
         "h": 8
       },
+      "description": "Request rate over time, broken down by application. Dashed series = hourly summary-index fallback (survives raw-data ILM expiry).",
       "targets": [
         {
           "datasource": {
@@ -366,6 +369,7 @@
         "w": 24,
         "h": 8
       },
+      "description": "Request rate over time, broken down by target index. Dashed series = hourly summary-index fallback (survives raw-data ILM expiry).",
       "targets": [
         {
           "datasource": {
@@ -495,6 +499,7 @@
         "w": 24,
         "h": 8
       },
+      "description": "Request rate over time, broken down by template. Dashed series = hourly summary-index fallback (survives raw-data ILM expiry).",
       "targets": [
         {
           "datasource": {
@@ -631,7 +636,7 @@
     },
     {
       "id": 8,
-      "title": "ES Latency by Operation",
+      "title": "ES Latency",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -643,6 +648,7 @@
         "w": 24,
         "h": 8
       },
+      "description": "Elasticsearch response-time trend with Avg / P50 / P95 / P99. Rising P95/P99 signals tail-latency issues.",
       "targets": [
         {
           "datasource": {
@@ -660,25 +666,108 @@
           ],
           "bucketAggs": [
             {
-              "type": "terms",
-              "field": "request.operation",
-              "id": "2",
-              "settings": {
-                "size": "8",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            },
-            {
               "type": "date_histogram",
               "field": "@timestamp",
-              "id": "3",
+              "id": "2",
               "settings": {
                 "interval": "auto"
               }
             }
-          ]
+          ],
+          "alias": "Avg"
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${datasource}"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "B",
+          "metrics": [
+            {
+              "type": "percentiles",
+              "field": "response.es_took_ms",
+              "id": "1",
+              "settings": {
+                "percents": [
+                  50
+                ]
+              }
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ],
+          "alias": "P50"
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${datasource}"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "C",
+          "metrics": [
+            {
+              "type": "percentiles",
+              "field": "response.es_took_ms",
+              "id": "1",
+              "settings": {
+                "percents": [
+                  95
+                ]
+              }
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ],
+          "alias": "P95"
+        },
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${datasource}"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "D",
+          "metrics": [
+            {
+              "type": "percentiles",
+              "field": "response.es_took_ms",
+              "id": "1",
+              "settings": {
+                "percents": [
+                  99
+                ]
+              }
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "2",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ],
+          "alias": "P99"
         }
       ],
       "options": {
@@ -694,7 +783,7 @@
         "defaults": {
           "custom": {
             "drawStyle": "line",
-            "fillOpacity": 20
+            "fillOpacity": 0
           },
           "unit": "ms"
         },
@@ -734,6 +823,7 @@
         "w": 12,
         "h": 8
       },
+      "description": "Count of error responses (status \u2265 400) vs total requests.",
       "targets": [
         {
           "datasource": {
@@ -819,6 +909,7 @@
         "w": 12,
         "h": 8
       },
+      "description": "Top 10 response status codes by request count.",
       "targets": [
         {
           "datasource": {
@@ -889,6 +980,7 @@
         "w": 24,
         "h": 8
       },
+      "description": "Per-application request counts and ES latency percentiles.",
       "targets": [
         {
           "datasource": {
@@ -903,9 +995,34 @@
               "id": "1"
             },
             {
-              "type": "avg",
+              "type": "percentiles",
+              "field": "response.es_took_ms",
               "id": "2",
-              "field": "response.es_took_ms"
+              "settings": {
+                "percents": [
+                  50
+                ]
+              }
+            },
+            {
+              "type": "percentiles",
+              "field": "response.es_took_ms",
+              "id": "3",
+              "settings": {
+                "percents": [
+                  95
+                ]
+              }
+            },
+            {
+              "type": "percentiles",
+              "field": "response.es_took_ms",
+              "id": "4",
+              "settings": {
+                "percents": [
+                  99
+                ]
+              }
             }
           ],
           "bucketAggs": [
@@ -958,12 +1075,36 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Average response.es_took_ms"
+              "options": "p50 response.es_took_ms"
             },
             "properties": [
               {
                 "id": "displayName",
-                "value": "Avg Latency (ms)"
+                "value": "P50 ES Latency (ms)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p95 response.es_took_ms"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "P95 ES Latency (ms)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p99 response.es_took_ms"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "P99 ES Latency (ms)"
               }
             ]
           }
@@ -1003,6 +1144,7 @@
         "w": 12,
         "h": 8
       },
+      "description": "Total documents matched by queries, split by operation type.",
       "targets": [
         {
           "datasource": {
@@ -1074,6 +1216,7 @@
         "w": 12,
         "h": 8
       },
+      "description": "Total documents written (indexed / updated / deleted), split by operation type.",
       "targets": [
         {
           "datasource": {
@@ -1145,6 +1288,7 @@
         "w": 24,
         "h": 8
       },
+      "description": "Average request and response payload sizes over time.",
       "targets": [
         {
           "datasource": {
@@ -1252,6 +1396,7 @@
         "w": 8,
         "h": 10
       },
+      "description": "Top 10 applicative providers by request count.",
       "targets": [
         {
           "datasource": {
@@ -1318,6 +1463,7 @@
         "w": 8,
         "h": 10
       },
+      "description": "Top 10 target indices by request count.",
       "targets": [
         {
           "datasource": {
@@ -1384,6 +1530,7 @@
         "w": 8,
         "h": 10
       },
+      "description": "Top 10 users by request count.",
       "targets": [
         {
           "datasource": {

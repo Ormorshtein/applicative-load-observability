@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.18.1
+
+### Dashboard parity (Kibana ↔ Grafana)
+
+- **Grafana — Top 10 Heaviest Operations** added to the main dashboard (raw-document table ranked by `stress.score`, with per-cell Filter-by links for Application / Operation / Target / Cost Indicators).
+- **Latency percentiles everywhere** — Top 10 Templates, Top 10 Cost Indicators, Score Breakdown, and Requests by Application tables now expose P50 / P95 / P99 ES latency instead of a single average. The "ES Latency by Operation" timeseries becomes a unified **ES Latency** panel with Avg / P50 / P95 / P99 series (both dashboards).
+- **Grafana panel descriptions** — every data panel across the main, cost-indicators, and usage dashboards now carries a hover description matching Kibana's.
+- **Kibana — gateway latency removed** from cheat sheet, table columns, and panel descriptions. Kept only ES latency (the supported signal).
+- **Kibana — `include_missing` pie bucket dropped** (dead code: analyzer always emits `"unflagged"` for requests with zero cost indicators).
+
+### Chart
+- Helm chart bumped to `0.8.1`; `appVersion` → `1.18.1`.
+
 ## 1.18.0
 
 All 6 images (analyzer, logstash, gateway, kibana-setup, grafana-setup, stress) rebuilt and pushed at `1.18.0`. 1.17.1–1.17.5 only bumped a subset of images per release, so the dashboard work landing under 1.17.5 never reached users running the analyzer/logstash/gateway tags. Every version reference is now consistent: `pyproject.toml`, `helm/alo/Chart.yaml` (`appVersion` and chart `version`), `helm/alo/values.yaml`, `docker-compose.yml`, `CONTRIBUTING.md`, `README.md`, `tools/stress/benchmarking.md`. No code changes since 1.17.5.

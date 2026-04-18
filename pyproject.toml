@@ -1,6 +1,6 @@
 [project]
 name = "applicative-load-observability"
-version = "1.18.0"
+version = "1.18.1"
 description = "Applicative load observability for Elasticsearch"
 requires-python = ">=3.11"
 dependencies = [
