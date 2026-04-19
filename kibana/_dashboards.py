@@ -206,9 +206,9 @@ def _upsert_visualizations_with_ref(
 HEAVIEST_OPS_SEARCH_ID = "alo-heaviest-ops"
 
 _HEAVIEST_OPS_COLUMNS = [
-    "request.body", "identity.applicative_provider", "request.operation",
-    "request.target", "request.path", "stress.score", "response.es_took_ms",
-    "stress.cost_indicator_names", "_id",
+    "request.body", "request.operation", "request.target", "request.path",
+    "stress.score", "response.es_took_ms", "stress.cost_indicator_names",
+    "_id",
 ]
 
 

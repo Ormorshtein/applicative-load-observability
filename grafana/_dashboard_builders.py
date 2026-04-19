@@ -92,8 +92,8 @@ def build_main_dashboard() -> dict:
 
     panels.append(mk_table(
         "Top 10 Templates by Stress Score", "request.template", "Template", [
-            ("Sum Stress", "stress.score", "sum"),
-            ("Avg Stress", "stress.score", "avg"),
+            ("Sum Stress Score", "stress.score", "sum"),
+            ("Avg Stress Score", "stress.score", "avg"),
             ("P50 ES Latency (ms)", "response.es_took_ms", "percentile_50"),
             ("P95 ES Latency (ms)", "response.es_took_ms", "percentile_95"),
             ("P99 ES Latency (ms)", "response.es_took_ms", "percentile_99"),
@@ -106,7 +106,8 @@ def build_main_dashboard() -> dict:
 
     panels.append(mk_raw_docs_table(
         "Top 10 Heaviest Operations", [
-            ("identity.applicative_provider", "Application"),
+            ("@timestamp", "Time"),
+            ("request.body", "Request Body"),
             ("request.operation", "Operation"),
             ("request.target", "Target"),
             ("request.path", "Path"),

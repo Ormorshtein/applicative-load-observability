@@ -626,7 +626,7 @@
         "showHeader": true,
         "sortBy": [
           {
-            "displayName": "Sum Stress",
+            "displayName": "Sum Stress Score",
             "desc": true
           }
         ]
@@ -650,7 +650,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Sum Stress"
+                "value": "Sum Stress Score"
               }
             ]
           },
@@ -662,7 +662,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Avg Stress"
+                "value": "Avg Stress Score"
               }
             ]
           },
@@ -779,24 +779,6 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Application"
-            },
-            "properties": [
-              {
-                "id": "links",
-                "value": [
-                  {
-                    "title": "Filter by Application",
-                    "url": "/d/alo-main?${__url_time_range}&var-application=${__value.raw}",
-                    "targetBlank": false
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
               "options": "Operation"
             },
             "properties": [
@@ -856,7 +838,8 @@
           "options": {
             "excludeByName": {},
             "includeByName": {
-              "identity.applicative_provider": true,
+              "@timestamp": true,
+              "request.body": true,
               "request.operation": true,
               "request.target": true,
               "request.path": true,
@@ -865,16 +848,18 @@
               "stress.cost_indicator_names": true
             },
             "indexByName": {
-              "identity.applicative_provider": 0,
-              "request.operation": 1,
-              "request.target": 2,
-              "request.path": 3,
-              "stress.score": 4,
-              "response.es_took_ms": 5,
-              "stress.cost_indicator_names": 6
+              "@timestamp": 0,
+              "request.body": 1,
+              "request.operation": 2,
+              "request.target": 3,
+              "request.path": 4,
+              "stress.score": 5,
+              "response.es_took_ms": 6,
+              "stress.cost_indicator_names": 7
             },
             "renameByName": {
-              "identity.applicative_provider": "Application",
+              "@timestamp": "Time",
+              "request.body": "Request Body",
               "request.operation": "Operation",
               "request.target": "Target",
               "request.path": "Path",

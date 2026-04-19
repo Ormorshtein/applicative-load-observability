@@ -63,8 +63,8 @@ def build_main_visualizations() -> list[tuple[str, dict]]:
     vis.append(mk_datatable(
         "alo-table-top-templates", "Top 10 Templates by Stress Score",
         "request.template", "Template", [
-            ("sum_stress",      "Sum Stress",              "stress.score",                "sum"),
-            ("avg_stress",      "Avg Stress",              "stress.score",                "average"),
+            ("sum_stress",      "Sum Stress Score",        "stress.score",                "sum"),
+            ("avg_stress",      "Avg Stress Score",        "stress.score",                "average"),
             ("p50_es_latency",  "P50 ES Latency (ms)",     "response.es_took_ms",         "percentile_50"),
             ("p95_es_latency",  "P95 ES Latency (ms)",     "response.es_took_ms",         "percentile_95"),
             ("p99_es_latency",  "P99 ES Latency (ms)",     "response.es_took_ms",         "percentile_99"),
