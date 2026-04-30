@@ -30,8 +30,10 @@ from _dashboard_builders import (
 from _dashboards import export_dashboards
 from _datasource import generate_datasource_yaml, generate_prometheus_datasource_yaml
 
-INDEX_PATTERN = "logs-alo.*-*"
+INDEX_PATTERN = "logs-alo.*-*,alo-summary"
+SUMMARY_INDEX_PATTERN = "alo-summary"
 DATASOURCE_UID = "alo-elasticsearch"
+SUMMARY_DATASOURCE_UID = "alo-elasticsearch-summary"
 
 
 # ---------------------------------------------------------------------------
@@ -82,50 +84,74 @@ def wait_grafana(grafana_url, username, password):
     return False
 
 
-def create_datasource(grafana_url, elasticsearch_url, username, password,
-                      es_username="", es_password="", es_ca_cert="",
-                      es_insecure=False):
+def _build_datasource_body(name, uid, elasticsearch_url, index_pattern,
+                           is_default, es_username, es_password, es_ca_cert,
+                           es_insecure):
     json_data = {
         "esVersion": "8.0.0",
         "timeField": "@timestamp",
         "maxConcurrentShardRequests": 5,
     }
     secure_json = {}
-    if es_username:
-        json_data["basicAuth"] = True
-        json_data["basicAuthUser"] = es_username
-        secure_json["basicAuthPassword"] = es_password
     if es_ca_cert:
+        json_data["tlsAuth"] = False
         json_data["tlsAuthWithCACert"] = True
         secure_json["tlsCACert"] = es_ca_cert
     if es_insecure:
         json_data["tlsSkipVerify"] = True
     body = {
-        "name": "Elasticsearch (ALO)",
+        "name": name,
         "type": "elasticsearch",
-        "uid": DATASOURCE_UID,
+        "uid": uid,
         "access": "proxy",
         "url": elasticsearch_url,
-        "database": INDEX_PATTERN,
-        "isDefault": False,
+        "database": index_pattern,
+        "isDefault": is_default,
         "jsonData": json_data,
     }
+    if es_username:
+        body["basicAuth"] = True
+        body["basicAuthUser"] = es_username
+        secure_json["basicAuthPassword"] = es_password
     if secure_json:
         body["secureJsonData"] = secure_json
-    # Try update first, then create
+    return body
+
+
+def _upsert_datasource(grafana_url, body, username, password, label):
+    uid = body["uid"]
     status, _ = _grafana_request(
-        grafana_url, "PUT", f"/api/datasources/uid/{DATASOURCE_UID}",
+        grafana_url, "PUT", f"/api/datasources/uid/{uid}",
         body=body, username=username, password=password)
     if status in (200, 201):
-        print(f"  OK: Datasource (updated)")
+        print(f"  OK: {label} (updated)")
         return True
 
-    status, resp = _grafana_request(
+    status, _ = _grafana_request(
         grafana_url, "POST", "/api/datasources",
         body=body, username=username, password=password)
     ok = status in (200, 201)
-    label = "created" if ok else f"FAIL ({status})"
-    print(f"  {'OK' if ok else 'FAIL'}: Datasource ({label})")
+    tag = "created" if ok else f"FAIL ({status})"
+    print(f"  {'OK' if ok else 'FAIL'}: {label} ({tag})")
+    return ok
+
+
+def create_datasource(grafana_url, elasticsearch_url, username, password,
+                      es_username="", es_password="", es_ca_cert="",
+                      es_insecure=False):
+    main = _build_datasource_body(
+        "Elasticsearch (ALO)", DATASOURCE_UID, elasticsearch_url,
+        INDEX_PATTERN, True, es_username, es_password, es_ca_cert,
+        es_insecure)
+    summary = _build_datasource_body(
+        "Elasticsearch (ALO Summary)", SUMMARY_DATASOURCE_UID,
+        elasticsearch_url, SUMMARY_INDEX_PATTERN, False, es_username,
+        es_password, es_ca_cert, es_insecure)
+
+    ok = _upsert_datasource(grafana_url, main, username, password,
+                            "Datasource (Elasticsearch)")
+    ok &= _upsert_datasource(grafana_url, summary, username, password,
+                             "Datasource (Elasticsearch Summary)")
     return ok
 
 
@@ -160,11 +186,17 @@ def do_api_setup(grafana_url, elasticsearch_url, username, password,
                                es_password=es_password, es_ca_cert=es_ca_cert,
                                es_insecure=es_insecure)
 
-    for builder in [build_main_dashboard, build_cost_indicators_dashboard,
-                     build_usage_dashboard]:
+    builders = [
+        lambda: build_main_dashboard("en"),
+        lambda: build_main_dashboard("he"),
+        build_cost_indicators_dashboard,
+        build_usage_dashboard,
+    ]
+    for builder in builders:
         all_ok &= import_dashboard(grafana_url, builder(), username, password)
 
-    print(f"\n  Main dashboard:            {grafana_url}/d/alo-main")
+    print(f"\n  Main dashboard (EN):       {grafana_url}/d/alo-main")
+    print(f"  Main dashboard (HE):       {grafana_url}/d/alo-main-he")
     print(f"  Cost indicators dashboard: {grafana_url}/d/alo-cost-indicators")
     print(f"  Usage dashboard:           {grafana_url}/d/alo-usage\n")
     return all_ok
@@ -179,7 +211,8 @@ def do_provision(elasticsearch_url, grafana_url, prometheus_url=""):
     generate_datasource_yaml(elasticsearch_url)
     generate_prometheus_datasource_yaml(prometheus_url)
     export_dashboards()
-    print(f"\n  Main dashboard:            {grafana_url}/d/alo-main")
+    print(f"\n  Main dashboard (EN):       {grafana_url}/d/alo-main")
+    print(f"  Main dashboard (HE):       {grafana_url}/d/alo-main-he")
     print(f"  Cost indicators dashboard: {grafana_url}/d/alo-cost-indicators")
     print(f"  Cluster usage dashboard:   {grafana_url}/d/alo-usage\n")
     print("  Mount grafana/provisioning/ at /etc/grafana/provisioning/.")

@@ -1,7 +1,7 @@
 {
-  "uid": "alo-main",
-  "title": "ALO — Stress Analysis",
-  "description": "Stress analysis by application, target, operation, and template, with overall trend.",
+  "uid": "alo-main-he",
+  "title": "ALO — ניתוח עומס",
+  "description": "ניתוח עומס לפי אפליקציה, יעד, פעולה ותבנית, עם מגמה כללית.",
   "tags": [
     "alo",
     "observability"
@@ -17,8 +17,8 @@
   "panels": [
     {
       "id": 1,
-      "title": "ES CPU Usage",
-      "description": "Elasticsearch process CPU %. Requires prometheus profile.",
+      "title": "ניצול CPU של Elasticsearch",
+      "description": "אחוז CPU של תהליך Elasticsearch. דורש פרופיל prometheus.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -70,7 +70,7 @@
     },
     {
       "id": 2,
-      "title": "Total Stress Score",
+      "title": "ציון עומס כולל",
       "type": "stat",
       "datasource": {
         "type": "elasticsearch",
@@ -82,7 +82,7 @@
         "w": 6,
         "h": 6
       },
-      "description": "Sum of all stress scores in the selected time period.",
+      "description": "סכום כלל ציוני העומס בטווח הזמן הנבחר.",
       "targets": [
         {
           "datasource": {
@@ -129,7 +129,7 @@
     },
     {
       "id": 3,
-      "title": "Dashboard Guide",
+      "title": "מדריך לוח המחוונים",
       "type": "text",
       "gridPos": {
         "x": 0,
@@ -137,19 +137,19 @@
         "w": 24,
         "h": 8
       },
-      "description": "Quick reference guide for examining this dashboard.",
+      "description": "מדריך מקוצר לבחינת לוח המחוונים.",
       "fieldConfig": {
         "defaults": {},
         "overrides": []
       },
       "options": {
         "mode": "markdown",
-        "content": "## Dashboard Cheat Sheet\n\n**How to examine this dashboard:**\n\n1. **Start with the overview** — pie charts show which application, target, operation, or template contributes the most stress.\n2. **Review the Top 10 Templates table** — focus on templates with the highest sum stress and cost indicator counts.\n3. **Look at trends** — stress over time charts reveal spikes and patterns. Correlate with deployments or traffic changes.\n4. **Review volume & throughput** — request volume, total hits, docs affected, and request size panels show operational load. Total hits correlates with CPU.\n5. **Examine response times** — high ES or gateway latency alongside high stress may indicate query optimization opportunities.\n6. **Sanity checks** — verify if the most recurring templates are also the most stressful; templates with many cost indicators need attention.\n\n**What to focus on:**\n- **High stress slices** in pie charts — click to filter the dashboard\n- **Upward trends** in time series — growing load or degrading patterns\n- **Templates with many cost indicators** — query optimization candidates\n- **Latency spikes** correlating with specific operations or templates\n\n**Filtering by custom labels:**\nIf your requests include `x-alo-*` headers (e.g., `x-alo-team: payments`), filter by them using the **Filters** bar at the top: click `+`, type `identity.labels.team`, set `= payments`.\n"
+        "content": "## מדריך מהיר ללוח המחוונים\n\n**איך לבחון את הלוח:**\n\n1. **התחילו במבט-על** — תרשימי העוגה מציגים איזו אפליקציה, יעד, פעולה או תבנית תורמת הכי הרבה עומס.\n2. **בחנו את טבלת 10 התבניות המובילות** — התמקדו בתבניות עם סכום העומס הגבוה ביותר ובמחווני העלות הרבים ביותר.\n3. **התבוננו במגמות** — תרשימי העומס לאורך זמן חושפים קפיצות ודפוסים. הצליבו מול דפלויים או שינויים בתעבורה.\n4. **בחנו נפח ותפוקה** — נפח הבקשות, כלל ההתאמות, מסמכים מושפעים וגודל בקשה מציגים עומס תפעולי. כלל ההתאמות במתאם עם CPU.\n5. **בדקו זמני תגובה** — השהיה גבוהה ב-ES או בשער יחד עם עומס גבוה עשויה להצביע על הזדמנויות לאופטימיזציה של שאילתות.\n6. **בדיקות שפיות** — ודאו שהתבניות הנפוצות ביותר הן גם הכבדות ביותר; תבניות עם הרבה מחווני עלות דורשות תשומת לב.\n\n**על מה למקד:**\n- **פלחים בעלי עומס גבוה** בתרשימי עוגה — לחיצה תסנן את הלוח\n- **מגמות עולות** בסדרות זמן — עומס גובר או דפוסים מתדרדרים\n- **תבניות עם הרבה מחווני עלות** — מועמדות לאופטימיזציית שאילתות\n- **קפיצות השהיה** במתאם עם פעולות או תבניות מסוימות\n\n**סינון לפי תוויות מותאמות:**\nאם הבקשות שלכם כוללות כותרות `x-alo-*` (לדוגמה, `x-alo-team: payments`), סננו לפיהן באמצעות סרגל **Filters** בראש הלוח: לחצו `+`, הקלידו `identity.labels.team`, וקבעו `= payments`.\n"
       }
     },
     {
       "id": 4,
-      "title": "Stress by Application (Selected Period)",
+      "title": "עומס לפי אפליקציה (טווח נבחר)",
       "type": "piechart",
       "datasource": {
         "type": "elasticsearch",
@@ -161,7 +161,7 @@
         "w": 8,
         "h": 10
       },
-      "description": "Shows stress distribution across applicative providers. Click a slice to filter the dashboard.",
+      "description": "מציג התפלגות עומס בין ספקי האפליקציה. לחיצה על פלח תסנן את הלוח.",
       "targets": [
         {
           "datasource": {
@@ -214,7 +214,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-application=${__data.fields[0]}",
+              "url": "/d/alo-main-he?${__url_time_range}&var-application=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -224,7 +224,7 @@
     },
     {
       "id": 5,
-      "title": "Stress by Target (Selected Period)",
+      "title": "עומס לפי יעד (טווח נבחר)",
       "type": "piechart",
       "datasource": {
         "type": "elasticsearch",
@@ -236,7 +236,7 @@
         "w": 8,
         "h": 10
       },
-      "description": "Shows stress distribution across target indices/databases. Click a slice to filter the dashboard.",
+      "description": "מציג התפלגות עומס בין אינדקסים/מסדי נתונים. לחיצה על פלח תסנן את הלוח.",
       "targets": [
         {
           "datasource": {
@@ -289,7 +289,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-target=${__data.fields[0]}",
+              "url": "/d/alo-main-he?${__url_time_range}&var-target=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -299,7 +299,7 @@
     },
     {
       "id": 6,
-      "title": "Stress by Operation (Selected Period)",
+      "title": "עומס לפי פעולה (טווח נבחר)",
       "type": "piechart",
       "datasource": {
         "type": "elasticsearch",
@@ -311,7 +311,7 @@
         "w": 8,
         "h": 10
       },
-      "description": "Shows stress distribution across operation types (search, index, bulk, etc.). Click a slice to filter.",
+      "description": "מציג התפלגות עומס בין סוגי פעולה (search, index, bulk וכו'). לחיצה על פלח תסנן.",
       "targets": [
         {
           "datasource": {
@@ -364,7 +364,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-operation=${__data.fields[0]}",
+              "url": "/d/alo-main-he?${__url_time_range}&var-operation=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -374,7 +374,7 @@
     },
     {
       "id": 7,
-      "title": "Stress by Cost Indicator (Selected Period)",
+      "title": "עומס לפי מחוון עלות (טווח נבחר)",
       "type": "piechart",
       "datasource": {
         "type": "elasticsearch",
@@ -386,7 +386,7 @@
         "w": 12,
         "h": 10
       },
-      "description": "Stress distribution across cost indicator types. 'unflagged' = requests with no cost indicators.",
+      "description": "התפלגות עומס בין סוגי מחווני עלות. 'unflagged' = בקשות ללא מחווני עלות.",
       "targets": [
         {
           "datasource": {
@@ -439,7 +439,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-cost_indicator=${__data.fields[0]}",
+              "url": "/d/alo-main-he?${__url_time_range}&var-cost_indicator=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -449,7 +449,7 @@
     },
     {
       "id": 8,
-      "title": "Stress by Template (Selected Period)",
+      "title": "עומס לפי תבנית (טווח נבחר)",
       "type": "piechart",
       "datasource": {
         "type": "elasticsearch",
@@ -461,7 +461,7 @@
         "w": 12,
         "h": 10
       },
-      "description": "Shows stress distribution across request templates. Click a slice to filter the dashboard.",
+      "description": "מציג התפלגות עומס בין תבניות בקשה. לחיצה על פלח תסנן את הלוח.",
       "targets": [
         {
           "datasource": {
@@ -514,7 +514,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-template=${__data.fields[0]}",
+              "url": "/d/alo-main-he?${__url_time_range}&var-template=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -524,7 +524,7 @@
     },
     {
       "type": "row",
-      "title": "Highest Impact",
+      "title": "השפעה גבוהה ביותר",
       "collapsed": false,
       "gridPos": {
         "h": 1,
@@ -535,7 +535,7 @@
     },
     {
       "id": 9,
-      "title": "Top 10 Templates by Stress Score",
+      "title": "10 התבניות המובילות לפי ציון עומס",
       "type": "table",
       "datasource": {
         "type": "elasticsearch",
@@ -547,7 +547,7 @@
         "w": 24,
         "h": 8
       },
-      "description": "Top 10 request templates ranked by total stress score, with latency percentiles and cost-indicator averages.",
+      "description": "10 תבניות הבקשה המובילות לפי סכום ציוני העומס, עם אחוזוני השהיה וממוצעי מחווני עלות.",
       "targets": [
         {
           "datasource": {
@@ -626,7 +626,7 @@
         "showHeader": true,
         "sortBy": [
           {
-            "displayName": "Sum Stress Score",
+            "displayName": "סכום ציוני עומס",
             "desc": true
           }
         ]
@@ -636,7 +636,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-template=${__data.fields[0]}",
+              "url": "/d/alo-main-he?${__url_time_range}&var-template=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -650,7 +650,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Sum Stress Score"
+                "value": "סכום ציוני עומס"
               }
             ]
           },
@@ -662,7 +662,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Avg Stress Score"
+                "value": "ממוצע ציון עומס"
               }
             ]
           },
@@ -674,7 +674,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "P50 ES Latency (ms)"
+                "value": "P50 השהיית ES (ms)"
               }
             ]
           },
@@ -686,7 +686,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "P95 ES Latency (ms)"
+                "value": "P95 השהיית ES (ms)"
               }
             ]
           },
@@ -698,7 +698,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "P99 ES Latency (ms)"
+                "value": "P99 השהיית ES (ms)"
               }
             ]
           },
@@ -710,7 +710,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Avg Cost Indicators"
+                "value": "ממוצע מחווני עלות"
               }
             ]
           },
@@ -722,7 +722,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Requests"
+                "value": "בקשות"
               }
             ]
           }
@@ -731,7 +731,7 @@
     },
     {
       "id": 10,
-      "title": "Top 10 Heaviest Operations",
+      "title": "10 הפעולות הכבדות ביותר",
       "type": "table",
       "datasource": {
         "type": "elasticsearch",
@@ -743,7 +743,7 @@
         "w": 24,
         "h": 10
       },
-      "description": "Individual requests with the highest stress scores in the selected time range. Click column headers to re-sort.",
+      "description": "הבקשות הבודדות עם ציוני העומס הגבוהים ביותר בטווח הזמן הנבחר. לחיצה על כותרת עמודה לסידור מחדש.",
       "targets": [
         {
           "datasource": {
@@ -768,7 +768,7 @@
         "showHeader": true,
         "sortBy": [
           {
-            "displayName": "Stress",
+            "displayName": "עומס",
             "desc": true
           }
         ]
@@ -779,15 +779,15 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Operation"
+              "options": "פעולה"
             },
             "properties": [
               {
                 "id": "links",
                 "value": [
                   {
-                    "title": "Filter by Operation",
-                    "url": "/d/alo-main?${__url_time_range}&var-operation=${__value.raw}",
+                    "title": "Filter by פעולה",
+                    "url": "/d/alo-main-he?${__url_time_range}&var-operation=${__value.raw}",
                     "targetBlank": false
                   }
                 ]
@@ -797,15 +797,15 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Target"
+              "options": "יעד"
             },
             "properties": [
               {
                 "id": "links",
                 "value": [
                   {
-                    "title": "Filter by Target",
-                    "url": "/d/alo-main?${__url_time_range}&var-target=${__value.raw}",
+                    "title": "Filter by יעד",
+                    "url": "/d/alo-main-he?${__url_time_range}&var-target=${__value.raw}",
                     "targetBlank": false
                   }
                 ]
@@ -815,15 +815,15 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Cost Indicators"
+              "options": "מחווני עלות"
             },
             "properties": [
               {
                 "id": "links",
                 "value": [
                   {
-                    "title": "Filter by Cost Indicators",
-                    "url": "/d/alo-main?${__url_time_range}&var-cost_indicator=${__value.raw}",
+                    "title": "Filter by מחווני עלות",
+                    "url": "/d/alo-main-he?${__url_time_range}&var-cost_indicator=${__value.raw}",
                     "targetBlank": false
                   }
                 ]
@@ -858,14 +858,14 @@
               "stress.cost_indicator_names": 7
             },
             "renameByName": {
-              "@timestamp": "Time",
-              "request.body": "Request Body",
-              "request.operation": "Operation",
-              "request.target": "Target",
-              "request.path": "Path",
-              "stress.score": "Stress",
-              "response.es_took_ms": "ES Latency (ms)",
-              "stress.cost_indicator_names": "Cost Indicators"
+              "@timestamp": "זמן",
+              "request.body": "גוף בקשה",
+              "request.operation": "פעולה",
+              "request.target": "יעד",
+              "request.path": "נתיב",
+              "stress.score": "עומס",
+              "response.es_took_ms": "השהיית ES (ms)",
+              "stress.cost_indicator_names": "מחווני עלות"
             }
           }
         }
@@ -873,7 +873,7 @@
     },
     {
       "id": 11,
-      "title": "Top 10 Cost Indicators by Stress Score",
+      "title": "10 מחווני העלות המובילים לפי ציון עומס",
       "type": "table",
       "datasource": {
         "type": "elasticsearch",
@@ -885,7 +885,7 @@
         "w": 24,
         "h": 8
       },
-      "description": "Cost indicator types ranked by total stress contribution, with latency percentiles.",
+      "description": "סוגי מחווני עלות מדורגים לפי תרומת העומס הכוללת, עם אחוזוני השהיה.",
       "targets": [
         {
           "datasource": {
@@ -959,7 +959,7 @@
         "showHeader": true,
         "sortBy": [
           {
-            "displayName": "Sum Stress",
+            "displayName": "סכום עומס",
             "desc": true
           }
         ]
@@ -969,7 +969,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-cost_indicator=${__data.fields[0]}",
+              "url": "/d/alo-main-he?${__url_time_range}&var-cost_indicator=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -983,7 +983,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Sum Stress"
+                "value": "סכום עומס"
               }
             ]
           },
@@ -995,7 +995,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Avg Stress"
+                "value": "ממוצע עומס"
               }
             ]
           },
@@ -1007,7 +1007,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "P50 ES Latency (ms)"
+                "value": "P50 השהיית ES (ms)"
               }
             ]
           },
@@ -1019,7 +1019,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "P95 ES Latency (ms)"
+                "value": "P95 השהיית ES (ms)"
               }
             ]
           },
@@ -1031,7 +1031,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "P99 ES Latency (ms)"
+                "value": "P99 השהיית ES (ms)"
               }
             ]
           },
@@ -1043,7 +1043,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Requests"
+                "value": "בקשות"
               }
             ]
           }
@@ -1052,7 +1052,7 @@
     },
     {
       "type": "row",
-      "title": "Stress Trends",
+      "title": "מגמות עומס",
       "collapsed": false,
       "gridPos": {
         "h": 1,
@@ -1063,7 +1063,7 @@
     },
     {
       "id": 12,
-      "title": "Stress by Application",
+      "title": "עומס לפי אפליקציה",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1075,7 +1075,7 @@
         "w": 24,
         "h": 8
       },
-      "description": "Average stress score over time, broken down by applicative provider.",
+      "description": "ציון עומס ממוצע לאורך זמן, מפולח לפי ספק אפליקציה.",
       "targets": [
         {
           "datasource": {
@@ -1135,7 +1135,7 @@
     },
     {
       "id": 13,
-      "title": "Stress by Target",
+      "title": "עומס לפי יעד",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1147,7 +1147,7 @@
         "w": 24,
         "h": 8
       },
-      "description": "Average stress score over time, broken down by target index/database.",
+      "description": "ציון עומס ממוצע לאורך זמן, מפולח לפי אינדקס/מסד נתונים.",
       "targets": [
         {
           "datasource": {
@@ -1207,7 +1207,7 @@
     },
     {
       "id": 14,
-      "title": "Stress by Operation",
+      "title": "עומס לפי פעולה",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1219,7 +1219,7 @@
         "w": 24,
         "h": 8
       },
-      "description": "Average stress score over time, broken down by operation type.",
+      "description": "ציון עומס ממוצע לאורך זמן, מפולח לפי סוג פעולה.",
       "targets": [
         {
           "datasource": {
@@ -1279,7 +1279,7 @@
     },
     {
       "id": 15,
-      "title": "Stress by Cost Indicator",
+      "title": "עומס לפי מחוון עלות",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1291,7 +1291,7 @@
         "w": 24,
         "h": 8
       },
-      "description": "Average stress score over time, broken down by cost indicator.",
+      "description": "ציון עומס ממוצע לאורך זמן, מפולח לפי מחוון עלות.",
       "targets": [
         {
           "datasource": {
@@ -1351,7 +1351,7 @@
     },
     {
       "id": 16,
-      "title": "Stress by Template",
+      "title": "עומס לפי תבנית",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1363,7 +1363,7 @@
         "w": 24,
         "h": 8
       },
-      "description": "Average stress score over time, broken down by request template.",
+      "description": "ציון עומס ממוצע לאורך זמן, מפולח לפי תבנית בקשה.",
       "targets": [
         {
           "datasource": {
@@ -1423,7 +1423,7 @@
     },
     {
       "type": "row",
-      "title": "Volume & Throughput",
+      "title": "נפח ותפוקה",
       "collapsed": false,
       "gridPos": {
         "h": 1,
@@ -1434,7 +1434,7 @@
     },
     {
       "id": 17,
-      "title": "Request Volume",
+      "title": "נפח בקשות",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1446,7 +1446,7 @@
         "w": 24,
         "h": 8
       },
-      "description": "Total request count over time. Dashed series = hourly summary-index fallback (survives raw-data ILM expiry).",
+      "description": "סך הבקשות לאורך זמן. סדרה מקווקוות = גיבוי מאינדקס סיכום שעתי (שורד פקיעת ILM של נתונים גולמיים).",
       "targets": [
         {
           "datasource": {
@@ -1542,7 +1542,7 @@
     },
     {
       "id": 18,
-      "title": "Documents Matched by Queries",
+      "title": "מסמכים תואמים לשאילתות",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1554,7 +1554,7 @@
         "w": 24,
         "h": 8
       },
-      "description": "Total documents matched by queries. Correlates with ES CPU under queue saturation.",
+      "description": "סך המסמכים התואמים לשאילתות. מתאם עם CPU של ES בהיתקלות בעומס תור.",
       "targets": [
         {
           "datasource": {
@@ -1603,7 +1603,7 @@
     },
     {
       "id": 19,
-      "title": "Write Volume (Documents)",
+      "title": "נפח כתיבה (מסמכים)",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1615,7 +1615,7 @@
         "w": 12,
         "h": 8
       },
-      "description": "Total documents written (index / bulk / update).",
+      "description": "סך המסמכים שנכתבו (index / bulk / update).",
       "targets": [
         {
           "datasource": {
@@ -1664,7 +1664,7 @@
     },
     {
       "id": 20,
-      "title": "Request Size",
+      "title": "גודל בקשה",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1676,7 +1676,7 @@
         "w": 12,
         "h": 8
       },
-      "description": "Total inbound request payload size.",
+      "description": "סך גודל מטען הבקשות הנכנסות.",
       "targets": [
         {
           "datasource": {
@@ -1726,7 +1726,7 @@
     },
     {
       "type": "row",
-      "title": "Response Times",
+      "title": "זמני תגובה",
       "collapsed": false,
       "gridPos": {
         "h": 1,
@@ -1737,7 +1737,7 @@
     },
     {
       "id": 21,
-      "title": "ES Latency",
+      "title": "השהיית Elasticsearch",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1749,7 +1749,7 @@
         "w": 24,
         "h": 8
       },
-      "description": "Elasticsearch response-time trend with Avg / P50 / P95 / P99 — rising P95/P99 signals tail-latency issues.",
+      "description": "מגמת זמן תגובה של Elasticsearch עם ממוצע / P50 / P95 / P99 — עלייה ב-P95/P99 מצביעה על בעיות השהיית קצה.",
       "targets": [
         {
           "datasource": {
@@ -1775,7 +1775,7 @@
               }
             }
           ],
-          "alias": "Avg"
+          "alias": "ממוצע"
         },
         {
           "datasource": {
@@ -1919,7 +1919,7 @@
       {
         "type": "query",
         "name": "cluster",
-        "label": "Cluster",
+        "label": "אשכול",
         "datasource": {
           "type": "elasticsearch",
           "uid": "${datasource}"
@@ -1939,7 +1939,7 @@
       {
         "type": "query",
         "name": "application",
-        "label": "Application",
+        "label": "אפליקציה",
         "datasource": {
           "type": "elasticsearch",
           "uid": "${datasource}"
@@ -1959,7 +1959,7 @@
       {
         "type": "query",
         "name": "target",
-        "label": "Target",
+        "label": "יעד",
         "datasource": {
           "type": "elasticsearch",
           "uid": "${datasource}"
@@ -1979,7 +1979,7 @@
       {
         "type": "query",
         "name": "operation",
-        "label": "Operation",
+        "label": "פעולה",
         "datasource": {
           "type": "elasticsearch",
           "uid": "${datasource}"
@@ -1999,7 +1999,7 @@
       {
         "type": "query",
         "name": "username",
-        "label": "Username",
+        "label": "שם משתמש",
         "datasource": {
           "type": "elasticsearch",
           "uid": "${datasource}"
@@ -2019,7 +2019,7 @@
       {
         "type": "query",
         "name": "cost_indicator",
-        "label": "Cost Indicator",
+        "label": "מחוון עלות",
         "datasource": {
           "type": "elasticsearch",
           "uid": "${datasource}"
@@ -2039,7 +2039,7 @@
       {
         "type": "query",
         "name": "client_host",
-        "label": "Client Host",
+        "label": "מארח לקוח",
         "datasource": {
           "type": "elasticsearch",
           "uid": "${datasource}"
@@ -2059,7 +2059,7 @@
       {
         "type": "query",
         "name": "template",
-        "label": "Template",
+        "label": "תבנית",
         "datasource": {
           "type": "elasticsearch",
           "uid": "${datasource}"
@@ -2093,8 +2093,8 @@
   "links": [
     {
       "type": "link",
-      "title": "עברית",
-      "url": "/d/alo-main-he",
+      "title": "English",
+      "url": "/d/alo-main",
       "targetBlank": false,
       "icon": "external link",
       "tags": [],

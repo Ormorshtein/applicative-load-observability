@@ -8,6 +8,8 @@ dashboards, using Grafana's Elasticsearch datasource query format.
 import json
 import os
 
+from _strings import tr
+
 DATASOURCE = {"type": "elasticsearch", "uid": "${datasource}"}
 SUMMARY_DATASOURCE = DATASOURCE
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -24,6 +26,17 @@ SECTIONS = [
 _CHEAT_SHEET_PATH = os.path.join(SCRIPT_DIR, "cheat_sheet.md")
 with open(_CHEAT_SHEET_PATH, encoding="utf-8") as _f:
     CHEAT_SHEET = _f.read()
+
+_CHEAT_SHEET_HE_PATH = os.path.join(SCRIPT_DIR, "cheat_sheet_he.md")
+if os.path.exists(_CHEAT_SHEET_HE_PATH):
+    with open(_CHEAT_SHEET_HE_PATH, encoding="utf-8") as _f:
+        CHEAT_SHEET_HE = _f.read()
+else:
+    CHEAT_SHEET_HE = CHEAT_SHEET
+
+
+def cheat_sheet(lang: str = "en") -> str:
+    return CHEAT_SHEET_HE if lang == "he" else CHEAT_SHEET
 
 
 PANEL_DESCRIPTIONS = {
@@ -148,12 +161,12 @@ PROMETHEUS_DS = {"type": "prometheus", "uid": "${datasource_prometheus}"}
 # Panel factories
 # ---------------------------------------------------------------------------
 
-def mk_cpu_panel(gridpos):
+def mk_cpu_panel(gridpos, lang="en"):
     """ES process CPU panel (Prometheus) with drilldown link to Health dashboard."""
     return {
         "id": _next_id(),
-        "title": "ES CPU Usage",
-        "description": "Elasticsearch process CPU %. Requires prometheus profile.",
+        "title": tr("ES CPU Usage", lang),
+        "description": tr("Elasticsearch process CPU %. Requires prometheus profile.", lang),
         "type": "timeseries",
         "datasource": PROMETHEUS_DS,
         "gridPos": gridpos,
@@ -528,7 +541,7 @@ def _build_var_query():
     return " AND ".join(parts)
 
 
-def _wrap_dashboard(uid, title, description, panels):
+def _wrap_dashboard(uid, title, description, panels, lang="en", links=None):
     template_vars = [
         {
             "type": "datasource",
@@ -549,13 +562,14 @@ def _wrap_dashboard(uid, title, description, panels):
             "regex": "",
         },
     ]
-    template_vars += [_make_query_var(n, l, f) for n, l, f in _VARIABLES]
+    template_vars += [_make_query_var(n, tr(l, lang), f)
+                      for n, l, f in _VARIABLES]
     template_vars.append({
         "type": "adhoc",
         "name": "Filters",
         "datasource": DATASOURCE,
     })
-    return {
+    dashboard = {
         "uid": uid,
         "title": title,
         "description": description,
@@ -570,6 +584,9 @@ def _wrap_dashboard(uid, title, description, panels):
         "annotations": {"list": []},
         "editable": True,
     }
+    if links:
+        dashboard["links"] = links
+    return dashboard
 
 
 def export_dashboards():
@@ -581,15 +598,17 @@ def export_dashboards():
 
     os.makedirs(PROVISION_DIR, exist_ok=True)
 
-    for builder, filename in [
-        (build_main_dashboard, "alo-main.json"),
+    artifacts = [
+        (lambda: build_main_dashboard("en"), "alo-main.json"),
+        (lambda: build_main_dashboard("he"), "alo-main-he.json"),
         (build_cost_indicators_dashboard, "alo-cost-indicators.json"),
         (build_usage_dashboard, "alo-usage.json"),
-    ]:
+    ]
+    for builder, filename in artifacts:
         dashboard = builder()
         path = os.path.join(PROVISION_DIR, filename)
         with open(path, "w", encoding="utf-8") as f:
-            json.dump(dashboard, f, indent=2)
+            json.dump(dashboard, f, indent=2, ensure_ascii=False)
         print(f"  Exported: {path}")
 
     return PROVISION_DIR

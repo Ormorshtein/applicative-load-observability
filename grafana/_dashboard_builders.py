@@ -5,11 +5,11 @@ Panel helpers (mk_*) are imported from _dashboards.
 """
 
 from _dashboards import (
-    CHEAT_SHEET,
     PANEL_DESCRIPTIONS,
     SECTIONS,
     _reset_ids,
     _wrap_dashboard,
+    cheat_sheet,
     mk_bar,
     mk_cpu_panel,
     mk_pie,
@@ -21,6 +21,7 @@ from _dashboards import (
     mk_timeseries,
     mk_timeseries_multi,
 )
+from _strings import tr
 
 _FULL_W = 24
 _HALF_W = 12
@@ -38,6 +39,30 @@ def _row(title, y, collapsed=False):
     return {"type": "row", "title": title, "collapsed": collapsed,
             "gridPos": {"h": 1, "w": _FULL_W, "x": 0, "y": y}}
 
+
+_MAIN_UIDS = {"en": "alo-main", "he": "alo-main-he"}
+
+
+def _main_dashboard_links(lang):
+    """Top-bar links pointing at the other-language variant of this dashboard."""
+    if lang == "en":
+        target_uid = _MAIN_UIDS["he"]
+        title = "עברית"
+    else:
+        target_uid = _MAIN_UIDS["en"]
+        title = "English"
+    return [{
+        "type": "link",
+        "title": title,
+        "url": f"/d/{target_uid}",
+        "targetBlank": False,
+        "icon": "external link",
+        "tags": [],
+        "asDropdown": False,
+        "includeVars": True,
+        "keepTime": True,
+    }]
+
 _ROW_H = 1
 
 
@@ -51,161 +76,175 @@ def _section_header(title, y):
 # Main dashboard
 # ---------------------------------------------------------------------------
 
-def build_main_dashboard() -> dict:
+def build_main_dashboard(lang: str = "en") -> dict:
     _reset_ids()
     panels = []
     y = 0
+    own_uid = _MAIN_UIDS[lang]
+
+    def t(s):
+        return tr(s, lang)
 
     # ── ES CPU + KPI ─────────────────────────────────────────────────────
-    panels.append(mk_cpu_panel({"x": 0, "y": y, "w": 18, "h": 6}))
-    panels.append(mk_stat("Total Stress Score", "stress.score", "sum",
+    panels.append(mk_cpu_panel({"x": 0, "y": y, "w": 18, "h": 6}, lang=lang))
+    panels.append(mk_stat(t("Total Stress Score"), "stress.score", "sum",
                           {"x": 18, "y": y, "w": _QUARTER_W, "h": 6},
-                          description="Sum of all stress scores in the selected time period."))
+                          description=t("Sum of all stress scores in the selected time period.")))
     y += 6
 
     # ── Overview ────────────────────────────────────────────────────────
-    panels.append(mk_text("Dashboard Guide", CHEAT_SHEET,
+    panels.append(mk_text(t("Dashboard Guide"), cheat_sheet(lang),
                           {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-                          description="Quick reference guide for examining this dashboard."))
+                          description=t("Quick reference guide for examining this dashboard.")))
     y += _PANEL_H
 
     # 5 pie charts — Cost Indicator pie uses raw (needs indicator names)
     for i, (field, label) in enumerate(SECTIONS[:3]):
-        panels.append(mk_pie(f"Stress by {label} (Selected Period)", field,
+        title = t("Stress by {label} (Selected Period)").format(label=t(label))
+        panels.append(mk_pie(title, field,
                              {"x": i * _THIRD_W, "y": y, "w": _THIRD_W, "h": _PIE_H},
-                             size=8,
-                             description=PANEL_DESCRIPTIONS["pie"][label]))
+                             size=8, dashboard_uid=own_uid,
+                             description=t(PANEL_DESCRIPTIONS["pie"][label])))
     y += _PIE_H
-    panels.append(mk_pie("Stress by Cost Indicator (Selected Period)",
-                         "stress.cost_indicator_names",
-                         {"x": 0, "y": y, "w": _HALF_W, "h": _PIE_H}, size=10,
-                         description=PANEL_DESCRIPTIONS["pie"]["Cost Indicator"]))
-    panels.append(mk_pie("Stress by Template (Selected Period)",
-                         "request.template",
-                         {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PIE_H}, size=10,
-                         description=PANEL_DESCRIPTIONS["pie"]["Template"]))
+    panels.append(mk_pie(
+        t("Stress by {label} (Selected Period)").format(label=t("Cost Indicator")),
+        "stress.cost_indicator_names",
+        {"x": 0, "y": y, "w": _HALF_W, "h": _PIE_H}, size=10,
+        dashboard_uid=own_uid,
+        description=t(PANEL_DESCRIPTIONS["pie"]["Cost Indicator"])))
+    panels.append(mk_pie(
+        t("Stress by {label} (Selected Period)").format(label=t("Template")),
+        "request.template",
+        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PIE_H}, size=10,
+        dashboard_uid=own_uid,
+        description=t(PANEL_DESCRIPTIONS["pie"]["Template"])))
     y += _PIE_H
 
     # ── Highest Impact ──────────────────────────────────────────────────
-    panels.append(_row("Highest Impact", y))
+    panels.append(_row(t("Highest Impact"), y))
     y += _ROW_H
 
     panels.append(mk_table(
-        "Top 10 Templates by Stress Score", "request.template", "Template", [
-            ("Sum Stress Score", "stress.score", "sum"),
-            ("Avg Stress Score", "stress.score", "avg"),
-            ("P50 ES Latency (ms)", "response.es_took_ms", "percentile_50"),
-            ("P95 ES Latency (ms)", "response.es_took_ms", "percentile_95"),
-            ("P99 ES Latency (ms)", "response.es_took_ms", "percentile_99"),
-            ("Avg Cost Indicators", "stress.cost_indicator_count", "avg"),
-            ("Requests", None, "count"),
+        t("Top 10 Templates by Stress Score"), "request.template",
+        t("Template"), [
+            (t("Sum Stress Score"), "stress.score", "sum"),
+            (t("Avg Stress Score"), "stress.score", "avg"),
+            (t("P50 ES Latency (ms)"), "response.es_took_ms", "percentile_50"),
+            (t("P95 ES Latency (ms)"), "response.es_took_ms", "percentile_95"),
+            (t("P99 ES Latency (ms)"), "response.es_took_ms", "percentile_99"),
+            (t("Avg Cost Indicators"), "stress.cost_indicator_count", "avg"),
+            (t("Requests"), None, "count"),
         ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}, size=10,
-        description="Top 10 request templates ranked by total stress score, with "
-                    "latency percentiles and cost-indicator averages."))
+        dashboard_uid=own_uid,
+        description=t("Top 10 request templates ranked by total stress score, with "
+                      "latency percentiles and cost-indicator averages.")))
     y += _PANEL_H
 
     panels.append(mk_raw_docs_table(
-        "Top 10 Heaviest Operations", [
-            ("@timestamp", "Time"),
-            ("request.body", "Request Body"),
-            ("request.operation", "Operation"),
-            ("request.target", "Target"),
-            ("request.path", "Path"),
-            ("stress.score", "Stress"),
-            ("response.es_took_ms", "ES Latency (ms)"),
-            ("stress.cost_indicator_names", "Cost Indicators"),
+        t("Top 10 Heaviest Operations"), [
+            ("@timestamp", t("Time")),
+            ("request.body", t("Request Body")),
+            ("request.operation", t("Operation")),
+            ("request.target", t("Target")),
+            ("request.path", t("Path")),
+            ("stress.score", t("Stress")),
+            ("response.es_took_ms", t("ES Latency (ms)")),
+            ("stress.cost_indicator_names", t("Cost Indicators")),
         ],
         {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H + 2},
-        size=50, sort_field="stress.score",
-        description="Individual requests with the highest stress scores in the "
-                    "selected time range. Click column headers to re-sort."))
+        size=50, sort_field="stress.score", dashboard_uid=own_uid,
+        description=t("Individual requests with the highest stress scores in the "
+                      "selected time range. Click column headers to re-sort.")))
     y += _PANEL_H + 2
 
     # Uses raw — needs cost_indicator_names as bucket
     panels.append(mk_table(
-        "Top 10 Cost Indicators by Stress Score",
-        "stress.cost_indicator_names", "Cost Indicator", [
-            ("Sum Stress", "stress.score", "sum"),
-            ("Avg Stress", "stress.score", "avg"),
-            ("P50 ES Latency (ms)", "response.es_took_ms", "percentile_50"),
-            ("P95 ES Latency (ms)", "response.es_took_ms", "percentile_95"),
-            ("P99 ES Latency (ms)", "response.es_took_ms", "percentile_99"),
-            ("Requests", None, "count"),
+        t("Top 10 Cost Indicators by Stress Score"),
+        "stress.cost_indicator_names", t("Cost Indicator"), [
+            (t("Sum Stress"), "stress.score", "sum"),
+            (t("Avg Stress"), "stress.score", "avg"),
+            (t("P50 ES Latency (ms)"), "response.es_took_ms", "percentile_50"),
+            (t("P95 ES Latency (ms)"), "response.es_took_ms", "percentile_95"),
+            (t("P99 ES Latency (ms)"), "response.es_took_ms", "percentile_99"),
+            (t("Requests"), None, "count"),
         ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}, size=10,
-        description="Cost indicator types ranked by total stress contribution, "
-                    "with latency percentiles."))
+        dashboard_uid=own_uid,
+        description=t("Cost indicator types ranked by total stress contribution, "
+                      "with latency percentiles.")))
     y += _PANEL_H
 
     # ── Stress Trends ───────────────────────────────────────────────────
-    panels.append(_row("Stress Trends", y))
+    panels.append(_row(t("Stress Trends"), y))
     y += _ROW_H
 
     for field, label in SECTIONS:
         size = 10 if field == "request.template" else 5
         panels.append(mk_timeseries(
-            f"Stress by {label}", field,
+            t("Stress by {label}").format(label=t(label)), field,
             {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
             size=size, series_type="line", fill_opacity=20,
-            description=PANEL_DESCRIPTIONS["ts"][label]))
+            description=t(PANEL_DESCRIPTIONS["ts"][label])))
         y += _PANEL_H
 
     # ── Volume & Throughput ─────────────────────────────────────────────
-    panels.append(_row("Volume & Throughput", y))
+    panels.append(_row(t("Volume & Throughput"), y))
     y += _ROW_H
 
     panels.append(mk_timeseries(
-        "Request Volume", None,
+        t("Request Volume"), None,
         {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
         metric_field=None, metric_op="count",
         series_type="line", fill_opacity=20, summary_fallback=True,
-        description="Total request count over time. Dashed series = hourly "
-                    "summary-index fallback (survives raw-data ILM expiry)."))
+        description=t("Total request count over time. Dashed series = hourly "
+                      "summary-index fallback (survives raw-data ILM expiry).")))
     y += _PANEL_H
 
     panels.append(mk_timeseries(
-        "Documents Matched by Queries", None,
+        t("Documents Matched by Queries"), None,
         {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
         metric_field="response.hits", metric_op="sum",
         series_type="line", fill_opacity=20,
-        description="Total documents matched by queries. Correlates with ES "
-                    "CPU under queue saturation."))
+        description=t("Total documents matched by queries. Correlates with ES "
+                      "CPU under queue saturation.")))
     y += _PANEL_H
 
     panels.append(mk_timeseries(
-        "Write Volume (Documents)", None,
+        t("Write Volume (Documents)"), None,
         {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
         metric_field="response.docs_affected", metric_op="sum",
         series_type="line", fill_opacity=20,
-        description="Total documents written (index / bulk / update)."))
+        description=t("Total documents written (index / bulk / update).")))
     panels.append(mk_timeseries(
-        "Request Size", None,
+        t("Request Size"), None,
         {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
         metric_field="request.size_bytes", metric_op="sum",
         series_type="line", fill_opacity=20, unit="decbytes",
-        description="Total inbound request payload size."))
+        description=t("Total inbound request payload size.")))
     y += _PANEL_H
 
     # ── Response Times ────────────────────────────────────────────────
-    panels.append(_row("Response Times", y))
+    panels.append(_row(t("Response Times"), y))
     y += _ROW_H
 
-    panels.append(mk_timeseries_multi("ES Latency", [
-        ("Avg", "response.es_took_ms", "avg", ""),
+    panels.append(mk_timeseries_multi(t("ES Latency"), [
+        (t("Avg"), "response.es_took_ms", "avg", ""),
         ("P50", "response.es_took_ms", "percentile_50", ""),
         ("P95", "response.es_took_ms", "percentile_95", ""),
         ("P99", "response.es_took_ms", "percentile_99", ""),
     ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
         series_type="line", unit="ms",
-        description="Elasticsearch response-time trend with Avg / P50 / P95 / "
-                    "P99 — rising P95/P99 signals tail-latency issues."))
+        description=t("Elasticsearch response-time trend with Avg / P50 / P95 / "
+                      "P99 — rising P95/P99 signals tail-latency issues.")))
     y += _PANEL_H
 
     return _wrap_dashboard(
-        uid="alo-main",
-        title="ALO — Stress Analysis",
-        description="Stress analysis by application, target, operation, and "
-                    "template, with overall trend.",
+        uid=own_uid,
+        title=t("ALO — Stress Analysis"),
+        description=t("Stress analysis by application, target, operation, and "
+                      "template, with overall trend."),
         panels=panels,
+        lang=lang,
+        links=_main_dashboard_links(lang),
     )
 
 

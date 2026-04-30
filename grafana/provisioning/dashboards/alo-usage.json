@@ -1,6 +1,6 @@
 {
   "uid": "alo-usage",
-  "title": "ALO \u2014 Cluster Usage",
+  "title": "ALO — Cluster Usage",
   "description": "Request rates, latency percentiles, error tracking, and data volume analytics.",
   "tags": [
     "alo",
@@ -823,7 +823,7 @@
         "w": 12,
         "h": 8
       },
-      "description": "Count of error responses (status \u2265 400) vs total requests.",
+      "description": "Count of error responses (status ≥ 400) vs total requests.",
       "targets": [
         {
           "datasource": {

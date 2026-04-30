@@ -276,7 +276,7 @@
         "w": 24,
         "h": 10
       },
-      "description": "Stacked contribution of each base-score component (Took / Shards / Hits / Bonus) per template \u2014 shows what drives the score.",
+      "description": "Stacked contribution of each base-score component (Took / Shards / Hits / Bonus) per template — shows what drives the score.",
       "targets": [
         {
           "datasource": {
@@ -402,7 +402,7 @@
         "w": 12,
         "h": 10
       },
-      "description": "Base score vs multiplier vs final score per template \u2014 reveals whether stress is driven by the base or the multiplier.",
+      "description": "Base score vs multiplier vs final score per template — reveals whether stress is driven by the base or the multiplier.",
       "targets": [
         {
           "datasource": {
@@ -549,7 +549,7 @@
         "w": 12,
         "h": 10
       },
-      "description": "Templates ranked by average cost indicator count \u2014 query optimization candidates.",
+      "description": "Templates ranked by average cost indicator count — query optimization candidates.",
       "targets": [
         {
           "datasource": {
@@ -1341,7 +1341,7 @@
         "w": 24,
         "h": 8
       },
-      "description": "Count of flagged (\u22651 cost indicator) vs total requests \u2014 the ratio indicates how many queries are suboptimal.",
+      "description": "Count of flagged (≥1 cost indicator) vs total requests — the ratio indicates how many queries are suboptimal.",
       "targets": [
         {
           "datasource": {

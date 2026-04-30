@@ -2,6 +2,13 @@
 
 ## 1.18.1
 
+### Hebrew Stress Analysis dashboard
+
+- **Bilingual main dashboard** — `alo-main` (English) and `alo-main-he` (Hebrew) generated from a single `_dashboard_builders.build_main_dashboard(lang)` builder + source-string-keyed translation table (`grafana/_strings.py`). Adding a panel updates both variants; only the strings dict is duplicated.
+- **Top-bar toggle** — each variant carries a header link (`עברית` / `English`) pointing to the other, with `includeVars: true, keepTime: true` so time range and dashboard filters persist across the switch.
+- **Translated**: dashboard title + description, every panel title (incl. ES CPU), all `i`-tooltip descriptions, row headers, table column labels, variable sidebar labels, and the Dashboard Guide markdown panel (`grafana/cheat_sheet_he.md`). Latin-only fields kept Latin: `ms`, `P50/P95/P99`, ES op names (`index`/`bulk`/`update`).
+- **Helm chart** — `alo-main-he.json` mounted via `configmap-dashboards.yaml`.
+
 ### Dashboard parity (Kibana ↔ Grafana)
 
 - **Grafana — Top 10 Heaviest Operations** added to the main dashboard (raw-document table ranked by `stress.score`, with per-cell Filter-by links for Application / Operation / Target / Cost Indicators).

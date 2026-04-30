@@ -8,6 +8,7 @@ metadata:
     {{- include "alo.selectorLabels" (dict "ctx" . "component" "grafana") | nindent 4 }}
 binaryData:
   alo-main.json: {{ .Files.Get "files/grafana-alo-main.json" | b64enc }}
+  alo-main-he.json: {{ .Files.Get "files/grafana-alo-main-he.json" | b64enc }}
   alo-cost-indicators.json: {{ .Files.Get "files/grafana-alo-cost-indicators.json" | b64enc }}
   alo-usage.json: {{ .Files.Get "files/grafana-alo-usage.json" | b64enc }}
   {{- if or .Values.gateway.exporter.enabled .Values.logstash.exporter.enabled }}

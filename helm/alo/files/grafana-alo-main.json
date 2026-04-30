@@ -1,6 +1,6 @@
 {
   "uid": "alo-main",
-  "title": "ALO \u2014 Stress Analysis",
+  "title": "ALO — Stress Analysis",
   "description": "Stress analysis by application, target, operation, and template, with overall trend.",
   "tags": [
     "alo",
@@ -144,7 +144,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "## Dashboard Cheat Sheet\n\n**How to examine this dashboard:**\n\n1. **Start with the overview** \u2014 pie charts show which application, target, operation, or template contributes the most stress.\n2. **Review the Top 10 Templates table** \u2014 focus on templates with the highest sum stress and cost indicator counts.\n3. **Look at trends** \u2014 stress over time charts reveal spikes and patterns. Correlate with deployments or traffic changes.\n4. **Review volume & throughput** \u2014 request volume, total hits, docs affected, and request size panels show operational load. Total hits correlates with CPU.\n5. **Examine response times** \u2014 high ES or gateway latency alongside high stress may indicate query optimization opportunities.\n6. **Sanity checks** \u2014 verify if the most recurring templates are also the most stressful; templates with many cost indicators need attention.\n\n**What to focus on:**\n- **High stress slices** in pie charts \u2014 click to filter the dashboard\n- **Upward trends** in time series \u2014 growing load or degrading patterns\n- **Templates with many cost indicators** \u2014 query optimization candidates\n- **Latency spikes** correlating with specific operations or templates\n\n**Filtering by custom labels:**\nIf your requests include `x-alo-*` headers (e.g., `x-alo-team: payments`), filter by them using the **Filters** bar at the top: click `+`, type `identity.labels.team`, set `= payments`.\n"
+        "content": "## Dashboard Cheat Sheet\n\n**How to examine this dashboard:**\n\n1. **Start with the overview** — pie charts show which application, target, operation, or template contributes the most stress.\n2. **Review the Top 10 Templates table** — focus on templates with the highest sum stress and cost indicator counts.\n3. **Look at trends** — stress over time charts reveal spikes and patterns. Correlate with deployments or traffic changes.\n4. **Review volume & throughput** — request volume, total hits, docs affected, and request size panels show operational load. Total hits correlates with CPU.\n5. **Examine response times** — high ES or gateway latency alongside high stress may indicate query optimization opportunities.\n6. **Sanity checks** — verify if the most recurring templates are also the most stressful; templates with many cost indicators need attention.\n\n**What to focus on:**\n- **High stress slices** in pie charts — click to filter the dashboard\n- **Upward trends** in time series — growing load or degrading patterns\n- **Templates with many cost indicators** — query optimization candidates\n- **Latency spikes** correlating with specific operations or templates\n\n**Filtering by custom labels:**\nIf your requests include `x-alo-*` headers (e.g., `x-alo-team: payments`), filter by them using the **Filters** bar at the top: click `+`, type `identity.labels.team`, set `= payments`.\n"
       }
     },
     {
@@ -1749,7 +1749,7 @@
         "w": 24,
         "h": 8
       },
-      "description": "Elasticsearch response-time trend with Avg / P50 / P95 / P99 \u2014 rising P95/P99 signals tail-latency issues.",
+      "description": "Elasticsearch response-time trend with Avg / P50 / P95 / P99 — rising P95/P99 signals tail-latency issues.",
       "targets": [
         {
           "datasource": {
@@ -2089,5 +2089,18 @@
   "annotations": {
     "list": []
   },
-  "editable": true
+  "editable": true,
+  "links": [
+    {
+      "type": "link",
+      "title": "עברית",
+      "url": "/d/alo-main-he",
+      "targetBlank": false,
+      "icon": "external link",
+      "tags": [],
+      "asDropdown": false,
+      "includeVars": true,
+      "keepTime": true
+    }
+  ]
 }
