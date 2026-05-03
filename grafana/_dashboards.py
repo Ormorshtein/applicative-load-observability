@@ -27,7 +27,7 @@ _CHEAT_SHEET_PATH = os.path.join(SCRIPT_DIR, "cheat_sheet.md")
 with open(_CHEAT_SHEET_PATH, encoding="utf-8") as _f:
     CHEAT_SHEET = _f.read()
 
-_CHEAT_SHEET_HE_PATH = os.path.join(SCRIPT_DIR, "cheat_sheet_he.md")
+_CHEAT_SHEET_HE_PATH = os.path.join(SCRIPT_DIR, "cheat_sheet_he.html")
 if os.path.exists(_CHEAT_SHEET_HE_PATH):
     with open(_CHEAT_SHEET_HE_PATH, encoding="utf-8") as _f:
         CHEAT_SHEET_HE = _f.read()
@@ -35,8 +35,11 @@ else:
     CHEAT_SHEET_HE = CHEAT_SHEET
 
 
-def cheat_sheet(lang: str = "en") -> str:
-    return CHEAT_SHEET_HE if lang == "he" else CHEAT_SHEET
+def cheat_sheet(lang: str = "en") -> tuple[str, str]:
+    """Return (mode, content). HE uses html mode for RTL <div> support."""
+    if lang == "he":
+        return "html", CHEAT_SHEET_HE
+    return "markdown", CHEAT_SHEET
 
 
 PANEL_DESCRIPTIONS = {
@@ -195,10 +198,10 @@ def mk_cpu_panel(gridpos, lang="en"):
     }
 
 
-def mk_text(title, content, gridpos, description=None):
+def mk_text(title, content, gridpos, description=None, mode="markdown"):
     panel = _base_panel(title, "text", gridpos, description=description)
     panel["options"] = {
-        "mode": "markdown",
+        "mode": mode,
         "content": content,
     }
     panel.pop("datasource", None)

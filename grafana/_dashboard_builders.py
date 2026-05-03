@@ -93,9 +93,11 @@ def build_main_dashboard(lang: str = "en") -> dict:
     y += 6
 
     # ── Overview ────────────────────────────────────────────────────────
-    panels.append(mk_text(t("Dashboard Guide"), cheat_sheet(lang),
+    cs_mode, cs_content = cheat_sheet(lang)
+    panels.append(mk_text(t("Dashboard Guide"), cs_content,
                           {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
-                          description=t("Quick reference guide for examining this dashboard.")))
+                          description=t("Quick reference guide for examining this dashboard."),
+                          mode=cs_mode))
     y += _PANEL_H
 
     # 5 pie charts — Cost Indicator pie uses raw (needs indicator names)
