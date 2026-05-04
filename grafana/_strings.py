@@ -46,6 +46,9 @@ HE: dict[str, str] = {
     "Documents Matched by Queries": "מסמכים שהוחזרו משאילתות",
     "Write Volume (Documents)": "נפח כתיבה (מסמכים)",
     "Request Size": "גודל בקשות",
+    "Avg Documents per Query": "ממוצע מסמכים לשאילתה",
+    "Avg Documents per Write": "ממוצע מסמכים לפעולת כתיבה",
+    "Avg Request Size": "גודל בקשה ממוצע",
     "ES Latency": "השהיית Elasticsearch",
 
     # Column labels
@@ -66,6 +69,7 @@ HE: dict[str, str] = {
     "Stress": "עומס",
     "ES Latency (ms)": "השהיית ES (ms)",
     "Cost Indicators": "מחווני עלות",
+    "Doc ID": "מזהה מסמך",
 
     # Multi-series labels
     "Avg": "ממוצע",
@@ -128,6 +132,12 @@ HE: dict[str, str] = {
         "סך המסמכים שנכתבו (index / bulk / update).",
     "Total inbound request payload size.":
         "סך גודל הבקשות הנכנסות.",
+    "Average documents matched per query — query selectivity signal.":
+        "ממוצע מסמכים שהוחזרו לשאילתה — אינדיקציה לסלקטיביות השאילתה.",
+    "Average documents written per operation — batch-size signal.":
+        "ממוצע מסמכים שנכתבו לפעולה — אינדיקציה לגודל ה-batch.",
+    "Average request payload size — per-call shape.":
+        "גודל ממוצע של מטען הבקשה — צורת הבקשה הבודדת.",
 
     # Panel descriptions — Response Times
     "Elasticsearch response-time trend with Avg / P50 / P95 / P99 — rising P95/P99 signals tail-latency issues.":

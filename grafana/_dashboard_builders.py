@@ -145,6 +145,7 @@ def build_main_dashboard(lang: str = "en") -> dict:
     panels.append(mk_raw_docs_table(
         t("Top 10 Heaviest Operations"), [
             ("@timestamp", t("Time")),
+            ("_id", t("Doc ID")),
             ("request.body", t("Request Body")),
             ("request.operation", t("Operation")),
             ("request.target", t("Target")),
@@ -203,11 +204,17 @@ def build_main_dashboard(lang: str = "en") -> dict:
 
     panels.append(mk_timeseries(
         t("Documents Matched by Queries"), None,
-        {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
+        {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
         metric_field="response.hits", metric_op="sum",
         series_type="line", fill_opacity=20,
         description=t("Total documents matched by queries. Correlates with ES "
                       "CPU under queue saturation.")))
+    panels.append(mk_timeseries(
+        t("Avg Documents per Query"), None,
+        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
+        metric_field="response.hits", metric_op="avg",
+        series_type="line", fill_opacity=20,
+        description=t("Average documents matched per query — query selectivity signal.")))
     y += _PANEL_H
 
     panels.append(mk_timeseries(
@@ -217,11 +224,25 @@ def build_main_dashboard(lang: str = "en") -> dict:
         series_type="line", fill_opacity=20,
         description=t("Total documents written (index / bulk / update).")))
     panels.append(mk_timeseries(
-        t("Request Size"), None,
+        t("Avg Documents per Write"), None,
         {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
+        metric_field="response.docs_affected", metric_op="avg",
+        series_type="line", fill_opacity=20,
+        description=t("Average documents written per operation — batch-size signal.")))
+    y += _PANEL_H
+
+    panels.append(mk_timeseries(
+        t("Request Size"), None,
+        {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
         metric_field="request.size_bytes", metric_op="sum",
         series_type="line", fill_opacity=20, unit="decbytes",
         description=t("Total inbound request payload size.")))
+    panels.append(mk_timeseries(
+        t("Avg Request Size"), None,
+        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
+        metric_field="request.size_bytes", metric_op="avg",
+        series_type="line", fill_opacity=20, unit="decbytes",
+        description=t("Average request payload size — per-call shape.")))
     y += _PANEL_H
 
     # ── Response Times ────────────────────────────────────────────────

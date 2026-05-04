@@ -6,8 +6,13 @@
 
 - **Bilingual main dashboard** — `alo-main` (English) and `alo-main-he` (Hebrew) generated from a single `_dashboard_builders.build_main_dashboard(lang)` builder + source-string-keyed translation table (`grafana/_strings.py`). Adding a panel updates both variants; only the strings dict is duplicated.
 - **Top-bar toggle** — each variant carries a header link (`עברית` / `English`) pointing to the other, with `includeVars: true, keepTime: true` so time range and dashboard filters persist across the switch.
-- **Translated**: dashboard title + description, every panel title (incl. ES CPU), all `i`-tooltip descriptions, row headers, table column labels, variable sidebar labels, and the Dashboard Guide markdown panel (`grafana/cheat_sheet_he.md`). Latin-only fields kept Latin: `ms`, `P50/P95/P99`, ES op names (`index`/`bulk`/`update`).
+- **Translated**: dashboard title + description, every panel title (incl. ES CPU), all `i`-tooltip descriptions, row headers, table column labels, variable sidebar labels, and the Dashboard Guide panel (`grafana/cheat_sheet_he.html` — HTML mode + Unicode bidi controls so RTL survives Grafana's sanitizer).
 - **Helm chart** — `alo-main-he.json` mounted via `configmap-dashboards.yaml`.
+
+### Main dashboard polish
+
+- **Doc ID column** added to *Top 10 Heaviest Operations* (raw-document table). Source field `_id` exposed via the existing organize transform.
+- **Sum / Avg split** — *Documents Matched by Queries*, *Write Volume*, and *Request Size* each split into a Sum panel (left half) plus an Avg panel (right half). Sum = throughput / amplification; Avg = per-request shape (selectivity, batch size, payload size).
 
 ### Dashboard parity (Kibana ↔ Grafana)
 

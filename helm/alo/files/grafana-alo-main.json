@@ -839,6 +839,7 @@
             "excludeByName": {},
             "includeByName": {
               "@timestamp": true,
+              "_id": true,
               "request.body": true,
               "request.operation": true,
               "request.target": true,
@@ -849,16 +850,18 @@
             },
             "indexByName": {
               "@timestamp": 0,
-              "request.body": 1,
-              "request.operation": 2,
-              "request.target": 3,
-              "request.path": 4,
-              "stress.score": 5,
-              "response.es_took_ms": 6,
-              "stress.cost_indicator_names": 7
+              "_id": 1,
+              "request.body": 2,
+              "request.operation": 3,
+              "request.target": 4,
+              "request.path": 5,
+              "stress.score": 6,
+              "response.es_took_ms": 7,
+              "stress.cost_indicator_names": 8
             },
             "renameByName": {
               "@timestamp": "Time",
+              "_id": "Doc ID",
               "request.body": "Request Body",
               "request.operation": "Operation",
               "request.target": "Target",
@@ -1551,7 +1554,7 @@
       "gridPos": {
         "x": 0,
         "y": 111,
-        "w": 24,
+        "w": 12,
         "h": 8
       },
       "description": "Total documents matched by queries. Correlates with ES CPU under queue saturation.",
@@ -1603,6 +1606,67 @@
     },
     {
       "id": 19,
+      "title": "Avg Documents per Query",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 111,
+        "w": 12,
+        "h": 8
+      },
+      "description": "Average documents matched per query — query selectivity signal.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${datasource}"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "response.hits"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 20,
       "title": "Write Volume (Documents)",
       "type": "timeseries",
       "datasource": {
@@ -1663,8 +1727,8 @@
       }
     },
     {
-      "id": 20,
-      "title": "Request Size",
+      "id": 21,
+      "title": "Avg Documents per Write",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1673,6 +1737,67 @@
       "gridPos": {
         "x": 12,
         "y": 119,
+        "w": 12,
+        "h": 8
+      },
+      "description": "Average documents written per operation — batch-size signal.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${datasource}"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "response.docs_affected"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 22,
+      "title": "Request Size",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 127,
         "w": 12,
         "h": 8
       },
@@ -1725,6 +1850,68 @@
       }
     },
     {
+      "id": 23,
+      "title": "Avg Request Size",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 127,
+        "w": 12,
+        "h": 8
+      },
+      "description": "Average request payload size — per-call shape.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${datasource}"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "avg",
+              "id": "1",
+              "field": "request.size_bytes"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "3",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20
+          },
+          "unit": "decbytes"
+        },
+        "overrides": []
+      }
+    },
+    {
       "type": "row",
       "title": "Response Times",
       "collapsed": false,
@@ -1732,11 +1919,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 127
+        "y": 135
       }
     },
     {
-      "id": 21,
+      "id": 24,
       "title": "ES Latency",
       "type": "timeseries",
       "datasource": {
@@ -1745,7 +1932,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 128,
+        "y": 136,
         "w": 24,
         "h": 8
       },
