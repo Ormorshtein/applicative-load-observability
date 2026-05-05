@@ -298,6 +298,18 @@
             "docsAffected": { "type": "string" }
           }
         },
+        "requestBody": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Per-record handling of the request.body field.",
+          "properties": {
+            "storeMaxBytes": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Max bytes kept on stored request.body (suffix included). Default 32000 sits under the 32 766-byte ES keyword cap. Set to 0 to disable truncation; raise above 32766 only when the request.body mapping has been changed away from keyword."
+            }
+          }
+        },
         "resources": { "$ref": "#/$defs/resources" },
         "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
         "tolerations": { "$ref": "#/$defs/tolerations" },
@@ -368,6 +380,11 @@
           ]
         },
         "workerConnections": { "type": "integer", "minimum": 1 },
+        "clientBodyBufferSize": {
+          "type": "string",
+          "pattern": "^[0-9]+[kmKM]?$",
+          "description": "Nginx client_body_buffer_size. Bodies above this size spool to a temp file; the gateway reads the file so request_body still reaches the analyzer in full."
+        },
         "proxyReadTimeout": { "type": "string", "pattern": "^[0-9]+(s|m|h)$" },
         "pipelineTimeout": { "type": "integer", "minimum": 0, "description": "Timeout for pipeline notification in milliseconds." },
         "probes": {

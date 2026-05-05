@@ -238,20 +238,24 @@ _FIELD_TO_VAR = {
 }
 
 
-def _add_filter_link(panel, field, dashboard_uid="alo-main"):
-    """Add a data link that filters the dashboard by the clicked value."""
+def _add_filter_link(panel, field):
+    """Add a data link that filters the dashboard by the clicked value.
+
+    ``${__dashboard.uid}`` resolves to whichever dashboard the user is
+    currently viewing, so the link stays on-page instead of jumping to a
+    hardcoded UID.
+    """
     var_name = _FIELD_TO_VAR.get(field)
     if var_name:
         panel["fieldConfig"]["defaults"]["links"] = [{
             "title": "Filter by ${__data.fields[0]}",
-            "url": f"/d/{dashboard_uid}?${{__url_time_range}}"
+            "url": "/d/${__dashboard.uid}?${__url_time_range}"
                    f"&var-{var_name}=${{__data.fields[0]}}",
             "targetBlank": False,
         }]
 
 
-def mk_pie(title, field, gridpos, size=8, dashboard_uid="alo-main",
-           description=None):
+def mk_pie(title, field, gridpos, size=8, description=None):
     target = _es_target(
         metrics=[_metric("sum", "stress.score")],
         bucket_aggs=[_terms_agg(field, size=size)],
@@ -262,7 +266,7 @@ def mk_pie(title, field, gridpos, size=8, dashboard_uid="alo-main",
         "legend": {"displayMode": "list", "placement": "bottom"},
         "tooltip": {"mode": "multi"},
     }, description=description)
-    _add_filter_link(panel, field, dashboard_uid)
+    _add_filter_link(panel, field)
     return panel
 
 
@@ -353,7 +357,7 @@ def mk_timeseries_multi(title, metrics_spec, gridpos, series_type="line",
 
 
 def mk_bar(title, field, metric_field, metric_op, metric_label, gridpos,
-           size=10, dashboard_uid="alo-main", description=None):
+           size=10, description=None):
     metrics = [_metric(metric_op, metric_field)] if metric_field else [
         _metric("count")]
     target = _es_target(
@@ -366,7 +370,7 @@ def mk_bar(title, field, metric_field, metric_op, metric_label, gridpos,
         "legend": {"displayMode": "hidden"},
         "tooltip": {"mode": "single"},
     }, description=description)
-    _add_filter_link(panel, field, dashboard_uid)
+    _add_filter_link(panel, field)
     return panel
 
 
@@ -409,7 +413,7 @@ def mk_stacked_bar(title, bucket_field, metrics_spec, gridpos, size=10,
 
 
 def mk_table(title, bucket_field, bucket_label, metrics_spec, gridpos,
-             size=10, dashboard_uid="alo-main", description=None):
+             size=10, description=None):
     metrics = []
     overrides = []
     for i, (label, field, op) in enumerate(metrics_spec):
@@ -442,13 +446,12 @@ def mk_table(title, bucket_field, bucket_label, metrics_spec, gridpos,
                         },
                         field_config={"defaults": {}, "overrides": overrides},
                         description=description)
-    _add_filter_link(panel, bucket_field, dashboard_uid)
+    _add_filter_link(panel, bucket_field)
     return panel
 
 
 def mk_raw_docs_table(title, columns, gridpos, size=50, query="",
-                      sort_field="stress.score", dashboard_uid="alo-main",
-                      description=None):
+                      sort_field="stress.score", description=None):
     """Table panel that lists individual ES documents.
 
     *columns* is an ordered list of (source_field, display_label). Only these
@@ -487,7 +490,7 @@ def mk_raw_docs_table(title, columns, gridpos, size=50, query="",
             "matcher": {"id": "byName", "options": label},
             "properties": [{"id": "links", "value": [{
                 "title": f"Filter by {label}",
-                "url": f"/d/{dashboard_uid}?${{__url_time_range}}"
+                "url": "/d/${__dashboard.uid}?${__url_time_range}"
                        f"&var-{var_name}=${{__value.raw}}",
                 "targetBlank": False,
             }]}],

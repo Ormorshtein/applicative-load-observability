@@ -1,6 +1,7 @@
 """Unit tests for analyzer/main.py — FastAPI endpoint tests."""
 
 import base64
+import gzip
 import json
 from unittest.mock import patch
 
@@ -10,6 +11,18 @@ from fastapi.testclient import TestClient
 from analyzer.main import app
 
 client = TestClient(app)
+
+
+def _post_payload_with_binary_field(payload: dict) -> dict:
+    """Send a payload whose string fields may contain raw bytes via surrogates.
+
+    Mirrors what reaches the analyzer when the gateway forwards a gzipped
+    request body inside a cjson-encoded JSON envelope.
+    """
+    body = json.dumps(payload).encode("utf-8", errors="surrogateescape")
+    resp = client.post("/analyze", content=body,
+                       headers={"content-type": "application/json"})
+    return resp.json()
 
 
 # ---------------------------------------------------------------------------
@@ -340,3 +353,78 @@ class TestAnalyzeBulk:
                            headers={"content-type": "application/json"})
         assert resp.status_code == 200
         assert "error" in resp.json()
+
+
+# ---------------------------------------------------------------------------
+# POST /analyze — gzip-compressed bodies
+# ---------------------------------------------------------------------------
+
+class TestAnalyzeCompressedBodies:
+    def test_gzip_request_body_decompressed(self):
+        original = json.dumps({"query": {"match": {"title": "shoes"}}, "size": 25})
+        compressed = gzip.compress(original.encode("utf-8"))
+        payload = {
+            "method": "POST",
+            "path": "/products/_search",
+            "headers": {"content-encoding": "gzip"},
+            "request_body": compressed.decode("utf-8", errors="surrogateescape"),
+            "response_body": json.dumps({
+                "took": 7,
+                "hits": {"total": {"value": 3}, "hits": []},
+                "_shards": {"total": 2},
+            }),
+            "client_host": "10.0.0.1",
+            "response_status": 200,
+        }
+        rec = _post_payload_with_binary_field(payload)
+        assert rec["request"]["operation"] == "_search"
+        assert rec["request"]["size"] == 25
+        # Template should reflect the decompressed query, not garbage.
+        assert "match" in rec["request"]["template"]
+
+    def test_gzip_bulk_request_body_decompressed(self):
+        bulk = (
+            '{"index":{"_index":"products"}}\n{"title":"alpha"}\n'
+            '{"index":{"_index":"products"}}\n{"title":"beta"}\n'
+        )
+        compressed = gzip.compress(bulk.encode("utf-8"))
+        payload = {
+            "method": "POST",
+            "path": "/_bulk",
+            "headers": {"content-encoding": "gzip"},
+            "request_body": compressed.decode("utf-8", errors="surrogateescape"),
+            "response_body": json.dumps({
+                "took": 4, "errors": False,
+                "items": [
+                    {"index": {"_index": "products", "_id": "1", "status": 201,
+                               "_shards": {"total": 2}}},
+                    {"index": {"_index": "products", "_id": "2", "status": 201,
+                               "_shards": {"total": 2}}},
+                ],
+            }),
+            "response_status": 200,
+        }
+        rec = _post_payload_with_binary_field(payload)
+        assert rec["request"]["operation"] == "_bulk"
+        assert rec["request"]["target"] == "products"
+        assert rec["response"]["docs_affected"] == 2
+
+    def test_gzip_response_body_decompressed(self):
+        response_payload = json.dumps({
+            "took": 11,
+            "hits": {"total": {"value": 99}, "hits": []},
+            "_shards": {"total": 4},
+        })
+        compressed = gzip.compress(response_payload.encode("utf-8"))
+        payload = {
+            "method": "POST",
+            "path": "/products/_search",
+            "headers": {},
+            "request_body": json.dumps({"query": {"match_all": {}}, "size": 10}),
+            "response_body": compressed.decode("utf-8", errors="surrogateescape"),
+            "response_status": 200,
+        }
+        rec = _post_payload_with_binary_field(payload)
+        assert rec["response"]["es_took_ms"] == 11
+        assert rec["response"]["hits"] == 99
+        assert rec["response"]["shards_total"] == 4

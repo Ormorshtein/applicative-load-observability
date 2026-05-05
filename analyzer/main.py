@@ -5,6 +5,7 @@ Never crashes: returns 200 with partial record on any parse error.
 """
 
 import json
+from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -14,6 +15,16 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from .record_builder import build_record, extract_raw_fields, partial_error_record
 
 app = FastAPI()
+
+
+# Surrogateescape preserves arbitrary bytes that the gateway forwarded
+# inside JSON string fields (e.g. gzip-compressed request_body when a
+# client uses Content-Encoding: gzip). Without this, invalid UTF-8 bytes
+# would either raise UnicodeDecodeError or silently turn into U+FFFD,
+# making the compressed body unrecoverable downstream.
+async def _read_payload(request: Request) -> Any:
+    raw = await request.body()
+    return json.loads(raw.decode("utf-8", errors="surrogateescape"))
 
 Instrumentator(
     should_group_status_codes=True,
@@ -28,7 +39,7 @@ Instrumentator(
 @app.post("/analyze")
 async def analyze(request: Request) -> JSONResponse:
     try:
-        payload = await request.json()
+        payload = await _read_payload(request)
     except (json.JSONDecodeError, ValueError, UnicodeDecodeError):
         return JSONResponse(status_code=200, content={"error": "unparseable payload"})
 
@@ -50,7 +61,7 @@ async def analyze_bulk(request: Request) -> JSONResponse:
     the rest of the batch is unaffected.
     """
     try:
-        payloads = await request.json()
+        payloads = await _read_payload(request)
     except (json.JSONDecodeError, ValueError, UnicodeDecodeError):
         return JSONResponse(status_code=200, content={"error": "unparseable payload"})
 

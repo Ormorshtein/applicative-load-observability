@@ -79,6 +79,12 @@ spec:
               value: {{ .docsAffected | quote }}
             {{- end }}
             {{- end }}
+            {{- with .Values.analyzer.requestBody }}
+            {{- if hasKey . "storeMaxBytes" }}
+            - name: ALO_REQUEST_BODY_STORE_MAX_BYTES
+              value: {{ .storeMaxBytes | quote }}
+            {{- end }}
+            {{- end }}
             {{- with .Values.analyzer.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

@@ -4,11 +4,13 @@ No I/O — all functions are pure transformations.
 """
 
 import json
+import os
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, TypedDict
 
+from ._decompression import decompress_body
 from .parser import (
     parse_applicative_provider,
     parse_docs_affected,
@@ -40,17 +42,26 @@ def _utc_timestamp() -> str:
     now = datetime.now(UTC)
     return now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"
 
-# ES keyword fields have a 32 766-byte UTF-8 limit.  Leave room for the
-# truncation suffix so the stored value is always under the limit.
-_MAX_BODY_BYTES = 32_000
+# ES keyword fields have a 32 766-byte UTF-8 limit.
+# ALO_REQUEST_BODY_STORE_MAX_BYTES caps the *stored* request.body string at
+# this size (suffix included). Default leaves a safety margin under the
+# keyword limit. Override only when the request.body mapping has been
+# changed (raise for text/match_only_text mappings, or set 0 to disable
+# truncation entirely).
+_MAX_BODY_BYTES = int(os.environ.get("ALO_REQUEST_BODY_STORE_MAX_BYTES", "32000"))
 _TRUNCATION_SUFFIX = "…[TRUNCATED]"
+_TRUNCATION_SUFFIX_BYTES = len(_TRUNCATION_SUFFIX.encode("utf-8"))
 
 
-def _truncate_body(body: str) -> str:
-    if len(body.encode("utf-8")) <= _MAX_BODY_BYTES:
-        return body
-    truncated = body.encode("utf-8")[:_MAX_BODY_BYTES].decode("utf-8", errors="ignore")
-    return truncated + _TRUNCATION_SUFFIX
+def _truncate_body(body: str) -> tuple[str, bool]:
+    if _MAX_BODY_BYTES <= 0:
+        return body, False
+    encoded = body.encode("utf-8")
+    if len(encoded) <= _MAX_BODY_BYTES:
+        return body, False
+    head_bytes = max(0, _MAX_BODY_BYTES - _TRUNCATION_SUFFIX_BYTES)
+    truncated = encoded[:head_bytes].decode("utf-8", errors="ignore")
+    return truncated + _TRUNCATION_SUFFIX, True
 
 _STRESS_PRECISION = 4
 
@@ -103,14 +114,15 @@ def _parse_content_length(raw: str) -> int:
 
 
 def extract_raw_fields(payload: dict) -> RawFields:
-    raw_body = payload.get("request_body", "")
+    raw_body = decompress_body(payload.get("request_body", ""))
+    raw_response = decompress_body(payload.get("response_body", ""))
     return RawFields(
         method=              payload.get("method", "GET"),
         path=                payload.get("path", "/"),
         headers=             payload.get("headers", {}),
         request_body=        _parse_json_field(raw_body),
         request_body_raw=    raw_body,
-        response_body=       _parse_json_field(payload.get("response_body", "")),
+        response_body=       _parse_json_field(raw_response),
         client_host=         payload.get("client_host", ""),
         response_status=     int(payload.get("response_status", 0)),
         gateway_took_ms=     _parse_upstream_response_time(
@@ -145,7 +157,6 @@ _QUERY_OPS = frozenset({
     "_search", "_msearch", "_count", "_explain", "_validate",
     "_update_by_query", "_delete_by_query",
 })
-_ES_NANOSECOND_BUG_RATIO = 1000
 
 
 # ---------------------------------------------------------------------------
@@ -167,6 +178,7 @@ class RequestSection(TypedDict, total=False):
     target: str
     template: str
     body: str
+    body_truncated: bool
     size_bytes: int
     size: int
     geo_vertex_count: int
@@ -212,12 +224,21 @@ def _output_clause_counts(counts: dict[str, int]) -> dict[str, int]:
     return {out: counts[internal] for internal, out in _CLAUSE_COUNT_OUTPUT_KEYS.items()}
 
 
-def _fix_es_nanosecond_bug(operation: str, es_took_ms: float, gateway_took_ms: float) -> float:
-    """ES 8.13-8.15 bulk bug: took sometimes reported in nanoseconds."""
-    if (operation == "_bulk"
-            and es_took_ms > gateway_took_ms > 0
-            and es_took_ms / gateway_took_ms > _ES_NANOSECOND_BUG_RATIO):
-        return es_took_ms / 1_000_000
+def _resolve_bulk_took(operation: str, es_took_ms: float, gateway_took_ms: float) -> float:
+    """Use the gateway-observed elapsed time as the bulk ``took``.
+
+    ES ``_bulk took`` has been wrong on every version since 8.13:
+        * 8.13-8.15 reported it in nanoseconds (#111854 / #111863).
+        * 8.16+ reads it from a 200ms-cached clock so values are quantized
+          to {0, 200, 400, ...} (see BULK_TOOK_ISSUE_DRAFT.md).
+
+    Gateway round-trip time is the ES processing time plus a tiny network
+    hop, so it's a strictly better signal for ``_bulk``. Non-bulk
+    operations keep using the upstream ``took`` since their query path is
+    not affected by these bugs.
+    """
+    if operation == "_bulk" and gateway_took_ms > 0:
+        return gateway_took_ms
     return es_took_ms
 
 
@@ -256,18 +277,20 @@ def _build_request_section(
     size: int, geo_vertex_count: int,
 ) -> dict[str, Any]:
     """Assemble the request section of the observability record."""
+    body_text = (json.dumps(raw.request_body, ensure_ascii=False)
+                 if raw.request_body else raw.request_body_raw)
+    body, body_truncated = _truncate_body(body_text)
     request: dict[str, Any] = {
         "method": raw.method,
         "path": raw.path,
         "operation": operation,
         "target": target,
         "template": template,
-        "body": _truncate_body(
-            json.dumps(raw.request_body, ensure_ascii=False) if raw.request_body
-            else raw.request_body_raw
-        ),
+        "body": body,
         "size_bytes": raw.request_size_bytes,
     }
+    if body_truncated:
+        request["body_truncated"] = True
     if geo_vertex_count > 0:
         request["geo_vertex_count"] = geo_vertex_count
     if operation == "_search":
@@ -302,7 +325,7 @@ def build_record(raw: RawFields) -> dict[str, Any] | list[dict[str, Any]]:
     shards_total = (parse_shards_total_bulk(raw.response_body) if operation == "_bulk"
                     else parse_shards_total(raw.response_body))
     docs_affected = parse_docs_affected(operation, raw.response_body)
-    es_took_ms = _fix_es_nanosecond_bug(
+    es_took_ms = _resolve_bulk_took(
         operation, parse_es_took_ms(raw.response_body), raw.gateway_took_ms,
     )
 

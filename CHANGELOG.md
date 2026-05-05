@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+### Analyzer
+
+- **HTTP compression support** — request/response bodies forwarded by the gateway are now decompressed in the analyzer when they're gzip- or zlib-encoded (e.g. clients using `http_compression: true` such as Logstash). `analyzer/_decompression.py` sniffs the magic bytes and inflates; `main.py` reads the incoming HTTP body with `errors="surrogateescape"` so binary bytes survive the JSON envelope round-trip. Without this, compressed payloads ended up indexed as garbage strings.
+- **`_bulk` `took` now sourced from the gateway timing.** Elasticsearch `_bulk took` has been wrong on every release since 8.13: 8.13–8.15 returned nanoseconds (#111854 / #111863) and 8.16+ reads from a 200ms-cached clock so values are quantized to `{0, 200, 400, …}` (see `BULK_TOOK_ISSUE_DRAFT.md`). The analyzer now ignores `took` for bulk and uses gateway round-trip time, which sidesteps both bugs. Non-bulk operations are unchanged.
+- **`request.body_truncated` flag** — when the stored `request.body` is shortened to fit the ES keyword limit, the record now carries `request.body_truncated: true`. Parsing (template, clause counts, docs_affected, hits, size_bytes) always runs on the *full* body received from the gateway — only the persisted field is trimmed. Lets dashboards distinguish "we have the full body" from "this is a partial copy" instead of silently misleading viewers.
+- **`ALO_REQUEST_BODY_STORE_MAX_BYTES` env var** — analyzer-side cap on the *stored* `request.body` field is now tunable. Default `32000`, interpreted as the size of the stored string including the truncation suffix — sits safely under the 32 766-byte ES keyword field limit so the default works out of the box without manual tuning. Set to `0` to disable truncation entirely (requires the `request.body` mapping to allow values above 32 766 bytes). Wired through `helm/alo/values.yaml` (`analyzer.requestBody.storeMaxBytes`), `values.schema.json`, the analyzer Deployment, and a commented `docker-compose.yml` example.
+
+### Gateway
+
+- **Large request bodies no longer disappear.** Two changes combine to guarantee the full request body always reaches the analyzer: (1) default `client_body_buffer_size` raised from `10m` → `64m` so realistic bulk payloads stay in memory; (2) when nginx spools a body above the cap to a temp file, the `log_by_lua_block` falls back to `ngx.req.get_body_file()` and slurps the file, so we never drop the body. Previously, anything above `10m` left the analyzer with an empty `request_body` — losing template, clause counts, and `docs_affected` (which surfaced as `docs_affected: 0`). The buffer is lazy-allocated per request so the bump costs nothing for normal traffic. Mirrored in the Helm `gateway/configmap.yaml`.
+- **`CLIENT_BODY_BUFFER_SIZE` env var** — nginx in-memory buffer is now tunable. Wired through `gateway/entrypoint.sh` (envsubst), `docker-compose.yml`, and `helm/alo/values.yaml` (`gateway.clientBodyBufferSize`) + `values.schema.json`. Default `64m`. Bump only if disk I/O on the spooled-body path becomes a bottleneck.
+
+### Grafana
+
+- **Dashboard filter links stay on the current dashboard.** Pie / bar / table / raw-doc filter links previously hard-coded `dashboard_uid="alo-main"`, so clicking a filter on Cost Indicators or Cluster Usage redirected users to the Stress Analysis dashboard. Replaced with Grafana's built-in `${__dashboard.uid}` variable so the URL resolves to whichever dashboard the user is viewing.
+
 ## 1.18.1
 
 ### Hebrew Stress Analysis dashboard

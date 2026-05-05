@@ -29,7 +29,7 @@ http {
             "Events dropped due to pipeline notification failure",
             {"reason"})
     }
-    client_body_buffer_size 10m;
+    client_body_buffer_size ${CLIENT_BODY_BUFFER_SIZE};
     client_max_body_size 0;
     resolver ${DNS_RESOLVER} valid=10s ipv6=off;
 
@@ -65,7 +65,21 @@ http {
 
             # Fire-and-forget notification AFTER response is sent to client
             log_by_lua_block {
-                local raw_req  = ngx.req.get_body_data() or ""
+                -- Bodies above client_body_buffer_size are spooled to disk
+                -- by nginx; read from the temp file so we never drop the
+                -- request_body for the analyzer.
+                local raw_req = ngx.req.get_body_data()
+                if not raw_req then
+                    local body_file = ngx.req.get_body_file()
+                    if body_file then
+                        local f = io.open(body_file, "rb")
+                        if f then
+                            raw_req = f:read("*a")
+                            f:close()
+                        end
+                    end
+                    raw_req = raw_req or ""
+                end
                 local ctx = {
                     method          = ngx.var.request_method,
                     path            = ngx.var.uri,

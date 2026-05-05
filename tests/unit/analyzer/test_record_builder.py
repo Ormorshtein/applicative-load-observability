@@ -7,12 +7,15 @@ from unittest.mock import patch
 
 import pytest
 
+from analyzer import record_builder
 from analyzer.record_builder import (
     _CLAUSE_COUNT_OUTPUT_KEYS,
+    _TRUNCATION_SUFFIX,
     RawFields,
     _parse_content_length,
     _parse_json_field,
     _parse_upstream_response_time,
+    _truncate_body,
     build_record,
     extract_raw_fields,
     partial_error_record,
@@ -376,24 +379,40 @@ class TestBuildRecord:
         complex_score = build_record(complex_raw)["stress"]["score"]
         assert complex_score > simple_score
 
-    def test_bulk_nanosecond_took_normalized(self):
-        """ES 8.13-8.15 bug: bulk took in nanoseconds is converted to ms."""
+    def test_bulk_uses_gateway_took_overrides_nanosecond_bug(self):
+        """ES 8.13-8.15 bulk-took-in-nanoseconds is sidestepped by gateway timing."""
         raw = _make_raw(
             method="POST",
             path="/_bulk",
             request_body={},
             request_body_raw='{"index":{"_index":"idx"}}\n{"title":"a"}\n',
             response_body={
-                "took": 24_124_260_718,  # nanoseconds (~24 seconds)
+                "took": 24_124_260_718,
                 "items": [{"index": {"_index": "idx", "_shards": {"total": 2}}}],
             },
-            gateway_took_ms=24_200.0,  # ~24 seconds round-trip
+            gateway_took_ms=24_200.0,
         )
         rec = build_record(raw)
-        assert rec["response"]["es_took_ms"] == pytest.approx(24_124.26, rel=1e-3)
+        assert rec["response"]["es_took_ms"] == 24_200.0
 
-    def test_bulk_normal_took_not_normalized(self):
-        """Normal bulk took values are not affected by the nanosecond guard."""
+    def test_bulk_uses_gateway_took_overrides_quantized_bug(self):
+        """ES 8.16+ 200ms-quantized bulk took is sidestepped by gateway timing."""
+        raw = _make_raw(
+            method="POST",
+            path="/_bulk",
+            request_body={},
+            request_body_raw='{"index":{"_index":"idx"}}\n{"title":"a"}\n',
+            response_body={
+                "took": 0,  # quantized down because indexing finished < 200ms
+                "items": [{"index": {"_index": "idx", "_shards": {"total": 2}}}],
+            },
+            gateway_took_ms=37.5,
+        )
+        rec = build_record(raw)
+        assert rec["response"]["es_took_ms"] == 37.5
+
+    def test_bulk_falls_back_to_es_took_when_gateway_unknown(self):
+        """If gateway timing is missing, keep the upstream-reported took."""
         raw = _make_raw(
             method="POST",
             path="/_bulk",
@@ -403,13 +422,13 @@ class TestBuildRecord:
                 "took": 150,
                 "items": [{"index": {"_index": "idx", "_shards": {"total": 2}}}],
             },
-            gateway_took_ms=200.0,
+            gateway_took_ms=0.0,
         )
         rec = build_record(raw)
         assert rec["response"]["es_took_ms"] == 150.0
 
-    def test_search_high_took_not_normalized(self):
-        """Non-bulk operations are never affected by the nanosecond guard."""
+    def test_search_took_unaffected_by_bulk_fix(self):
+        """Non-bulk operations always use the upstream-reported took."""
         raw = _make_raw(
             response_body={
                 "took": 5_000_000,
@@ -430,6 +449,80 @@ class TestBuildRecord:
         rec = build_record(raw)
         assert rec["response"]["es_took_ms"] == 0
         assert rec["stress"]["score"] > 0  # shards component contributes
+
+
+# ---------------------------------------------------------------------------
+# _truncate_body + request.body_truncated flag
+# ---------------------------------------------------------------------------
+
+class TestTruncateBody:
+    def test_short_body_unchanged_no_flag(self, monkeypatch):
+        monkeypatch.setattr(record_builder, "_MAX_BODY_BYTES", 32_000)
+        body, truncated = _truncate_body("hello")
+        assert body == "hello"
+        assert truncated is False
+
+    def test_long_body_truncated_with_suffix(self, monkeypatch):
+        cap = 64
+        monkeypatch.setattr(record_builder, "_MAX_BODY_BYTES", cap)
+        body, truncated = _truncate_body("a" * 1000)
+        assert truncated is True
+        assert body.endswith(_TRUNCATION_SUFFIX)
+        # Stored string (head + suffix) must fit within the configured cap.
+        assert len(body.encode("utf-8")) <= cap
+
+    def test_zero_disables_truncation(self, monkeypatch):
+        monkeypatch.setattr(record_builder, "_MAX_BODY_BYTES", 0)
+        big = "x" * 1_000_000
+        body, truncated = _truncate_body(big)
+        assert body == big
+        assert truncated is False
+
+    def test_exact_boundary_not_truncated(self, monkeypatch):
+        monkeypatch.setattr(record_builder, "_MAX_BODY_BYTES", 5)
+        body, truncated = _truncate_body("12345")
+        assert body == "12345"
+        assert truncated is False
+
+    def test_multibyte_truncation_decodes_cleanly(self, monkeypatch):
+        # Cap mid-codepoint; errors="ignore" should drop the partial byte
+        # rather than raise UnicodeDecodeError.
+        monkeypatch.setattr(record_builder, "_MAX_BODY_BYTES", 32)
+        body, truncated = _truncate_body("héllo " * 100)  # é = 2 bytes in UTF-8
+        assert truncated is True
+        assert body.endswith(_TRUNCATION_SUFFIX)
+        assert len(body.encode("utf-8")) <= 32
+
+    def test_default_cap_fits_under_keyword_limit(self):
+        # Default cap should sit safely below the 32 766-byte ES keyword
+        # field limit so the stored string always fits.
+        assert record_builder._MAX_BODY_BYTES == 32_000
+        assert record_builder._MAX_BODY_BYTES < 32_766
+
+
+class TestBodyTruncatedFlag:
+    def test_flag_set_when_body_truncated(self, monkeypatch):
+        monkeypatch.setattr(record_builder, "_MAX_BODY_BYTES", 50)
+        long_value = "x" * 500
+        raw = _make_raw(request_body={"q": long_value},
+                        request_body_raw=f'{{"q":"{long_value}"}}')
+        rec = build_record(raw)
+        assert rec["request"].get("body_truncated") is True
+        assert rec["request"]["body"].endswith(_TRUNCATION_SUFFIX)
+
+    def test_flag_absent_when_not_truncated(self, monkeypatch):
+        monkeypatch.setattr(record_builder, "_MAX_BODY_BYTES", 32_000)
+        rec = build_record(_make_raw())
+        assert "body_truncated" not in rec["request"]
+
+    def test_flag_absent_when_truncation_disabled(self, monkeypatch):
+        monkeypatch.setattr(record_builder, "_MAX_BODY_BYTES", 0)
+        long_value = "x" * 100_000
+        raw = _make_raw(request_body={"q": long_value},
+                        request_body_raw=f'{{"q":"{long_value}"}}')
+        rec = build_record(raw)
+        assert "body_truncated" not in rec["request"]
+        assert len(rec["request"]["body"]) > 100_000
 
 
 # ---------------------------------------------------------------------------

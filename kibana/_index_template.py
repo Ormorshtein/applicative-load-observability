@@ -92,6 +92,7 @@ COMPONENT_TEMPLATE: dict = {
                         "target":     {"type": "keyword"},
                         "template":   {"type": "keyword"},
                         "body":       {"type": "keyword", "doc_values": False},
+                        "body_truncated": {"type": "boolean"},
                         "size_bytes": {"type": "integer"},
                         "size":       {"type": "integer"},
                         "geo_vertex_count": {"type": "integer"},

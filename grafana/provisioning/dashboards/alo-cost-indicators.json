@@ -466,7 +466,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-template=${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-template=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -608,7 +608,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-template=${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-template=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -804,7 +804,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-template=${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-template=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -1483,7 +1483,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-cost_indicator=${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-cost_indicator=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -1551,7 +1551,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-application=${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-application=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -1619,7 +1619,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-target=${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-target=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -1687,7 +1687,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-target=${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-target=${__data.fields[0]}",
               "targetBlank": false
             }
           ]

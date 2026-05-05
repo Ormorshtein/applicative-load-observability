@@ -214,7 +214,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-application=${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-application=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -289,7 +289,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-target=${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-target=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -364,7 +364,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-operation=${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-operation=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -439,7 +439,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-cost_indicator=${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-cost_indicator=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -514,7 +514,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-template=${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-template=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -636,7 +636,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-template=${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-template=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -787,7 +787,7 @@
                 "value": [
                   {
                     "title": "Filter by Operation",
-                    "url": "/d/alo-main?${__url_time_range}&var-operation=${__value.raw}",
+                    "url": "/d/${__dashboard.uid}?${__url_time_range}&var-operation=${__value.raw}",
                     "targetBlank": false
                   }
                 ]
@@ -805,7 +805,7 @@
                 "value": [
                   {
                     "title": "Filter by Target",
-                    "url": "/d/alo-main?${__url_time_range}&var-target=${__value.raw}",
+                    "url": "/d/${__dashboard.uid}?${__url_time_range}&var-target=${__value.raw}",
                     "targetBlank": false
                   }
                 ]
@@ -823,7 +823,7 @@
                 "value": [
                   {
                     "title": "Filter by Cost Indicators",
-                    "url": "/d/alo-main?${__url_time_range}&var-cost_indicator=${__value.raw}",
+                    "url": "/d/${__dashboard.uid}?${__url_time_range}&var-cost_indicator=${__value.raw}",
                     "targetBlank": false
                   }
                 ]
@@ -972,7 +972,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-cost_indicator=${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-cost_indicator=${__data.fields[0]}",
               "targetBlank": false
             }
           ]

@@ -257,6 +257,13 @@ analyzer:
     hits: ""
     shardsTotal: ""
     docsAffected: ""
+  requestBody:
+    # Max bytes kept on the stored request.body field. Parsing always runs
+    # on the full body — only the persisted value is truncated. Default
+    # leaves a safety margin under the 32 766-byte ES keyword limit.
+    # Override only when the request.body mapping has been changed (raise
+    # for text mappings, set to 0 to disable truncation entirely).
+    storeMaxBytes: 32000
   resources:
     requests:
       cpu: 100m
@@ -323,6 +330,12 @@ gateway:
   # Workers and connections per OpenResty instance
   workerProcesses: 2
   workerConnections: 4096
+  # In-memory cap for request bodies (nginx client_body_buffer_size).
+  # Lazy-allocated per request — only consumes memory when a body actually
+  # arrives. Bodies above this size spool to a temp file and the gateway
+  # reads the file, so the analyzer always receives the full body. Bump
+  # only if disk I/O on huge bulks becomes a bottleneck.
+  clientBodyBufferSize: "64m"
   # Timeout for ES proxy
   proxyReadTimeout: 60s
   proxyConnectTimeout: 10s

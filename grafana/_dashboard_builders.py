@@ -105,20 +105,18 @@ def build_main_dashboard(lang: str = "en") -> dict:
         title = t("Stress by {label} (Selected Period)").format(label=t(label))
         panels.append(mk_pie(title, field,
                              {"x": i * _THIRD_W, "y": y, "w": _THIRD_W, "h": _PIE_H},
-                             size=8, dashboard_uid=own_uid,
+                             size=8,
                              description=t(PANEL_DESCRIPTIONS["pie"][label])))
     y += _PIE_H
     panels.append(mk_pie(
         t("Stress by {label} (Selected Period)").format(label=t("Cost Indicator")),
         "stress.cost_indicator_names",
         {"x": 0, "y": y, "w": _HALF_W, "h": _PIE_H}, size=10,
-        dashboard_uid=own_uid,
         description=t(PANEL_DESCRIPTIONS["pie"]["Cost Indicator"])))
     panels.append(mk_pie(
         t("Stress by {label} (Selected Period)").format(label=t("Template")),
         "request.template",
         {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PIE_H}, size=10,
-        dashboard_uid=own_uid,
         description=t(PANEL_DESCRIPTIONS["pie"]["Template"])))
     y += _PIE_H
 
@@ -137,7 +135,6 @@ def build_main_dashboard(lang: str = "en") -> dict:
             (t("Avg Cost Indicators"), "stress.cost_indicator_count", "avg"),
             (t("Requests"), None, "count"),
         ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}, size=10,
-        dashboard_uid=own_uid,
         description=t("Top 10 request templates ranked by total stress score, with "
                       "latency percentiles and cost-indicator averages.")))
     y += _PANEL_H
@@ -155,7 +152,7 @@ def build_main_dashboard(lang: str = "en") -> dict:
             ("stress.cost_indicator_names", t("Cost Indicators")),
         ],
         {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H + 2},
-        size=50, sort_field="stress.score", dashboard_uid=own_uid,
+        size=50, sort_field="stress.score",
         description=t("Individual requests with the highest stress scores in the "
                       "selected time range. Click column headers to re-sort.")))
     y += _PANEL_H + 2
@@ -171,7 +168,6 @@ def build_main_dashboard(lang: str = "en") -> dict:
             (t("P99 ES Latency (ms)"), "response.es_took_ms", "percentile_99"),
             (t("Requests"), None, "count"),
         ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}, size=10,
-        dashboard_uid=own_uid,
         description=t("Cost indicator types ranked by total stress contribution, "
                       "with latency percentiles.")))
     y += _PANEL_H
