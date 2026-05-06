@@ -14,12 +14,12 @@ client = TestClient(app)
 
 
 def _post_payload_with_binary_field(payload: dict) -> dict:
-    """Send a payload whose string fields may contain raw bytes via surrogates.
+    """Send a payload whose string fields may contain latin-1 codepoints.
 
     Mirrors what reaches the analyzer when the gateway forwards a gzipped
-    request body inside a cjson-encoded JSON envelope.
+    request body through the Logstash pre-escape pipeline.
     """
-    body = json.dumps(payload).encode("utf-8", errors="surrogateescape")
+    body = json.dumps(payload).encode("utf-8")
     resp = client.post("/analyze", content=body,
                        headers={"content-type": "application/json"})
     return resp.json()
@@ -367,7 +367,7 @@ class TestAnalyzeCompressedBodies:
             "method": "POST",
             "path": "/products/_search",
             "headers": {"content-encoding": "gzip"},
-            "request_body": compressed.decode("utf-8", errors="surrogateescape"),
+            "request_body": compressed.decode("latin-1"),
             "response_body": json.dumps({
                 "took": 7,
                 "hits": {"total": {"value": 3}, "hits": []},
@@ -392,7 +392,7 @@ class TestAnalyzeCompressedBodies:
             "method": "POST",
             "path": "/_bulk",
             "headers": {"content-encoding": "gzip"},
-            "request_body": compressed.decode("utf-8", errors="surrogateescape"),
+            "request_body": compressed.decode("latin-1"),
             "response_body": json.dumps({
                 "took": 4, "errors": False,
                 "items": [
@@ -421,7 +421,7 @@ class TestAnalyzeCompressedBodies:
             "path": "/products/_search",
             "headers": {},
             "request_body": json.dumps({"query": {"match_all": {}}, "size": 10}),
-            "response_body": compressed.decode("utf-8", errors="surrogateescape"),
+            "response_body": compressed.decode("latin-1"),
             "response_status": 200,
         }
         rec = _post_payload_with_binary_field(payload)

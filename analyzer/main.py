@@ -17,14 +17,13 @@ from .record_builder import build_record, extract_raw_fields, partial_error_reco
 app = FastAPI()
 
 
-# Surrogateescape preserves arbitrary bytes that the gateway forwarded
-# inside JSON string fields (e.g. gzip-compressed request_body when a
-# client uses Content-Encoding: gzip). Without this, invalid UTF-8 bytes
-# would either raise UnicodeDecodeError or silently turn into U+FFFD,
-# making the compressed body unrecoverable downstream.
+# Logstash pre-escapes high bytes (0x80-0xFF) as \u00XX before JSON
+# parsing, so the payload arriving here is always valid UTF-8.  Binary
+# body fields (e.g. gzip-compressed request_body) survive as latin-1
+# codepoints (U+0000-U+00FF) which the analyzer recovers downstream.
 async def _read_payload(request: Request) -> Any:
     raw = await request.body()
-    return json.loads(raw.decode("utf-8", errors="surrogateescape"))
+    return json.loads(raw.decode("utf-8"))
 
 Instrumentator(
     should_group_status_codes=True,

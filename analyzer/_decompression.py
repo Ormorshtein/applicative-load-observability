@@ -3,10 +3,10 @@
 The gateway forwards raw HTTP bodies to the pipeline via cjson.encode, so a
 client that sends ``Content-Encoding: gzip`` (e.g. Logstash with
 ``http_compression: true``) produces a JSON string whose value is binary
-gzip data. By the time the body reaches the analyzer it must round-trip
-through Logstash's JSON codec — main.py preserves the bytes by decoding the
-incoming HTTP body with ``errors='surrogateescape'``, and this module
-re-encodes the field with the same handler to recover the original bytes.
+gzip data.  Logstash receives the payload with a plain/ISO-8859-1 codec and
+pre-escapes high bytes as ``\\u00XX``, so by the time JSON is parsed each
+original byte is represented as a codepoint U+0000–U+00FF.  This module
+recovers the original bytes via ``latin-1`` encoding (1:1 codepoint→byte).
 
 Detection is by magic byte rather than HTTP header because the gateway only
 forwards request headers; an upstream-compressed response would otherwise be
@@ -22,7 +22,7 @@ _ZLIB_HEADER_MOD = 31
 
 
 def _to_bytes(text: str) -> bytes:
-    return text.encode("utf-8", errors="surrogateescape")
+    return text.encode("latin-1")
 
 
 def _looks_gzip(blob: bytes) -> bool:
@@ -46,4 +46,6 @@ def decompress_body(text: str) -> str:
             return zlib.decompress(blob).decode("utf-8", errors="replace")
     except (OSError, zlib.error, EOFError):
         pass
-    return text
+    # Not compressed — the blob holds the original UTF-8 bytes
+    # (latin-1 mojibake in the string). Decode to recover real text.
+    return blob.decode("utf-8", errors="replace")

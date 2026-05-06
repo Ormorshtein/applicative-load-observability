@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.20.0
+
+### Pipeline
+- **Byte-safe HTTP compression support** — The pipeline now safely preserves gzip/zlib-compressed payloads containing raw binary data (e.g. from Logstash `http_compression: true`) without JSON-codec corruption.
+  - **Gateway**: Unchanged, safely proxies raw bytes via `cjson.encode()`.
+  - **Logstash**: Input codec changed from `json` to `plain { charset => "ISO-8859-1" }` to prevent UTF-8 corruption of high bytes (0x80-0xFF). A new fast C-level ruby `gsub` filter escapes high bytes as `\u00XX` literals before the `json` filter parses the payload.
+  - **Analyzer**: Replaced Python's `surrogateescape` decoding with `latin-1` mapping to recover the exact bytes received by Logstash. The fallback path for uncompressed bodies now correctly decodes the recovered bytes as UTF-8, ensuring non-ASCII text (e.g., Hebrew, Arabic, CJK) correctly survives the Latin-1 round-trip.
+
+### Tests
+- Replaced all `surrogateescape` usage in the testing suite with `latin-1` to mirror the new pipeline behavior.
+- Added tests for mixed ASCII/Hebrew payloads to verify byte-safety guarantees and UTF-8 recovery on non-compressed bodies.
+
+### Chart
+- Helm chart bumped to `0.10.0`; `appVersion` → `1.20.0`.
+- All 6 images (analyzer, logstash, gateway, kibana-setup, grafana-setup, stress) rebuilt and pushed at `1.20.0`.
+
 ## 1.19.0
 
 ### Analyzer

@@ -26,11 +26,28 @@ data:
     input {
       http {
         port => {{ .Values.logstash.service.httpPort }}
-        codec => "json"
+        codec => plain { charset => "ISO-8859-1" }
       }
     }
 
     filter {
+      # Pre-escape high bytes (0x80-0xFF) as \u00XX so downstream JSON
+      # parsing never corrupts binary data (e.g. gzip-compressed bodies).
+      ruby {
+        code => '
+          msg = event.get("message")
+          if msg
+            escaped = msg.force_encoding("ASCII-8BIT").gsub(/[\x80-\xff]/n) { |b| "\\u00%02x" % b.ord }
+            event.set("message", escaped)
+          end
+        '
+      }
+
+      json {
+        source => "message"
+        remove_field => ["message"]
+      }
+
       ruby {
         code => '
           require "json"
