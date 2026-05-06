@@ -7,6 +7,7 @@ import pytest
 
 from analyzer.parser import (
     parse_applicative_provider,
+    parse_bulk_doc_count,
     parse_docs_affected,
     parse_es_took_ms,
     parse_geo_vertex_count,
@@ -314,6 +315,62 @@ class TestScrubBulkTemplate:
         result = json.loads(template)
         assert result["actions"] == ["index"]
         assert targets == "products"
+
+
+class TestParseBulkDocCount:
+    def test_empty_body(self):
+        assert parse_bulk_doc_count("") == 0
+
+    def test_single_index_action(self):
+        body = '{"index":{"_index":"products"}}\n{"title":"shoes"}\n'
+        assert parse_bulk_doc_count(body) == 1
+
+    def test_multiple_index_actions(self):
+        body = (
+            '{"index":{"_index":"products"}}\n{"title":"shoes"}\n'
+            '{"index":{"_index":"products"}}\n{"title":"hat"}\n'
+            '{"index":{"_index":"products"}}\n{"title":"belt"}\n'
+        )
+        assert parse_bulk_doc_count(body) == 3
+
+    def test_mixed_action_types(self):
+        body = (
+            '{"index":{"_index":"idx"}}\n{"x":1}\n'
+            '{"create":{"_index":"idx"}}\n{"x":2}\n'
+            '{"update":{"_index":"idx"}}\n{"doc":{"x":3}}\n'
+            '{"delete":{"_index":"idx","_id":"1"}}\n'
+        )
+        assert parse_bulk_doc_count(body) == 4
+
+    def test_delete_only_no_doc_body(self):
+        """delete actions have no document body line."""
+        body = (
+            '{"delete":{"_index":"idx","_id":"1"}}\n'
+            '{"delete":{"_index":"idx","_id":"2"}}\n'
+        )
+        assert parse_bulk_doc_count(body) == 2
+
+    def test_malformed_lines_skipped(self):
+        """Unparseable lines should not crash and not count."""
+        body = (
+            'not json at all\n'
+            '{"index":{"_index":"idx"}}\n{"x":1}\n'
+        )
+        assert parse_bulk_doc_count(body) == 1
+
+    def test_blank_lines_ignored(self):
+        body = '\n{"index":{"_index":"idx"}}\n\n{"x":1}\n\n'
+        assert parse_bulk_doc_count(body) == 1
+
+    def test_doc_body_with_action_like_key_not_double_counted(self):
+        """A doc body line containing 'index' key must not count as an action."""
+        body = (
+            '{"index":{"_index":"products"}}\n'
+            '{"title":"shoes","index":42}\n'
+            '{"index":{"_index":"products"}}\n'
+            '{"title":"hat"}\n'
+        )
+        assert parse_bulk_doc_count(body) == 2
 
 
 # ---------------------------------------------------------------------------

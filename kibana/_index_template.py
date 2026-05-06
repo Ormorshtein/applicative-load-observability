@@ -86,16 +86,17 @@ COMPONENT_TEMPLATE: dict = {
                 },
                 "request": {
                     "properties": {
-                        "method":     {"type": "keyword"},
-                        "path":       {"type": "keyword"},
-                        "operation":  {"type": "keyword"},
-                        "target":     {"type": "keyword"},
-                        "template":   {"type": "keyword"},
-                        "body":       {"type": "keyword", "doc_values": False},
-                        "body_truncated": {"type": "boolean"},
-                        "size_bytes": {"type": "integer"},
-                        "size":       {"type": "integer"},
+                        "method":          {"type": "keyword"},
+                        "path":            {"type": "keyword"},
+                        "operation":       {"type": "keyword"},
+                        "target":          {"type": "keyword"},
+                        "template":        {"type": "keyword"},
+                        "body":            {"type": "keyword", "doc_values": False},
+                        "body_truncated":  {"type": "boolean"},
+                        "size_bytes":      {"type": "integer"},
+                        "size":            {"type": "integer"},
                         "geo_vertex_count": {"type": "integer"},
+                        "bulk_doc_count":  {"type": "long"},
                     }
                 },
                 "response": {
@@ -151,11 +152,12 @@ COMPONENT_TEMPLATE: dict = {
                         "multiplier":           {"type": "float"},
                         "components": {
                             "properties": {
-                                "took":          {"type": "float"},
-                                "shards":        {"type": "float"},
-                                "hits":          {"type": "float"},
-                                "docs_affected": {"type": "float"},
-                                "bonus":         {"type": "float"},
+                                "took":            {"type": "float"},
+                                "shards":          {"type": "float"},
+                                "hits":            {"type": "float"},
+                                "docs_affected":   {"type": "float"},
+                                "bulk_doc_count":  {"type": "float"},
+                                "bonus":           {"type": "float"},
                             }
                         },
                         "cost_indicator_count": {"type": "integer"},
@@ -258,9 +260,10 @@ SUMMARY_INDEX_TEMPLATE: dict = {
                 # ── Dimensions (same paths as raw index) ──
                 "request": {
                     "properties": {
-                        "template":  {"type": "keyword"},
-                        "operation": {"type": "keyword"},
-                        "target":    {"type": "keyword"},
+                        "template":       {"type": "keyword"},
+                        "operation":      {"type": "keyword"},
+                        "target":         {"type": "keyword"},
+                        "bulk_doc_count": {"type": "double"},
                     },
                 },
                 "identity": {
@@ -355,7 +358,8 @@ SUMMARY_TRANSFORM: dict = {
             "response.hits":               {"avg": {"field": "response.hits"}},
             "response.shards_total":       {"avg": {"field": "response.shards_total"}},
             "response.docs_affected":      {"avg": {"field": "response.docs_affected"}},
-            "request_size_bytes":          {"avg": {"field": "request.size_bytes"}},
+            "request_size_bytes":           {"avg": {"field": "request.size_bytes"}},
+            "request.bulk_doc_count":       {"avg": {"field": "request.bulk_doc_count"}},
             # Percentiles (p50 / p95 / p99)
             "pct_es_took_ms": {
                 "percentiles": {

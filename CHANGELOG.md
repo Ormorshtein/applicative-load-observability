@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.21.0
+
+### Analyzer
+- **`request.bulk_doc_count`** — new field populated only for `_bulk` operations. Counts NDJSON action lines (`index`, `create`, `update`, `delete`) directly from the request body, so the value is accurate even for interrupted requests (HTTP 499) where the response body is empty or partial.
+- **`_bulk` stress formula now uses `request.bulk_doc_count`** instead of `response.docs_affected`. Bulk operations that previously scored 0 impact (due to missing response items on 499s) now produce accurate stress scores. `response.docs_affected` is unchanged — still recorded for all operations and still used in `_update_by_query` / `_delete_by_query` scoring.
+
+### Dashboards
+- **"Write Volume"** panels renamed to **"Bulk Write Volume"** and switched to `request.bulk_doc_count` (sum/avg) in both the main and usage dashboards.
+- **"Avg Documents per Write"** renamed to **"Avg Documents per Bulk"**.
+- **New panel: "Status Code by Operation"** — line chart in the Volume & Throughput section showing request count split by `request.operation × response.status` (e.g. `_search / 200`, `_bulk / 499`). Grafana only; built with nested terms aggregation.
+
+### Logstash / Helm
+- **Dead letter `request.body` standardisation** — for events that fail analysis (`_httprequestfailure`), the flat `request_body` gateway field is now renamed to `[request][body]` before indexing into the dead-letter index, matching the naming convention of the main observability record.
+
+### Elasticsearch Schema
+- Added `request.bulk_doc_count` (`long`) to the component template (raw indices).
+- Added `request.bulk_doc_count` (`double`) to the summary index template.
+- Added `request.bulk_doc_count` avg aggregation to the summary transform.
+
+### Chart
+- Helm chart bumped to `0.11.0`; `appVersion` → `1.21.0`.
+
 ## 1.20.0
 
 ### Pipeline

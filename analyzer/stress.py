@@ -45,6 +45,7 @@ class StressContext:
     hits:             int
     shards_total:     int
     docs_affected:    int
+    bulk_doc_count:   int = 0  # action-line count from request body (bulk-only)
 
 
 def normalize(value: float, baseline: float) -> float:
@@ -187,8 +188,8 @@ def _stress_query(ctx: StressContext, bl: dict[str, float]) -> dict[str, float]:
 
 def _stress_bulk(ctx: StressContext, bl: dict[str, float]) -> dict[str, float]:
     return {
-        "took":          0.45 * normalize(ctx.es_took_ms, bl["took_ms"]),
-        "docs_affected": 0.55 * normalize(ctx.docs_affected, bl["docs_affected"]),
+        "took":           0.45 * normalize(ctx.es_took_ms, bl["took_ms"]),
+        "bulk_doc_count": 0.55 * normalize(ctx.bulk_doc_count, bl["docs_affected"]),
     }
 
 

@@ -156,7 +156,41 @@ def scrub_bulk_template(raw_body: str) -> tuple[str, str]:
     return template, target_str
 
 
+def parse_bulk_doc_count(raw_body: str) -> int:
+    """Count the number of documents submitted in a ``_bulk`` request body.
+
+    Counts NDJSON action lines (``index``, ``create``, ``update``, ``delete``)
+    only — document body lines that follow each action are not counted.
+    Returns 0 for an empty or entirely malformed body.
+    """
+    count = 0
+    expect_action = True  # alternates: action line → doc line → action line …
+    for line in raw_body.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if expect_action:
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            for action_type in ("index", "create", "update", "delete"):
+                if action_type in obj and isinstance(obj[action_type], dict):
+                    count += 1
+                    # ``delete`` has no following doc body line
+                    expect_action = action_type == "delete"
+                    break
+            else:
+                # Unrecognised line — stay in action-expecting mode
+                pass
+        else:
+            # This is the document body line; skip it
+            expect_action = True
+    return count
+
+
 def parse_msearch_pairs(raw_body: str) -> list[tuple[dict, dict]]:
+
     """Extract (header, search_body) pairs from an _msearch NDJSON request.
 
     _msearch alternates: header line, search body line, header line, ...

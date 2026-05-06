@@ -303,8 +303,29 @@ class TestBuildRecord:
         assert rec["request"]["operation"] == "_bulk"
         assert rec["response"]["shards_total"] == 5  # 2 + 3
         assert rec["response"]["docs_affected"] == 2
+        assert rec["request"]["bulk_doc_count"] == 2  # 2 action lines
         assert rec["request"]["target"] == "idx1,idx2"
         assert "index" in rec["request"]["template"]
+
+    def test_bulk_doc_count_absent_for_non_bulk(self):
+        """request.bulk_doc_count must not appear in non-bulk records."""
+        rec = build_record(_make_raw())  # _search
+        assert "bulk_doc_count" not in rec["request"]
+
+    def test_bulk_doc_count_zero_for_empty_body(self):
+        """A bulk request with no body lines → bulk_doc_count = 0."""
+        raw = _make_raw(
+            method="POST",
+            path="/_bulk",
+            request_body={},
+            request_body_raw="",
+            response_body={
+                "took": 10,
+                "items": [],
+            },
+        )
+        rec = build_record(raw)
+        assert rec["request"]["bulk_doc_count"] == 0
 
     def test_update_by_query_docs_affected(self):
         raw = _make_raw(

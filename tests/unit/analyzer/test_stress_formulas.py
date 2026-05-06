@@ -29,7 +29,10 @@ class TestNormalize:
 
 class TestCalcStress:
     def _ctx(self, **kw) -> StressContext:
-        defaults = dict(es_took_ms=100, gateway_took_ms=100, hits=500, shards_total=5, docs_affected=500)
+        defaults = dict(
+            es_took_ms=100, gateway_took_ms=100, hits=500,
+            shards_total=5, docs_affected=500, bulk_doc_count=500,
+        )
         defaults.update(kw)
         return StressContext(**defaults)
 
@@ -52,9 +55,26 @@ class TestCalcStress:
         assert score == pytest.approx(0.0)
 
     def test_bulk_at_baseline(self):
+        """bulk_doc_count and es_took_ms both at baseline → score = 0.45+0.55 = 1.0"""
         score, _, _ = calc_stress("_bulk", self._ctx())
         expected = 0.45 * 1.0 + 0.55 * 1.0
         assert score == pytest.approx(expected)
+
+    def test_bulk_uses_bulk_doc_count_not_docs_affected(self):
+        """Changing docs_affected has no effect on bulk score; bulk_doc_count does."""
+        ctx_high_docs = self._ctx(docs_affected=10_000, bulk_doc_count=500)
+        ctx_high_bulk = self._ctx(docs_affected=500, bulk_doc_count=10_000)
+        score_docs, _, _ = calc_stress("_bulk", ctx_high_docs)
+        score_bulk, _, _ = calc_stress("_bulk", ctx_high_bulk)
+        # docs_affected change should not affect bulk score
+        assert score_docs == pytest.approx(0.45 * 1.0 + 0.55 * 1.0)
+        # bulk_doc_count increase should significantly raise the score
+        assert score_bulk > score_docs
+
+    def test_bulk_zero_doc_count(self):
+        """bulk_doc_count=0 (e.g. interrupted request with no body) → doc component is 0."""
+        score, _, _ = calc_stress("_bulk", self._ctx(bulk_doc_count=0))
+        assert score == pytest.approx(0.45 * 1.0)
 
     def test_bulk_ignores_multiplier(self):
         score_no, _, _ = calc_stress("_bulk", self._ctx())

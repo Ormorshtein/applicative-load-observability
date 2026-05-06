@@ -356,6 +356,37 @@ def mk_timeseries_multi(title, metrics_spec, gridpos, series_type="line",
                        description=description)
 
 
+def mk_timeseries_nested_terms(title, outer_field, inner_field, gridpos,
+                               outer_size=8, inner_size=10,
+                               series_type="line", fill_opacity=0,
+                               unit=None, description=None):
+    """Timeseries with two nested terms buckets then a date histogram.
+
+    Produces one series per (outer, inner) combination, labelled
+    ``outer_value / inner_value`` by Grafana's ES datasource
+    (e.g. ``_search / 200``, ``_bulk / 499``).
+    """
+    target = _es_target(
+        metrics=[_metric("count", metric_id="1")],
+        bucket_aggs=[
+            _terms_agg(outer_field, agg_id="2", size=outer_size, order_by="_count"),
+            _terms_agg(inner_field, agg_id="3", size=inner_size, order_by="_count"),
+            _date_histogram(agg_id="4"),
+        ],
+    )
+    custom = {"drawStyle": series_type, "fillOpacity": fill_opacity}
+    defaults = {"custom": custom}
+    if unit:
+        defaults["unit"] = unit
+    return _base_panel(title, "timeseries", gridpos, targets=[target],
+                       options={
+                           "legend": {"displayMode": "list", "placement": "right"},
+                           "tooltip": {"mode": "multi"},
+                       },
+                       field_config={"defaults": defaults, "overrides": []},
+                       description=description)
+
+
 def mk_bar(title, field, metric_field, metric_op, metric_label, gridpos,
            size=10, description=None):
     metrics = [_metric(metric_op, metric_field)] if metric_field else [

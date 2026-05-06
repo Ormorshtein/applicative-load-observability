@@ -20,6 +20,7 @@ from _dashboards import (
     mk_text,
     mk_timeseries,
     mk_timeseries_multi,
+    mk_timeseries_nested_terms,
 )
 from _strings import tr
 
@@ -214,17 +215,17 @@ def build_main_dashboard(lang: str = "en") -> dict:
     y += _PANEL_H
 
     panels.append(mk_timeseries(
-        t("Write Volume (Documents)"), None,
+        t("Bulk Write Volume"), None,
         {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        metric_field="response.docs_affected", metric_op="sum",
+        metric_field="request.bulk_doc_count", metric_op="sum",
         series_type="line", fill_opacity=20,
-        description=t("Total documents written (index / bulk / update).")))
+        description=t("Total documents written via bulk (index / create / update / delete actions) — counted from request body, accurate even for interrupted requests.")))
     panels.append(mk_timeseries(
-        t("Avg Documents per Write"), None,
+        t("Avg Documents per Bulk"), None,
         {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        metric_field="response.docs_affected", metric_op="avg",
+        metric_field="request.bulk_doc_count", metric_op="avg",
         series_type="line", fill_opacity=20,
-        description=t("Average documents written per operation — batch-size signal.")))
+        description=t("Average documents per bulk operation — batch-size signal. Counted from request body action lines.")))
     y += _PANEL_H
 
     panels.append(mk_timeseries(
@@ -239,6 +240,15 @@ def build_main_dashboard(lang: str = "en") -> dict:
         metric_field="request.size_bytes", metric_op="avg",
         series_type="line", fill_opacity=20, unit="decbytes",
         description=t("Average request payload size — per-call shape.")))
+    y += _PANEL_H
+
+    panels.append(mk_timeseries_nested_terms(
+        t("Status Code by Operation"),
+        outer_field="request.operation", inner_field="response.status",
+        gridpos={"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
+        outer_size=8, inner_size=10,
+        series_type="line", fill_opacity=0,
+        description=t("HTTP status code frequency per operation type over time (e.g. search‑99). Helps identify which operations are being dropped or returning errors.")))
     y += _PANEL_H
 
     # ── Response Times ────────────────────────────────────────────────
@@ -564,12 +574,12 @@ def build_usage_dashboard() -> dict:
         series_type="line", fill_opacity=20,
         description="Total documents matched by queries, split by operation type."))
     panels.append(mk_timeseries(
-        "Write Volume (Docs Affected)", "request.operation",
+        "Bulk Write Volume", "request.operation",
         {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        metric_field="response.docs_affected", metric_op="sum", size=8,
+        metric_field="request.bulk_doc_count", metric_op="sum", size=8,
         series_type="line", fill_opacity=20,
-        description="Total documents written (indexed / updated / deleted), "
-                    "split by operation type."))
+        description="Total bulk documents submitted (indexed / created / updated / deleted), "
+                    "counted from request body — accurate even for 499s."))
     y += _PANEL_H
 
     panels.append(mk_timeseries_multi(

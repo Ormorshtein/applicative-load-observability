@@ -124,6 +124,11 @@ data:
 
     output {
       if "_httprequestfailure" in [tags] {
+        # Remap flat gateway field to nested path for consistency with the
+        # main observability record schema before writing to dead letter.
+        mutate {
+          rename => { "request_body" => "[request][body]" }
+        }
         elasticsearch {
           hosts => ["{{ include "alo.elasticsearchUrl" . }}"]
           index => "logs-alo.dead_letter-%{cluster_name}"

@@ -44,12 +44,13 @@ HE: dict[str, str] = {
     # Volume panels
     "Request Volume": "נפח בקשות",
     "Documents Matched by Queries": "מסמכים שהוחזרו משאילתות",
-    "Write Volume (Documents)": "נפח כתיבה (מסמכים)",
+    "Bulk Write Volume": "נפח כתיבת Bulk",
     "Request Size": "גודל בקשות",
     "Avg Documents per Query": "ממוצע מסמכים לשאילתה",
-    "Avg Documents per Write": "ממוצע מסמכים לפעולת כתיבה",
+    "Avg Documents per Bulk": "ממוצע מסמכים לפעולת Bulk",
     "Avg Request Size": "גודל בקשה ממוצע",
     "ES Latency": "השהיית Elasticsearch",
+    "Status Code by Operation": "קוד סטטוס לפי פעולה",
 
     # Column labels
     "Sum Stress Score": "סך ציון העומס",
@@ -128,16 +129,18 @@ HE: dict[str, str] = {
         "סך הבקשות לאורך הזמן. הקו המקווקו הוא נתון גיבוי מאינדקס הסיכום השעתי, לאחר שהנתונים הגולמיים פוגו ב-ILM.",
     "Total documents matched by queries. Correlates with ES CPU under queue saturation.":
         "סך המסמכים שהוחזרו משאילתות. במתאם ל-CPU של ES כאשר התור רווי.",
-    "Total documents written (index / bulk / update).":
-        "סך המסמכים שנכתבו (index / bulk / update).",
+    "Total documents written via bulk (index / create / update / delete actions) — counted from request body, accurate even for interrupted requests.":
+        "סך המסמכים שנכתבו דרך Bulk — נספרים מגוף הבקשה, מדויק גם עבור בקשות שנקטעו.",
     "Total inbound request payload size.":
         "סך גודל הבקשות הנכנסות.",
     "Average documents matched per query — query selectivity signal.":
         "ממוצע מסמכים שהוחזרו לשאילתה — אינדיקציה לסלקטיביות השאילתה.",
-    "Average documents written per operation — batch-size signal.":
-        "ממוצע מסמכים שנכתבו לפעולה — אינדיקציה לגודל ה-batch.",
+    "Average documents per bulk operation — batch-size signal. Counted from request body action lines.":
+        "ממוצע מסמכים לפעולת Bulk — אינדיקציה לגודל ה-batch. נספרים משורות הפעולה בגוף הבקשה.",
     "Average request payload size — per-call shape.":
         "גודל ממוצע של מטען הבקשה — צורת הבקשה הבודדת.",
+    "HTTP status code frequency per operation type over time (e.g. search‑200, bulk‑99). Helps identify which operations are being dropped or returning errors.":
+        "תדירות קודי HTTP לפי סוג פעולה לאורך הזמן. מסייע לזהות אילו פעולות נחסמות או מחזירות שגיאות.",
 
     # Panel descriptions — Response Times
     "Elasticsearch response-time trend with Avg / P50 / P95 / P99 — rising P95/P99 signals tail-latency issues.":

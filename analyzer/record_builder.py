@@ -13,6 +13,7 @@ from typing import Any, TypedDict
 from ._decompression import decompress_body
 from .parser import (
     parse_applicative_provider,
+    parse_bulk_doc_count,
     parse_docs_affected,
     parse_es_took_ms,
     parse_geo_vertex_count,
@@ -182,6 +183,7 @@ class RequestSection(TypedDict, total=False):
     size_bytes: int
     size: int
     geo_vertex_count: int
+    bulk_doc_count: int
 
 
 class ResponseSection(TypedDict):
@@ -244,7 +246,8 @@ def _resolve_bulk_took(operation: str, es_took_ms: float, gateway_took_ms: float
 
 def _compute_stress(
     operation: str, raw: RawFields, es_took_ms: float,
-    hits: int, hits_lower_bound: bool, shards_total: int, docs_affected: int,
+    hits: int, hits_lower_bound: bool, shards_total: int,
+    docs_affected: int, bulk_doc_count: int,
 ) -> tuple[dict[str, int], dict[str, int], float, int, float, dict[str, float], dict[str, float]]:
     """Compute clause counts, cost indicators, and stress score."""
     geo_vertex_count = 0
@@ -264,6 +267,7 @@ def _compute_stress(
         hits=hits,
         shards_total=shards_total,
         docs_affected=docs_affected,
+        bulk_doc_count=bulk_doc_count,
     )
     score, bonuses, components = calc_stress(
         operation, ctx, stress_multiplier, clause_counts,
@@ -274,7 +278,7 @@ def _compute_stress(
 
 def _build_request_section(
     raw: RawFields, operation: str, target: str, template: str,
-    size: int, geo_vertex_count: int,
+    size: int, geo_vertex_count: int, bulk_doc_count: int = 0,
 ) -> dict[str, Any]:
     """Assemble the request section of the observability record."""
     body_text = (json.dumps(raw.request_body, ensure_ascii=False)
@@ -295,6 +299,8 @@ def _build_request_section(
         request["geo_vertex_count"] = geo_vertex_count
     if operation == "_search":
         request["size"] = size
+    if operation == "_bulk":
+        request["bulk_doc_count"] = bulk_doc_count
     return request
 
 
@@ -325,6 +331,7 @@ def build_record(raw: RawFields) -> dict[str, Any] | list[dict[str, Any]]:
     shards_total = (parse_shards_total_bulk(raw.response_body) if operation == "_bulk"
                     else parse_shards_total(raw.response_body))
     docs_affected = parse_docs_affected(operation, raw.response_body)
+    bulk_doc_count = parse_bulk_doc_count(raw.request_body_raw) if operation == "_bulk" else 0
     es_took_ms = _resolve_bulk_took(
         operation, parse_es_took_ms(raw.response_body), raw.gateway_took_ms,
     )
@@ -332,12 +339,12 @@ def build_record(raw: RawFields) -> dict[str, Any] | list[dict[str, Any]]:
     (clause_counts, cost_indicators, stress_multiplier,
      indicator_multipliers, geo_vertex_count, score, bonuses, components) = _compute_stress(
         operation, raw, es_took_ms, hits, hits_lower_bound,
-        shards_total, docs_affected,
+        shards_total, docs_affected, bulk_doc_count,
     )
 
     return _assemble_record(
         raw, operation, target, template, es_took_ms,
-        hits, shards_total, docs_affected, clause_counts,
+        hits, shards_total, docs_affected, bulk_doc_count, clause_counts,
         cost_indicators, stress_multiplier, indicator_multipliers,
         geo_vertex_count, score, bonuses, components,
     )
@@ -346,6 +353,7 @@ def build_record(raw: RawFields) -> dict[str, Any] | list[dict[str, Any]]:
 def _assemble_record(
     raw: RawFields, operation: str, target: str, template: str,
     es_took_ms: float, hits: int, shards_total: int, docs_affected: int,
+    bulk_doc_count: int,
     clause_counts: dict[str, int], cost_indicators: dict[str, int],
     stress_multiplier: float, indicator_multipliers: dict[str, float],
     geo_vertex_count: int,
@@ -365,7 +373,7 @@ def _assemble_record(
         },
         "request": _build_request_section(
             raw, operation, target, template, parse_size(raw.request_body),
-            geo_vertex_count,
+            geo_vertex_count, bulk_doc_count,
         ),
         "response": {
             "status": raw.response_status,

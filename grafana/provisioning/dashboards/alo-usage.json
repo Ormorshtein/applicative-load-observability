@@ -1204,7 +1204,7 @@
     },
     {
       "id": 15,
-      "title": "Write Volume (Docs Affected)",
+      "title": "Bulk Write Volume",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1216,7 +1216,7 @@
         "w": 12,
         "h": 8
       },
-      "description": "Total documents written (indexed / updated / deleted), split by operation type.",
+      "description": "Total bulk documents submitted (indexed / created / updated / deleted), counted from request body — accurate even for 499s.",
       "targets": [
         {
           "datasource": {
@@ -1229,7 +1229,7 @@
             {
               "type": "sum",
               "id": "1",
-              "field": "response.docs_affected"
+              "field": "request.bulk_doc_count"
             }
           ],
           "bucketAggs": [

@@ -1667,7 +1667,7 @@
     },
     {
       "id": 20,
-      "title": "Write Volume (Documents)",
+      "title": "Bulk Write Volume",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1679,7 +1679,7 @@
         "w": 12,
         "h": 8
       },
-      "description": "Total documents written (index / bulk / update).",
+      "description": "Total documents written via bulk (index / create / update / delete actions) — counted from request body, accurate even for interrupted requests.",
       "targets": [
         {
           "datasource": {
@@ -1692,7 +1692,7 @@
             {
               "type": "sum",
               "id": "1",
-              "field": "response.docs_affected"
+              "field": "request.bulk_doc_count"
             }
           ],
           "bucketAggs": [
@@ -1728,7 +1728,7 @@
     },
     {
       "id": 21,
-      "title": "Avg Documents per Write",
+      "title": "Avg Documents per Bulk",
       "type": "timeseries",
       "datasource": {
         "type": "elasticsearch",
@@ -1740,7 +1740,7 @@
         "w": 12,
         "h": 8
       },
-      "description": "Average documents written per operation — batch-size signal.",
+      "description": "Average documents per bulk operation — batch-size signal. Counted from request body action lines.",
       "targets": [
         {
           "datasource": {
@@ -1753,7 +1753,7 @@
             {
               "type": "avg",
               "id": "1",
-              "field": "response.docs_affected"
+              "field": "request.bulk_doc_count"
             }
           ],
           "bucketAggs": [
@@ -1912,6 +1912,88 @@
       }
     },
     {
+      "id": 24,
+      "title": "Status Code by Operation",
+      "type": "timeseries",
+      "datasource": {
+        "type": "elasticsearch",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 135,
+        "w": 24,
+        "h": 8
+      },
+      "description": "HTTP status code frequency per operation type over time (e.g. search‑99). Helps identify which operations are being dropped or returning errors.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "elasticsearch",
+            "uid": "${datasource}"
+          },
+          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
+          "refId": "A",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "request.operation",
+              "id": "2",
+              "settings": {
+                "size": "8",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "terms",
+              "field": "response.status",
+              "id": "3",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "field": "@timestamp",
+              "id": "4",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
       "type": "row",
       "title": "Response Times",
       "collapsed": false,
@@ -1919,11 +2001,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 135
+        "y": 143
       }
     },
     {
-      "id": 24,
+      "id": 25,
       "title": "ES Latency",
       "type": "timeseries",
       "datasource": {
@@ -1932,7 +2014,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 136,
+        "y": 144,
         "w": 24,
         "h": 8
       },

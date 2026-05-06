@@ -276,7 +276,13 @@ Why multiplicative: expensive features genuinely compound (wildcard inside neste
 | `response.es_took_ms` | `response_body.took` — ES's own cluster-side execution time in ms (0 if absent). **Nanosecond workaround (ES 8.13–8.15):** a known Elasticsearch bug causes the `took` field in `_bulk` responses to sometimes be reported in nanoseconds instead of milliseconds. The analyzer detects this by comparing `es_took_ms` against `gateway_took_ms` — if the ratio exceeds 1000× (impossible for legitimate values since ES time is a strict subset of gateway round-trip), the value is divided by 1,000,000 to convert back to milliseconds. This guard only applies to `_bulk` operations. |
 | `response.hits` | `response_body.hits.total.value` (0 if absent) |
 | `response.shards_total` | `response_body._shards.total` (0 if absent) |
-| `response.docs_affected` | bulk: `len(items)` / update_by_query: `updated` / delete_by_query: `deleted` / else: 0 |
+| `response.docs_affected` | bulk: `len(items)` / update_by_query: `updated` / delete_by_query: `deleted` / else: 0. Still recorded for all operations; used in stress scoring only for `_update_by_query` and `_delete_by_query`. |
+
+#### Request Body Extraction (Bulk)
+
+| Field | Logic |
+|-------|-------|
+| `request.bulk_doc_count` | **`_bulk` only.** Counts NDJSON action lines (`index`, `create`, `update`, `delete`) in the request body — not document-body lines. Populated from the *request* so it is accurate even for interrupted requests (499s) where `response.items` may be empty or absent. Always 0 for non-bulk operations. |
 
 ---
 
@@ -347,8 +353,9 @@ stress.score = (base + Σ bonuses) × stress.multiplier
 *`_bulk`:*
 ```
 stress.score = 0.45·norm(es_took_ms, 100)
-             + 0.55·norm(docs_affected, 500)
+             + 0.55·norm(bulk_doc_count, 500)
 ```
+Uses `request.bulk_doc_count` (action-line count from request body) instead of `response.docs_affected` so that interrupted requests (HTTP 499) still produce an accurate score even when the response body is empty.
 
 *`_update_by_query` / `_delete_by_query`:*
 ```
@@ -418,14 +425,15 @@ The record uses a structured nested layout grouping related fields:
   },
 
   "request": {
-    "method":     "POST",
-    "path":       "/products/_search",
-    "operation":  "_search",
-    "target":     "products",
-    "template":   "{\"query\":{\"match\":{\"title\":\"?\"}},\"size\":\"?\"}",
-    "body":       {"query": {"match": {"title": "shoes"}}, "size": 10},
-    "size_bytes": 284,
-    "size":       10
+    "method":         "POST",
+    "path":           "/products/_search",
+    "operation":      "_search",
+    "target":         "products",
+    "template":       "{\"query\":{\"match\":{\"title\":\"?\"}},\"size\":\"?\"}",
+    "body":           {"query": {"match": {"title": "shoes"}}, "size": 10},
+    "size_bytes":     284,
+    "size":           10
+    // bulk_doc_count present only on _bulk operations
   },
 
   "response": {
@@ -481,8 +489,8 @@ The record uses a structured nested layout grouping related fields:
 | Group | Fields | Purpose |
 |-------|--------|---------|
 | `identity.*` | username, applicative_provider, user_agent, client_host | Who sent the request |
-| `request.*` | method, path, operation, target, template, body, size_bytes, size | What was requested |
-| `response.*` | es_took_ms, gateway_took_ms, hits, shards_total, docs_affected, size_bytes | What ES returned |
+| `request.*` | method, path, operation, target, template, body, size_bytes, size, bulk_doc_count | What was requested; `bulk_doc_count` present only on `_bulk` |
+| `response.*` | es_took_ms, gateway_took_ms, hits, shards_total, docs_affected, size_bytes | What ES returned; `docs_affected` used for stress only on `_update_by_query`/`_delete_by_query` |
 | `clause_counts.*` | 16 clause type counts | Raw structural complexity |
 | `cost_indicators` | Dict of indicator name → triggering count | Which expensive patterns and how many |
 | `stress.*` | score, multiplier, bonuses, cost_indicator_count, cost_indicator_names | Computed stress assessment |
