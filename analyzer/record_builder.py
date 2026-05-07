@@ -476,6 +476,7 @@ def _build_msearch_records(raw: RawFields) -> list[dict[str, Any]]:
 def partial_error_record(payload: dict[str, Any], exc: Exception) -> dict[str, Any]:
     return {
         "@timestamp": _utc_timestamp(),
+        "cluster_name": payload.get("cluster_name", "unknown"),
         "error": str(exc),
         "path": payload.get("path", ""),
         "method": payload.get("method", ""),

@@ -43,6 +43,13 @@ http {
         listen ${GATEWAY_PORT};
 
         location / {
+            # Record whether the upstream response is gzip-encoded so
+            # the body accumulator and logger can handle it correctly.
+            header_filter_by_lua_block {
+                local ce = ngx.header["Content-Encoding"] or ""
+                ngx.ctx.is_gzip_resp = ce:lower():find("gzip", 1, true) ~= nil
+            }
+
             # Accumulate response chunks for pipeline notification
             # Tracks true size separately so response_size_bytes is accurate
             body_filter_by_lua_block {
@@ -80,12 +87,21 @@ http {
                     end
                     raw_req = raw_req or ""
                 end
+                -- If the upstream sent a gzip-compressed response the binary bytes
+                -- cannot be JSON-serialised by cjson without corruption.
+                -- Base64-encode so the payload stays ASCII-safe; the analyzer
+                -- detects the "gzip+b64:" prefix and decompresses in Python.
+                local resp_body = ngx.ctx.resp_body or ""
+                if ngx.ctx.is_gzip_resp and resp_body ~= "" then
+                    resp_body = "gzip+b64:" .. ngx.encode_base64(resp_body)
+                end
+
                 local ctx = {
                     method          = ngx.var.request_method,
                     path            = ngx.var.uri,
                     headers         = ngx.req.get_headers(),
                     request_body    = raw_req,
-                    response_body   = ngx.ctx.resp_body or "",
+                    response_body   = resp_body,
                     response_status = ngx.status,
                     upstream_response_time = ngx.var.upstream_response_time or "",
                     content_length  = ngx.var.content_length or "",

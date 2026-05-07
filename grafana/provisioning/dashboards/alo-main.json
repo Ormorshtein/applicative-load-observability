@@ -36,8 +36,8 @@
             "type": "prometheus",
             "uid": "${datasource_prometheus}"
           },
-          "expr": "elasticsearch_process_cpu_percent{instance=~\"$instance\"}",
-          "legendFormat": "{{instance}}",
+          "expr": "elasticsearch_process_cpu_percent{cluster=~\"$cluster\"}",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],

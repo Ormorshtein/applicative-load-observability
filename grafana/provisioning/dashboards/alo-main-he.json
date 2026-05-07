@@ -36,8 +36,8 @@
             "type": "prometheus",
             "uid": "${datasource_prometheus}"
           },
-          "expr": "elasticsearch_process_cpu_percent{instance=~\"$instance\"}",
-          "legendFormat": "{{instance}}",
+          "expr": "elasticsearch_process_cpu_percent{cluster=~\"$cluster\"}",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -61,7 +61,7 @@
           "links": [
             {
               "title": "Open ES Health Dashboard",
-              "url": "/d/alo-health?orgId=1&${__url_time_range}"
+              "url": "/d/alo-health-he?orgId=1&${__url_time_range}"
             }
           ]
         },

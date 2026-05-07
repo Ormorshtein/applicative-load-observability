@@ -166,6 +166,7 @@ PROMETHEUS_DS = {"type": "prometheus", "uid": "${datasource_prometheus}"}
 
 def mk_cpu_panel(gridpos, lang="en"):
     """ES process CPU panel (Prometheus) with drilldown link to Health dashboard."""
+    health_uid = f"alo-health{'-he' if lang == 'he' else ''}"
     return {
         "id": _next_id(),
         "title": tr("ES CPU Usage", lang),
@@ -175,8 +176,8 @@ def mk_cpu_panel(gridpos, lang="en"):
         "gridPos": gridpos,
         "targets": [{
             "datasource": PROMETHEUS_DS,
-            "expr": 'elasticsearch_process_cpu_percent{instance=~"$instance"}',
-            "legendFormat": "{{instance}}",
+            "expr": 'elasticsearch_process_cpu_percent{cluster=~"$cluster"}',
+            "legendFormat": "{{name}}",
             "refId": "A",
         }],
         "options": {
@@ -190,7 +191,7 @@ def mk_cpu_panel(gridpos, lang="en"):
                 "noValue": "Enable prometheus profile",
                 "links": [{
                     "title": "Open ES Health Dashboard",
-                    "url": "/d/alo-health?orgId=1&${__url_time_range}",
+                    "url": f"/d/{health_uid}?orgId=1&${{__url_time_range}}",
                 }],
             },
             "overrides": [],
@@ -482,7 +483,7 @@ def mk_table(title, bucket_field, bucket_label, metrics_spec, gridpos,
 
 
 def mk_raw_docs_table(title, columns, gridpos, size=50, query="",
-                      sort_field="stress.score", description=None):
+                      sort_field="stress.score", limit=None, description=None):
     """Table panel that lists individual ES documents.
 
     *columns* is an ordered list of (source_field, display_label). Only these
@@ -490,6 +491,9 @@ def mk_raw_docs_table(title, columns, gridpos, size=50, query="",
     The panel sorts descending by *sort_field* client-side — the ES query
     itself returns by @timestamp desc, so *size* should comfortably exceed
     the number of rows we want to display after sorting.
+
+    If *limit* is set, a Grafana limit transformation is appended so the
+    table only shows that many rows after sorting.
 
     Columns whose source field is in ``_FIELD_TO_VAR`` get per-cell data
     links that re-open the main dashboard filtered by the clicked value.
@@ -512,6 +516,11 @@ def mk_raw_docs_table(title, columns, gridpos, size=50, query="",
             "renameByName": rename_by_name,
         },
     }]
+    if limit is not None:
+        transformations.append({
+            "id": "limit",
+            "options": {"limitCount": limit},
+        })
     overrides = []
     for src, label in columns:
         var_name = _FIELD_TO_VAR.get(src)
