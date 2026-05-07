@@ -104,6 +104,11 @@ data:
             {{- end }}
 
             location / {
+                header_filter_by_lua_block {
+                    local ce = ngx.header["Content-Encoding"] or ""
+                    ngx.ctx.is_gzip_resp = ce:lower():find("gzip", 1, true) ~= nil
+                }
+
                 body_filter_by_lua_block {
                     local chunk = ngx.arg[1]
                     if chunk and chunk ~= "" then
@@ -138,12 +143,24 @@ data:
                         end
                         raw_req = raw_req or ""
                     end
+                    -- If the client sent a compressed request body, base64-encode it
+                    -- so cjson can serialise it safely. Covers gzip and deflate (APM server).
+                    local req_ce = (ngx.req.get_headers()["Content-Encoding"] or ""):lower()
+                    if (req_ce:find("gzip", 1, true) or req_ce:find("deflate", 1, true)) and raw_req ~= "" then
+                        raw_req = "gzip+b64:" .. ngx.encode_base64(raw_req)
+                    end
+                    -- If the upstream sent a gzip-compressed response, base64-encode it
+                    -- for the same reason. The analyzer detects the "gzip+b64:" prefix.
+                    local resp_body = ngx.ctx.resp_body or ""
+                    if ngx.ctx.is_gzip_resp and resp_body ~= "" then
+                        resp_body = "gzip+b64:" .. ngx.encode_base64(resp_body)
+                    end
                     local ctx = {
                         method          = ngx.var.request_method,
                         path            = ngx.var.uri,
                         headers         = ngx.req.get_headers(),
                         request_body    = raw_req,
-                        response_body   = ngx.ctx.resp_body or "",
+                        response_body   = resp_body,
                         response_status = ngx.status,
                         upstream_response_time = ngx.var.upstream_response_time or "",
                         content_length  = ngx.var.content_length or "",

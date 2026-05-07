@@ -91,7 +91,7 @@ http {
                 -- for the same reason as gzip responses: cjson cannot serialise binary
                 -- bytes safely. The analyzer detects the "gzip+b64:" prefix.
                 local req_ce = (ngx.req.get_headers()["Content-Encoding"] or ""):lower()
-                if req_ce:find("gzip", 1, true) and raw_req ~= "" then
+                if (req_ce:find("gzip", 1, true) or req_ce:find("deflate", 1, true)) and raw_req ~= "" then
                     raw_req = "gzip+b64:" .. ngx.encode_base64(raw_req)
                 end
                 -- If the upstream sent a gzip-compressed response the binary bytes
