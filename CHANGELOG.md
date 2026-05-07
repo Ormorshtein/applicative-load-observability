@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.21.2
+
+### Gateway
+
+- **gzip response body handling** — when Elasticsearch returns a `Content-Encoding: gzip` response, the raw binary bytes are now base64-encoded with a `gzip+b64:` prefix before JSON-serialisation. Previously `cjson.encode` silently replaced every non-UTF-8 byte with U+FFFD, producing corrupted `response_body` fields and causing the analyzer to crash or route records to the dead-letter index.
+- **gzip request body handling** — same treatment for clients that send `Content-Encoding: gzip` request bodies (e.g. Logstash bulk writes). The compressed bytes are base64-encoded before entering the Logstash payload so `bulk_doc_count`, request template, and clause counts are parsed correctly from the decompressed NDJSON.
+- Both fixes use OpenResty's built-in `ngx.encode_base64` — no extra dependencies or Dockerfile changes required.
+
+### Analyzer
+
+- **`gzip+b64:` fast path in `decompress_body`** — detects the gateway prefix, base64-decodes, and inflates in Python. Moves all decompression complexity into Python (where it's easy to maintain) rather than Lua.
+- **`UnicodeEncodeError` guard** — non-Latin-1 characters in response bodies (e.g. residual `\ufffd` from older gateway versions) no longer crash the decompressor; they are passed through as-is.
+- **`cluster_name` in `partial_error_record`** — error records produced during analyzer failures now always carry `cluster_name`, so the Logstash dead-letter index pattern `logs-alo.dead_letter-%{cluster_name}` can always be interpolated without leaving placeholder literals in the index name.
+
+### Grafana
+
+- **CPU panel** — ES CPU usage now filters by `cluster=~"$cluster"` instead of `instance`, and the legend uses `{{name}}` for readable series labels.
+- **Health dashboard drilldown** — the CPU panel links to the language-appropriate health dashboard (`alo-health` or `alo-health-he`) based on the `lang` parameter.
+
+### Chart
+
+- Helm chart bumped to `0.12.0`; `appVersion` → `1.21.2`.
+- All 6 images (analyzer, logstash, gateway, kibana-setup, grafana-setup, stress) rebuilt and pushed at `1.21.2`.
+
 ## 1.21.0
 
 ### Analyzer
