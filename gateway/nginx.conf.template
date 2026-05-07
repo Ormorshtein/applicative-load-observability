@@ -87,6 +87,13 @@ http {
                     end
                     raw_req = raw_req or ""
                 end
+                -- If the client sent a gzip-compressed request body, base64-encode it
+                -- for the same reason as gzip responses: cjson cannot serialise binary
+                -- bytes safely. The analyzer detects the "gzip+b64:" prefix.
+                local req_ce = (ngx.req.get_headers()["Content-Encoding"] or ""):lower()
+                if req_ce:find("gzip", 1, true) and raw_req ~= "" then
+                    raw_req = "gzip+b64:" .. ngx.encode_base64(raw_req)
+                end
                 -- If the upstream sent a gzip-compressed response the binary bytes
                 -- cannot be JSON-serialised by cjson without corruption.
                 -- Base64-encode so the payload stays ASCII-safe; the analyzer
