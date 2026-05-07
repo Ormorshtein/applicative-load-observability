@@ -455,6 +455,7 @@ def _build_msearch_records(raw: RawFields) -> list[dict[str, Any]]:
             gateway_took_ms=raw.gateway_took_ms,
             request_size_bytes=raw.request_size_bytes,
             response_size_bytes=raw.response_size_bytes,
+            cluster_name=raw.cluster_name,
         )
 
         record = _assemble_record(
