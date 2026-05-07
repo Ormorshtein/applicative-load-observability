@@ -5,6 +5,7 @@ Never crashes: returns 200 with partial record on any parse error.
 """
 
 import json
+import logging
 from typing import Any
 
 import uvicorn
@@ -13,6 +14,8 @@ from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from .record_builder import build_record, extract_raw_fields, partial_error_record
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -39,12 +42,20 @@ Instrumentator(
 async def analyze(request: Request) -> JSONResponse:
     try:
         payload = await _read_payload(request)
-    except (json.JSONDecodeError, ValueError, UnicodeDecodeError):
+    except (json.JSONDecodeError, ValueError, UnicodeDecodeError) as exc:
+        logger.warning("unparseable payload: %s", exc)
         return JSONResponse(status_code=200, content={"error": "unparseable payload"})
+
+    logger.debug("analyze: method=%s path=%s", payload.get("method"), payload.get("path"))
 
     try:
         record = build_record(extract_raw_fields(payload))
     except Exception as exc:
+        logger.error(
+            "record build failed for %s %s: %s",
+            payload.get("method"), payload.get("path"), exc,
+            exc_info=True,
+        )
         record = partial_error_record(payload, exc)
 
     return JSONResponse(status_code=200, content=record)
@@ -61,21 +72,37 @@ async def analyze_bulk(request: Request) -> JSONResponse:
     """
     try:
         payloads = await _read_payload(request)
-    except (json.JSONDecodeError, ValueError, UnicodeDecodeError):
+    except (json.JSONDecodeError, ValueError, UnicodeDecodeError) as exc:
+        logger.warning("bulk: unparseable payload: %s", exc)
         return JSONResponse(status_code=200, content={"error": "unparseable payload"})
 
     if not isinstance(payloads, list):
+        logger.warning("bulk: expected JSON array, got %s", type(payloads).__name__)
         return JSONResponse(status_code=200, content={"error": "expected JSON array"})
 
+    logger.info("bulk: processing %d items", len(payloads))
+
     results = []
-    for payload in payloads:
+    errors = 0
+    for i, payload in enumerate(payloads):
         if not isinstance(payload, dict):
+            logger.debug("bulk: item %d is not an object (type=%s)", i, type(payload).__name__)
             results.append({"error": "non-object item"})
+            errors += 1
             continue
         try:
             results.append(build_record(extract_raw_fields(payload)))
         except Exception as exc:
+            logger.error(
+                "bulk: item %d (%s %s) failed: %s",
+                i, payload.get("method"), payload.get("path"), exc,
+                exc_info=True,
+            )
             results.append(partial_error_record(payload, exc))
+            errors += 1
+
+    if errors:
+        logger.warning("bulk: %d/%d items produced errors", errors, len(payloads))
 
     return JSONResponse(status_code=200, content=results)
 
