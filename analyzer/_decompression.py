@@ -5,7 +5,7 @@ client that sends ``Content-Encoding: gzip`` (e.g. Logstash with
 ``http_compression: true``) produces a JSON string whose value is binary
 gzip data.  Logstash receives the payload with a plain/ISO-8859-1 codec and
 pre-escapes high bytes as ``\\u00XX``, so by the time JSON is parsed each
-original byte is represented as a codepoint U+0000–U+00FF.  This module
+original byte is represented as a codepoint U+0000-U+00FF.  This module
 recovers the original bytes via ``latin-1`` encoding (1:1 codepoint→byte).
 
 Detection is by magic byte rather than HTTP header because the gateway only
@@ -14,8 +14,12 @@ indistinguishable from binary garbage.
 """
 
 import base64
+import binascii
 import gzip
+import logging
 import zlib
+
+logger = logging.getLogger(__name__)
 
 _GZIP_MAGIC = b"\x1f\x8b"
 _ZLIB_FIRST_BYTE = 0x78
@@ -57,22 +61,22 @@ def decompress_body(text: str) -> str:
                 return gzip.decompress(blob).decode("utf-8", errors="replace")
             if _looks_zlib(blob):
                 return zlib.decompress(blob).decode("utf-8", errors="replace")
-        except Exception:
-            pass
+        except (binascii.Error, OSError, zlib.error, EOFError) as exc:
+            logger.warning("gzip+b64 decompress failed: %s", exc)
         return ""  # corrupt / unexpected — treat as empty
 
-    blob = _to_bytes(text)
-    if blob is None:
+    raw_bytes = _to_bytes(text)
+    if raw_bytes is None:
         # Body contains non-Latin-1 characters — not compressed binary;
         # return as-is rather than crashing.
         return text
     try:
-        if _looks_gzip(blob):
-            return gzip.decompress(blob).decode("utf-8", errors="replace")
-        if _looks_zlib(blob):
-            return zlib.decompress(blob).decode("utf-8", errors="replace")
+        if _looks_gzip(raw_bytes):
+            return gzip.decompress(raw_bytes).decode("utf-8", errors="replace")
+        if _looks_zlib(raw_bytes):
+            return zlib.decompress(raw_bytes).decode("utf-8", errors="replace")
     except (OSError, zlib.error, EOFError):
-        pass
-    # Not compressed — the blob holds the original UTF-8 bytes
+        logger.debug("body not gzip/zlib, treating as text")
+    # Not compressed — raw_bytes holds the original UTF-8 bytes
     # (latin-1 mojibake in the string). Decode to recover real text.
-    return blob.decode("utf-8", errors="replace")
+    return raw_bytes.decode("utf-8", errors="replace")

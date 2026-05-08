@@ -15,6 +15,7 @@ import math
 import os
 import ssl
 import time
+import urllib.error
 import urllib.request
 from base64 import b64encode
 
@@ -64,7 +65,8 @@ def _build_headers() -> dict[str, str]:
 
 def _fetch_p50() -> dict[str, float]:
     """Query ES for P50 of took_ms and shards_total from recent searches."""
-    assert _ES_URL is not None  # caller checks _ES_URL before calling
+    if _ES_URL is None:
+        raise RuntimeError("_fetch_p50 called without ELASTICSEARCH_URL set")
     body = json.dumps({
         "size": 0,
         "query": {"bool": {"filter": [
@@ -117,7 +119,7 @@ def _refresh() -> None:
                 "Dynamic baselines refreshed: %s",
                 {k: _cache[k] for k in _DYNAMIC_KEYS},
             )
-        except Exception:
+        except (urllib.error.URLError, OSError, TimeoutError, json.JSONDecodeError, ValueError):
             logger.warning(
                 "ES unreachable for dynamic baselines, keeping current values",
                 exc_info=True,

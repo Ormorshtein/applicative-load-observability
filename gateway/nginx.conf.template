@@ -43,13 +43,6 @@ http {
         listen ${GATEWAY_PORT};
 
         location / {
-            # Record whether the upstream response is gzip-encoded so
-            # the body accumulator and logger can handle it correctly.
-            header_filter_by_lua_block {
-                local ce = ngx.header["Content-Encoding"] or ""
-                ngx.ctx.is_gzip_resp = ce:lower():find("gzip", 1, true) ~= nil
-            }
-
             # Accumulate response chunks for pipeline notification
             # Tracks true size separately so response_size_bytes is accurate
             body_filter_by_lua_block {
@@ -72,6 +65,17 @@ http {
 
             # Fire-and-forget notification AFTER response is sent to client
             log_by_lua_block {
+                -- cjson cannot serialise binary bytes safely.
+                -- Base64-encode any body whose first two bytes are the gzip
+                -- magic number so the payload stays ASCII-safe; the analyzer
+                -- detects the "gzip+b64:" prefix and decompresses in Python.
+                local function b64_if_binary(body)
+                    if body ~= "" and body:sub(1, 2) == "\x1f\x8b" then
+                        return "gzip+b64:" .. ngx.encode_base64(body)
+                    end
+                    return body
+                end
+
                 -- Bodies above client_body_buffer_size are spooled to disk
                 -- by nginx; read from the temp file so we never drop the
                 -- request_body for the analyzer.
@@ -87,21 +91,8 @@ http {
                     end
                     raw_req = raw_req or ""
                 end
-                -- If the client sent a gzip-compressed request body, base64-encode it
-                -- for the same reason as gzip responses: cjson cannot serialise binary
-                -- bytes safely. The analyzer detects the "gzip+b64:" prefix.
-                local req_ce = (ngx.req.get_headers()["Content-Encoding"] or ""):lower()
-                if (req_ce:find("gzip", 1, true) or req_ce:find("deflate", 1, true)) and raw_req ~= "" then
-                    raw_req = "gzip+b64:" .. ngx.encode_base64(raw_req)
-                end
-                -- If the upstream sent a gzip-compressed response the binary bytes
-                -- cannot be JSON-serialised by cjson without corruption.
-                -- Base64-encode so the payload stays ASCII-safe; the analyzer
-                -- detects the "gzip+b64:" prefix and decompresses in Python.
-                local resp_body = ngx.ctx.resp_body or ""
-                if ngx.ctx.is_gzip_resp and resp_body ~= "" then
-                    resp_body = "gzip+b64:" .. ngx.encode_base64(resp_body)
-                end
+                raw_req = b64_if_binary(raw_req)
+                local resp_body = b64_if_binary(ngx.ctx.resp_body or "")
 
                 local ctx = {
                     method          = ngx.var.request_method,
@@ -116,8 +107,6 @@ http {
                     client_host     = ngx.var.remote_addr,
                     cluster_name    = "${CLUSTER_NAME}",
                 }
-                ngx.ctx.resp_body = nil
-
                 metric_events_total:inc(1)
 
                 local function notify_logstash(premature, ctx)

@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.21.3
+
+### Analyzer
+
+- **Module split** — `analyzer/main.py` (147 lines, 4 concerns) broken into focused `_`-prefixed modules: `_logging.py` (dictConfig), `_metrics.py` (Prometheus instrumentation), `_routes.py` (`/analyze`, `/analyze/bulk`, `/health` handlers). `main.py` is now a ~30-line orchestrator.
+- **`python -m analyzer.main` entry point** — `def main() / if __name__ == "__main__"` block added so the server can be started directly without the uvicorn CLI. Passes `log_config=None` to prevent uvicorn from overwriting the custom dictConfig.
+- **Package split** — `parser.py`, `record_builder.py`, `stress.py` each converted to a sub-package (`parser/`, `record_builder/`, `stress/`) for better internal cohesion.
+- **`_baselines.py` error handling** — replaced bare `assert` with `RuntimeError`, narrowed broad `except Exception` to explicit `(urllib.error.URLError, OSError, TimeoutError, json.JSONDecodeError, ValueError)`.
+- **`_decompression.py` error handling** — specific exception types replace broad `except Exception: pass`; added module logger; renamed `blob` to `raw_bytes` for clarity.
+
+### Gateway
+
+- **`b64_if_binary` helper** — DRY refactor of the gzip-detection / base64-encode logic into a local Lua function. Eliminates the duplicated `header_filter_by_lua_block` and unifies request-body and response-body handling under a single code path.
+
+### Chart
+
+- Helm chart bumped to `0.12.1`; `appVersion` → `1.21.3`.
+- All 6 images (analyzer, logstash, gateway, kibana-setup, grafana-setup, stress) rebuilt and pushed at `1.21.3`.
+
 ## 1.21.2
 
 ### Gateway
