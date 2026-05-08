@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.22.0
+
+### Helm chart: per-resource setup flags (replaces `dashboardUI` enum)
+
+**Breaking:** `dashboardUI: kibana|grafana|none` removed. Kibana and Grafana are now toggled independently via `kibana.enabled` and `grafana.enabled`.
+
+**ES resources now run in their own Job (`es-setup`, hook-weight 1).** Previously ES ILM, mappings, index templates, and the summary transform ran inside the Kibana setup job — meaning choosing `dashboardUI: grafana` silently skipped all ES resource creation. Fixed.
+
+**New per-resource flags** under `elasticsearch.setup`, `kibana.setup`, and `grafana.setup` — all default to `true`:
+
+| Values path | Controls |
+|---|---|
+| `elasticsearch.setup.ilm` | ILM policies |
+| `elasticsearch.setup.componentTemplate` | Component template (field mappings) |
+| `elasticsearch.setup.indexTemplates` | Composable index templates |
+| `elasticsearch.setup.summaryTemplate` | Summary index template |
+| `elasticsearch.setup.transform` | Summary transform (stop/delete/create/start) |
+| `kibana.setup.dataView` | Kibana data view |
+| `kibana.setup.savedSearches` | Saved searches |
+| `kibana.setup.dashboards` | Dashboard import/rebuild |
+| `kibana.setup.rebuild` | Rebuild via API + re-export ndjson (default: false) |
+| `grafana.setup.dashboards` | Grafana dashboards |
+
+**Migration:** remove `dashboardUI` from values overrides; set `kibana.enabled` / `grafana.enabled` directly.
+
+### Chart
+- Helm chart bumped to `0.13.0`; `appVersion` → `1.22.0`.
+
 ## 1.21.3
 
 ### Analyzer

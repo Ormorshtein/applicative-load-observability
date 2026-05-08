@@ -1,4 +1,3 @@
-{{ include "alo.validateConfig" . -}}
 ALO (Applicative Load Observability) has been deployed!
 
 === Gateway (Elasticsearch Proxy) ===
@@ -48,7 +47,7 @@ Point your applications to the gateway instead of Elasticsearch directly.
   Security: {{ if .Values.elasticsearch.security.enabled }}enabled{{ else }}disabled{{ end }}
 {{- end }}
 
-{{- if and (eq (include "alo.kibanaEffective" .) "true") (not .Values.kibana.external.enabled) }}
+{{- if and .Values.kibana.enabled (not .Values.kibana.external.enabled) }}
 
 === Kibana ===
   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "alo.fullname" . }}-kibana {{ .Values.kibana.service.port }}:{{ .Values.kibana.service.port }}
@@ -58,7 +57,7 @@ Point your applications to the gateway instead of Elasticsearch directly.
 {{- end }}
 {{- end }}
 
-{{- if and (eq (include "alo.grafanaEffective" .) "true") (not .Values.grafana.external.enabled) }}
+{{- if and .Values.grafana.enabled (not .Values.grafana.external.enabled) }}
 
 === Grafana ===
   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "alo.fullname" . }}-grafana {{ .Values.grafana.service.port }}:{{ .Values.grafana.service.port }}

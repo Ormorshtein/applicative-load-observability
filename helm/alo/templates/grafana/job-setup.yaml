@@ -1,4 +1,5 @@
-{{- if and (eq (include "alo.grafanaEffective" .) "true") .Values.grafana.setup.enabled }}
+{{- $gf := .Values.grafana.setup -}}
+{{- if and .Values.grafana.enabled $gf.enabled $gf.dashboards }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -29,8 +30,8 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: setup
-          image: "{{ .Values.grafana.setup.image.repository }}:{{ .Values.grafana.setup.image.tag }}"
-          imagePullPolicy: {{ .Values.grafana.setup.image.pullPolicy }}
+          image: "{{ $gf.image.repository }}:{{ $gf.image.tag }}"
+          imagePullPolicy: {{ $gf.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           command: ["python", "/app/setup.py", "--mode", "api"]

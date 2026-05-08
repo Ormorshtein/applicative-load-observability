@@ -107,7 +107,9 @@ def import_ndjson(cfg: StackConfig, path: str, label: str) -> bool:
         return False
 
 
-def do_import(cfg: StackConfig) -> bool:
+def do_import(cfg: StackConfig, *, dashboards: bool = True) -> bool:
+    if not dashboards:
+        return True
     ok1 = import_ndjson(cfg, NDJSON_PATH, "main dashboard")
     ok2 = import_ndjson(cfg, CI_NDJSON_PATH, "cost indicators dashboard")
     ok3 = import_ndjson(cfg, USAGE_NDJSON_PATH, "usage dashboard")
@@ -234,16 +236,25 @@ def _create_saved_search(cfg: StackConfig, search_id: str, title: str,
     print(f"  {'OK' if ok else 'FAIL'}: {title} (Saved Search)")
 
 
-def do_rebuild(cfg: StackConfig) -> bool:
-    _create_data_view(cfg)
-    _create_saved_search(
-        cfg, HEAVIEST_OPS_SEARCH_ID, "Top 10 Heaviest Operations",
-        "Individual requests with highest stress scores",
-        _HEAVIEST_OPS_COLUMNS, sort_field="stress.score")
+def do_rebuild(cfg: StackConfig, *,
+               data_view: bool = True,
+               saved_searches: bool = True,
+               dashboards: bool = True) -> bool:
+    if data_view:
+        _create_data_view(cfg)
+    if saved_searches:
+        _create_saved_search(
+            cfg, HEAVIEST_OPS_SEARCH_ID, "Top 10 Heaviest Operations",
+            "Individual requests with highest stress scores",
+            _HEAVIEST_OPS_COLUMNS, sort_field="stress.score")
+
+    if not dashboards:
+        return True
 
     main_vis = build_main_visualizations()
     vis_ids = _upsert_visualizations(cfg, main_vis, all_lens=False)
-    vis_ids.append(HEAVIEST_OPS_SEARCH_ID)
+    if saved_searches:
+        vis_ids.append(HEAVIEST_OPS_SEARCH_ID)
     ok1 = build_dashboard(cfg, DASHBOARD_ID,
                           "ALO \u2014 Stress Analysis",
                           "Stress analysis by application, target, operation, and template.",

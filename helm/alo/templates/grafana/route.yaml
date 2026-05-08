@@ -1,4 +1,4 @@
-{{- if and (eq (include "alo.grafanaEffective" .) "true") .Values.route.enabled .Values.route.grafana.enabled }}
+{{- if and .Values.grafana.enabled .Values.route.enabled .Values.route.grafana.enabled }}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:

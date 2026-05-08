@@ -149,18 +149,17 @@ def _status_label(ok: bool) -> str:
     return "OK" if ok else "FAIL"
 
 
-def ensure_es_resources(cfg: StackConfig) -> bool:
-    """Create ILM policies, component template, and composable index templates."""
+def ensure_ilm(cfg: StackConfig) -> bool:
     all_ok = True
-
-    # 1. ILM policies (referenced by index templates)
     for name, body in ILM_POLICIES.items():
         status, _ = es_request(cfg, "PUT", f"/_ilm/policy/{name}", body)
         ok = _put_ok(status)
         print(f"  {_status_label(ok)}: ILM policy ({name})")
         all_ok &= ok
+    return all_ok
 
-    # 2. Component template (referenced by composable templates)
+
+def ensure_component_template(cfg: StackConfig) -> bool:
     status, _ = es_request(
         cfg, "PUT",
         f"/_component_template/{COMPONENT_TEMPLATE_NAME}",
@@ -168,28 +167,31 @@ def ensure_es_resources(cfg: StackConfig) -> bool:
     )
     ok = _put_ok(status)
     print(f"  {_status_label(ok)}: Component template ({COMPONENT_TEMPLATE_NAME})")
-    all_ok &= ok
+    return ok
 
-    # 3. Composable index templates
+
+def ensure_index_templates(cfg: StackConfig) -> bool:
+    all_ok = True
     for name, body in INDEX_TEMPLATES.items():
         status, _ = es_request(cfg, "PUT", f"/_index_template/{name}", body)
         ok = _put_ok(status)
         print(f"  {_status_label(ok)}: Index template ({name})")
         all_ok &= ok
-
-    # Clean up the legacy single template if it exists
     es_request(cfg, "DELETE", "/_index_template/alo-template")
+    return all_ok
 
-    # 4. Summary index template (long-term retention)
+
+def ensure_summary_template(cfg: StackConfig) -> bool:
     status, _ = es_request(
         cfg, "PUT", "/_index_template/alo-summary", SUMMARY_INDEX_TEMPLATE,
     )
     ok = _put_ok(status)
     print(f"  {_status_label(ok)}: Summary index template (alo-summary)")
-    all_ok &= ok
+    return ok
 
-    # 5. Continuous transform for summary aggregation
-    # Delete + recreate (PUT update fails when agg fields change)
+
+def ensure_summary_transform(cfg: StackConfig) -> bool:
+    # Delete + recreate — PUT update fails when agg fields change
     es_request(cfg, "POST", f"/_transform/{SUMMARY_TRANSFORM_ID}/_stop")
     es_request(cfg, "DELETE", f"/_transform/{SUMMARY_TRANSFORM_ID}")
     status, _ = es_request(
@@ -198,8 +200,6 @@ def ensure_es_resources(cfg: StackConfig) -> bool:
     )
     ok = _put_ok(status)
     print(f"  {_status_label(ok)}: Summary transform ({SUMMARY_TRANSFORM_ID})")
-    all_ok &= ok
     if ok:
         es_request(cfg, "POST", f"/_transform/{SUMMARY_TRANSFORM_ID}/_start")
-
-    return all_ok
+    return ok
