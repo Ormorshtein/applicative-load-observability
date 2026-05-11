@@ -96,7 +96,11 @@ def _build_datasource_body(name, uid, elasticsearch_url, index_pattern,
     if es_ca_cert:
         json_data["tlsAuth"] = False
         json_data["tlsAuthWithCACert"] = True
-        secure_json["tlsCACert"] = es_ca_cert
+        if os.path.isfile(es_ca_cert):
+            with open(es_ca_cert, encoding="utf-8") as f:
+                secure_json["tlsCACert"] = f.read()
+        else:
+            secure_json["tlsCACert"] = es_ca_cert
     if es_insecure:
         json_data["tlsSkipVerify"] = True
     body = {
@@ -176,24 +180,27 @@ def import_dashboard(grafana_url, dashboard, username, password):
 
 def do_api_setup(grafana_url, elasticsearch_url, username, password,
                  es_username="", es_password="", es_ca_cert="",
-                 es_insecure=False):
+                 es_insecure=False, datasource=True, dashboards=True):
     if not wait_grafana(grafana_url, username, password):
         return False
 
     print()
-    all_ok = create_datasource(grafana_url, elasticsearch_url, username,
-                               password, es_username=es_username,
-                               es_password=es_password, es_ca_cert=es_ca_cert,
-                               es_insecure=es_insecure)
+    all_ok = True
+    if datasource:
+        all_ok = create_datasource(grafana_url, elasticsearch_url, username,
+                                   password, es_username=es_username,
+                                   es_password=es_password, es_ca_cert=es_ca_cert,
+                                   es_insecure=es_insecure)
 
-    builders = [
-        lambda: build_main_dashboard("en"),
-        lambda: build_main_dashboard("he"),
-        build_cost_indicators_dashboard,
-        build_usage_dashboard,
-    ]
-    for builder in builders:
-        all_ok &= import_dashboard(grafana_url, builder(), username, password)
+    if dashboards:
+        builders = [
+            lambda: build_main_dashboard("en"),
+            lambda: build_main_dashboard("he"),
+            build_cost_indicators_dashboard,
+            build_usage_dashboard,
+        ]
+        for builder in builders:
+            all_ok &= import_dashboard(grafana_url, builder(), username, password)
 
     print(f"\n  Main dashboard (EN):       {grafana_url}/d/alo-main")
     print(f"  Main dashboard (HE):       {grafana_url}/d/alo-main-he")
@@ -206,11 +213,19 @@ def do_api_setup(grafana_url, elasticsearch_url, username, password,
 # Provision mode — generate files
 # ---------------------------------------------------------------------------
 
-def do_provision(elasticsearch_url, grafana_url, prometheus_url=""):
+def do_provision(elasticsearch_url, grafana_url, prometheus_url="",
+                 es_username="", es_password="", es_insecure=False,
+                 es_ca_cert="", datasource=True, dashboards=True):
     print("  Generating provisioning files:\n")
-    generate_datasource_yaml(elasticsearch_url)
-    generate_prometheus_datasource_yaml(prometheus_url)
-    export_dashboards()
+    if datasource:
+        generate_datasource_yaml(elasticsearch_url,
+                                 es_username=es_username,
+                                 es_password=es_password,
+                                 es_insecure=es_insecure,
+                                 es_ca_cert=es_ca_cert)
+        generate_prometheus_datasource_yaml(prometheus_url)
+    if dashboards:
+        export_dashboards()
     print(f"\n  Main dashboard (EN):       {grafana_url}/d/alo-main")
     print(f"  Main dashboard (HE):       {grafana_url}/d/alo-main-he")
     print(f"  Cost indicators dashboard: {grafana_url}/d/alo-cost-indicators")
@@ -266,6 +281,14 @@ def main():
         "--es-insecure", action="store_true",
         default=os.getenv("ES_INSECURE", "").lower() in ("1", "true", "yes"),
         help="Skip ES TLS verification")
+
+    sections = parser.add_argument_group("sections")
+    sections.add_argument(
+        "--datasource", action=argparse.BooleanOptionalAction, default=True,
+        help="Create/update Elasticsearch datasource(s)")
+    sections.add_argument(
+        "--dashboards", action=argparse.BooleanOptionalAction, default=True,
+        help="Import/export dashboards")
     args = parser.parse_args()
 
     print(f"\n  Elasticsearch: {args.elasticsearch}")
@@ -277,9 +300,17 @@ def main():
                           args.password, es_username=args.es_username,
                           es_password=args.es_password,
                           es_ca_cert=args.es_ca_cert,
-                          es_insecure=args.es_insecure)
+                          es_insecure=args.es_insecure,
+                          datasource=args.datasource,
+                          dashboards=args.dashboards)
     else:
-        ok = do_provision(args.elasticsearch, args.grafana, args.prometheus_url)
+        ok = do_provision(args.elasticsearch, args.grafana, args.prometheus_url,
+                          es_username=args.es_username,
+                          es_password=args.es_password,
+                          es_insecure=args.es_insecure,
+                          es_ca_cert=args.es_ca_cert,
+                          datasource=args.datasource,
+                          dashboards=args.dashboards)
 
     sys.exit(0 if ok else 1)
 

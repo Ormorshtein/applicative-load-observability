@@ -235,6 +235,8 @@
         },
         "image": { "$ref": "#/$defs/image" },
         "replicas": { "$ref": "#/$defs/replicas" },
+        "javaOpts": { "type": "string", "description": "JVM heap and GC flags passed as LS_JAVA_OPTS." },
+        "extraEnv": { "type": "array", "items": { "type": "object" }, "description": "Extra env vars appended to the Logstash container." },
         "resources": { "$ref": "#/$defs/resources" },
         "service": {
           "type": "object",
@@ -490,6 +492,7 @@
           "properties": {
             "enabled": { "type": "boolean" },
             "image": { "$ref": "#/$defs/image" },
+            "datasource": { "type": "boolean", "description": "Create/update Elasticsearch datasource(s) in Grafana." },
             "dashboards": { "type": "boolean", "description": "Push ALO dashboards to Grafana." }
           }
         },

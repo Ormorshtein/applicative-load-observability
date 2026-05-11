@@ -35,8 +35,10 @@ spec:
           imagePullPolicy: {{ .Values.logstash.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          {{- if eq (include "alo.esAuthEnabled" .) "true" }}
           env:
+            - name: LS_JAVA_OPTS
+              value: {{ .Values.logstash.javaOpts | quote }}
+            {{- if eq (include "alo.esAuthEnabled" .) "true" }}
             - name: ES_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -47,7 +49,10 @@ spec:
                 secretKeyRef:
                   name: {{ include "alo.esAuthSecretName" . | trim }}
                   key: password
-          {{- end }}
+            {{- end }}
+            {{- with .Values.logstash.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.logstash.service.httpPort }}

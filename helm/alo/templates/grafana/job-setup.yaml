@@ -1,5 +1,5 @@
 {{- $gf := .Values.grafana.setup -}}
-{{- if and .Values.grafana.enabled $gf.enabled $gf.dashboards }}
+{{- if and .Values.grafana.enabled $gf.enabled (or $gf.datasource $gf.dashboards) }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -34,7 +34,17 @@ spec:
           imagePullPolicy: {{ $gf.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          command: ["python", "/app/setup.py", "--mode", "api"]
+          command:
+            - python
+            - /app/setup.py
+            - --mode
+            - api
+            {{- if not $gf.datasource }}
+            - --no-datasource
+            {{- end }}
+            {{- if not $gf.dashboards }}
+            - --no-dashboards
+            {{- end }}
           env:
             - name: GRAFANA_URL
               value: {{ include "alo.grafanaUrl" . | quote }}
@@ -51,6 +61,10 @@ spec:
                 secretKeyRef:
                   name: {{ include "alo.esAuthSecretName" . }}
                   key: password
+            {{- end }}
+            {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
+            - name: ES_CA_CERT
+              value: /etc/ssl/es/ca.crt
             {{- end }}
             {{- if and .Values.elasticsearch.external.enabled .Values.elasticsearch.external.tls.insecureSkipVerify }}
             - name: ES_INSECURE
@@ -87,5 +101,17 @@ spec:
               value: {{ .Values.grafana.adminPassword | quote }}
               {{- end }}
             {{- end }}
+          {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
+          volumeMounts:
+            - name: es-ca
+              mountPath: /etc/ssl/es
+              readOnly: true
+          {{- end }}
+      {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
+      volumes:
+        - name: es-ca
+          secret:
+            secretName: {{ include "alo.esCaSecretName" . }}
+      {{- end }}
       {{- include "alo.scheduling" .Values.grafana | nindent 6 }}
 {{- end }}

@@ -29,6 +29,7 @@ services:
       - ANALYZER_URL=${ANALYZER_URL:-http://analyzer:8000/analyze}
       - LOGSTASH_HTTP_PORT=${LOGSTASH_HTTP_PORT:-8080}
       - CLUSTER_NAME=${CLUSTER_NAME:-default}
+      - LS_JAVA_OPTS=${LS_JAVA_OPTS:--Xms512m -Xmx512m}
     volumes:
       - ./logstash/pipeline/:/usr/share/logstash/pipeline/
       - ./logstash/logstash.yml:/usr/share/logstash/logstash.yml:ro
@@ -181,4 +182,3 @@ volumes:
 networks:
   obs-net:
     driver: bridge
-
