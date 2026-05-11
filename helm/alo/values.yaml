@@ -123,7 +123,7 @@ elasticsearch:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: kibana-setup-1.22.0
+      tag: kibana-setup-1.22.1
       pullPolicy: IfNotPresent
     ilm: true               # PUT _ilm/policy/* (4 policies)
     componentTemplate: true # PUT _component_template/alo-mappings (field mappings)
@@ -197,7 +197,7 @@ logstash:
   # ── Internal deployment (ignored when external.enabled=true) ──
   image:
     repository: oracle1012/applicative-load-observability
-    tag: logstash-1.22.0
+    tag: logstash-1.22.1
     pullPolicy: IfNotPresent
   replicas: 1
   javaOpts: "-Xms512m -Xmx512m"
@@ -252,7 +252,7 @@ analyzer:
   enabled: true
   image:
     repository: oracle1012/applicative-load-observability
-    tag: analyzer-1.22.0
+    tag: analyzer-1.22.1
     pullPolicy: IfNotPresent
   replicas: 1
   port: 8000
@@ -318,7 +318,7 @@ gateway:
   dnsResolver: ""
   image:
     repository: oracle1012/applicative-load-observability
-    tag: gateway-1.22.0
+    tag: gateway-1.22.1
     pullPolicy: IfNotPresent
   replicas: 2
   port: 9200
@@ -422,7 +422,7 @@ kibana:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: kibana-setup-1.22.0
+      tag: kibana-setup-1.22.1
       pullPolicy: IfNotPresent
     dataView: true      # create alo-data-view
     savedSearches: true # create "Top 10 Heaviest Operations" saved search
@@ -476,7 +476,7 @@ grafana:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: grafana-setup-1.22.0
+      tag: grafana-setup-1.22.1
       pullPolicy: IfNotPresent
     datasource: true    # create/update Elasticsearch datasource(s) in Grafana
     dashboards: true    # push ALO dashboards (main, cost indicators, usage) to Grafana

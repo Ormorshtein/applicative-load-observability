@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.22.0
+## 1.22.1
 
 ### Helm chart: per-resource setup flags (replaces `dashboardUI` enum)
 

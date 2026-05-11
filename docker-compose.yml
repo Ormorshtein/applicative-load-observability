@@ -20,7 +20,7 @@ services:
       retries: 10
 
   logstash:
-    image: oracle1012/applicative-load-observability:logstash-1.22.0
+    image: oracle1012/applicative-load-observability:logstash-1.22.1
     ports:
       - "8080:8080"
       # - "9600:9600"  # Uncomment to expose Logstash monitoring API
@@ -51,7 +51,7 @@ services:
     build:
       context: .
       dockerfile: analyzer/Dockerfile
-    image: oracle1012/applicative-load-observability:analyzer-1.22.0
+    image: oracle1012/applicative-load-observability:analyzer-1.22.1
     environment:
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       # Dynamic baselines — P50 from recent search traffic (requires ELASTICSEARCH_URL):
@@ -109,7 +109,7 @@ services:
     build:
       context: gateway
       dockerfile: Dockerfile
-    image: oracle1012/applicative-load-observability:gateway-1.22.0
+    image: oracle1012/applicative-load-observability:gateway-1.22.1
     volumes:
       - ./gateway/nginx.conf.template:/etc/nginx/nginx.conf.template:ro
     ports:
