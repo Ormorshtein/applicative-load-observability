@@ -314,39 +314,6 @@ Whether storage ES URL is HTTPS (SSL must be enabled in clients).
 {{- end }}
 
 {{/*
-Whether Kibana is effectively enabled.
-Prefers dashboardUI enum; falls back to kibana.enabled for backward compat.
-*/}}
-{{- define "alo.kibanaEffective" -}}
-{{- if .Values.dashboardUI -}}
-  {{- if eq .Values.dashboardUI "kibana" -}}true{{- else -}}false{{- end -}}
-{{- else -}}
-  {{- if .Values.kibana.enabled -}}true{{- else -}}false{{- end -}}
-{{- end -}}
-{{- end }}
-
-{{/*
-Whether Grafana is effectively enabled.
-*/}}
-{{- define "alo.grafanaEffective" -}}
-{{- if .Values.dashboardUI -}}
-  {{- if eq .Values.dashboardUI "grafana" -}}true{{- else -}}false{{- end -}}
-{{- else -}}
-  {{- if .Values.grafana.enabled -}}true{{- else -}}false{{- end -}}
-{{- end -}}
-{{- end }}
-
-{{/*
-Validate conflicting dashboard/monitoring settings.
-Call from NOTES.txt to fail at render time with a clear message.
-*/}}
-{{- define "alo.validateConfig" -}}
-{{- if and (not .Values.dashboardUI) .Values.kibana.enabled .Values.grafana.enabled -}}
-{{- fail "Cannot enable both kibana and grafana. Set dashboardUI to 'kibana', 'grafana', or 'none'." -}}
-{{- end -}}
-{{- end }}
-
-{{/*
 Pod scheduling helpers — renders nodeSelector, tolerations, affinity.
 Usage: {{ include "alo.scheduling" .Values.gateway }}
 */}}

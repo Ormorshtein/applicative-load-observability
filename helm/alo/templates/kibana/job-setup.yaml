@@ -1,4 +1,5 @@
-{{- if and (eq (include "alo.kibanaEffective" .) "true") .Values.kibana.setup.enabled }}
+{{- $kb := .Values.kibana.setup -}}
+{{- if and .Values.kibana.enabled $kb.enabled (or $kb.dataView $kb.savedSearches $kb.dashboards) }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -29,20 +30,30 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: setup
-          image: "{{ .Values.kibana.setup.image.repository }}:{{ .Values.kibana.setup.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.kibana.setup.image.pullPolicy }}
+          image: "{{ $kb.image.repository }}:{{ $kb.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ $kb.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           command:
             - python
             - /app/setup.py
+            - --no-ilm
+            - --no-component-template
+            - --no-index-templates
+            - --no-summary-template
+            - --no-transform
+            {{- if not $kb.dataView }}
+            - --no-data-view
+            {{- end }}
+            {{- if not $kb.savedSearches }}
+            - --no-saved-searches
+            {{- end }}
+            {{- if not $kb.dashboards }}
+            - --no-dashboards
+            {{- end }}
+            {{- if $kb.rebuild }}
             - --rebuild
-            - --shards={{ .Values.indexSettings.shards }}
-            - --replicas={{ .Values.indexSettings.replicas }}
-            - --refresh-interval={{ .Values.indexSettings.refreshInterval }}
-            - --raw-retention={{ .Values.indexSettings.rawRetention }}
-            - --rollover-max-age={{ .Values.indexSettings.rolloverMaxAge }}
-            - --summary-retention={{ .Values.indexSettings.summaryRetention }}
+            {{- end }}
           env:
             - name: KIBANA_URL
               value: {{ include "alo.kibanaUrl" . | quote }}

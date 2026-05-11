@@ -1,5 +1,56 @@
 # Changelog
 
+## 1.22.1
+
+### Helm chart: per-resource setup flags (replaces `dashboardUI` enum)
+
+**Breaking:** `dashboardUI: kibana|grafana|none` removed. Kibana and Grafana are now toggled independently via `kibana.enabled` and `grafana.enabled`.
+
+**ES resources now run in their own Job (`es-setup`, hook-weight 1).** Previously ES ILM, mappings, index templates, and the summary transform ran inside the Kibana setup job — meaning choosing `dashboardUI: grafana` silently skipped all ES resource creation. Fixed.
+
+**New per-resource flags** under `elasticsearch.setup`, `kibana.setup`, and `grafana.setup` — all default to `true`:
+
+| Values path | Controls |
+|---|---|
+| `elasticsearch.setup.ilm` | ILM policies |
+| `elasticsearch.setup.componentTemplate` | Component template (field mappings) |
+| `elasticsearch.setup.indexTemplates` | Composable index templates |
+| `elasticsearch.setup.summaryTemplate` | Summary index template |
+| `elasticsearch.setup.transform` | Summary transform (stop/delete/create/start) |
+| `kibana.setup.dataView` | Kibana data view |
+| `kibana.setup.savedSearches` | Saved searches |
+| `kibana.setup.dashboards` | Dashboard import/rebuild |
+| `kibana.setup.rebuild` | Rebuild via API + re-export ndjson (default: false) |
+| `grafana.setup.datasource` | Elasticsearch datasource(s) in Grafana |
+| `grafana.setup.dashboards` | Grafana dashboards |
+
+**Migration:** remove `dashboardUI` from values overrides; set `kibana.enabled` / `grafana.enabled` directly.
+
+### Grafana: per-section flags + CA cert file support
+
+- `grafana.setup.datasource` flag added (mirrors `kibana.setup.*` pattern). Controls `--datasource` / `--no-datasource` in both API and provision modes.
+- `grafana/setup.py`: `do_api_setup` and `do_provision` accept `datasource=` and `dashboards=` kwargs; CLI exposes `--datasource` / `--no-datasource` and `--dashboards` / `--no-dashboards` via `BooleanOptionalAction`.
+- `grafana/_datasource.py`: `generate_datasource_yaml` now accepts `es_username`, `es_password`, `es_insecure`, `es_ca_cert` — CA cert value is read from disk if a file path is given, else treated as a literal PEM string. Provisioned YAML gains `basicAuth`, `tlsSkipVerify`, and `tlsCACert` blocks as appropriate.
+- `grafana/setup.py` `_build_datasource_body`: same file-read logic for `es_ca_cert` (API path).
+- Helm grafana-setup Job: passes `--no-datasource` / `--no-dashboards` from values; mounts ES CA cert secret at `/etc/ssl/es/ca.crt` via `ES_CA_CERT` env var when `elasticsearch.external.tls.caSecret` is set. Job now renders when either `datasource` or `dashboards` is enabled.
+
+### Logstash: configurable JVM heap + extra env vars
+
+- `logstash.javaOpts` (default `"-Xms512m -Xmx512m"`) passed as `LS_JAVA_OPTS` to the container. Fixes OOM on memory-constrained nodes — override via `--set logstash.javaOpts="-Xms1g -Xmx1g"`.
+- `logstash.extraEnv` (default `[]`) — arbitrary env vars appended to the Logstash container for settings not exposed by the chart.
+- `docker-compose.yml`: logstash service gains `LS_JAVA_OPTS=${LS_JAVA_OPTS:--Xms512m -Xmx512m}` to match.
+
+### Default values changes
+
+- `kibana.enabled` default changed `true` → `false`; `grafana.enabled` default changed `false` → `true`.
+- `gateway.service.type` and `grafana.service.type` default changed `ClusterIP` → `LoadBalancer`.
+- `analyzer.replicas` default changed `2` → `1`.
+- ES, Logstash, Analyzer, Gateway resource requests/limits reduced to lower dev-cluster footprint (ES: 250 m/512 Mi req, 1/1 Gi limit; Analyzer: 50 m/64 Mi req, 200 m/128 Mi limit; Gateway: 50 m/64 Mi req, 200 m/256 Mi limit; Logstash: 100 m/512 Mi req, 500 m/1 Gi limit).
+- `elasticsearch.javaOpts` default `−Xms512m −Xmx512m` → `−Xms256m −Xmx256m`.
+
+### Chart
+- Helm chart bumped to `0.13.0`; `appVersion` → `1.22.0`.
+
 ## 1.21.3
 
 ### Analyzer

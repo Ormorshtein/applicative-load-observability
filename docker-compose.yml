@@ -20,7 +20,7 @@ services:
       retries: 10
 
   logstash:
-    image: oracle1012/applicative-load-observability:logstash-1.21.3
+    image: oracle1012/applicative-load-observability:logstash-1.22.1
     ports:
       - "8080:8080"
       # - "9600:9600"  # Uncomment to expose Logstash monitoring API
@@ -29,6 +29,7 @@ services:
       - ANALYZER_URL=${ANALYZER_URL:-http://analyzer:8000/analyze}
       - LOGSTASH_HTTP_PORT=${LOGSTASH_HTTP_PORT:-8080}
       - CLUSTER_NAME=${CLUSTER_NAME:-default}
+      - LS_JAVA_OPTS=${LS_JAVA_OPTS:--Xms512m -Xmx512m}
     volumes:
       - ./logstash/pipeline/:/usr/share/logstash/pipeline/
       - ./logstash/logstash.yml:/usr/share/logstash/logstash.yml:ro
@@ -50,7 +51,7 @@ services:
     build:
       context: .
       dockerfile: analyzer/Dockerfile
-    image: oracle1012/applicative-load-observability:analyzer-1.21.3
+    image: oracle1012/applicative-load-observability:analyzer-1.22.1
     environment:
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       # Dynamic baselines — P50 from recent search traffic (requires ELASTICSEARCH_URL):
@@ -108,7 +109,7 @@ services:
     build:
       context: gateway
       dockerfile: Dockerfile
-    image: oracle1012/applicative-load-observability:gateway-1.21.3
+    image: oracle1012/applicative-load-observability:gateway-1.22.1
     volumes:
       - ./gateway/nginx.conf.template:/etc/nginx/nginx.conf.template:ro
     ports:
@@ -181,4 +182,3 @@ volumes:
 networks:
   obs-net:
     driver: bridge
-

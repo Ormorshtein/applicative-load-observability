@@ -8,11 +8,6 @@
       "enum": ["logstash", "nifi"],
       "description": "Pipeline processor to deploy: logstash or nifi."
     },
-    "dashboardUI": {
-      "type": "string",
-      "enum": ["kibana", "grafana", "none"],
-      "description": "Dashboard UI to deploy: kibana, grafana, or none."
-    },
     "global": {
       "type": "object",
       "additionalProperties": false,
@@ -33,7 +28,7 @@
     "indexSettings": {
       "type": "object",
       "additionalProperties": false,
-      "description": "ES index performance settings passed to kibana setup.py.",
+      "description": "ES index performance settings passed to the es-setup job.",
       "properties": {
         "shards": {
           "type": "integer", "minimum": 1,
@@ -145,7 +140,21 @@
         "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
         "tolerations": { "$ref": "#/$defs/tolerations" },
         "affinity": { "$ref": "#/$defs/affinity" },
-        "podAnnotations": { "$ref": "#/$defs/podAnnotations" }
+        "podAnnotations": { "$ref": "#/$defs/podAnnotations" },
+        "setup": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "ES resource setup job (ILM, component template, index templates, summary transform).",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "image": { "$ref": "#/$defs/image" },
+            "ilm": { "type": "boolean", "description": "Create ILM policies." },
+            "componentTemplate": { "type": "boolean", "description": "Create component template (field mappings)." },
+            "indexTemplates": { "type": "boolean", "description": "Create composable index templates." },
+            "summaryTemplate": { "type": "boolean", "description": "Create summary index template." },
+            "transform": { "type": "boolean", "description": "Recreate and start the summary transform." }
+          }
+        }
       }
     },
     "nifi": {
@@ -226,6 +235,8 @@
         },
         "image": { "$ref": "#/$defs/image" },
         "replicas": { "$ref": "#/$defs/replicas" },
+        "javaOpts": { "type": "string", "description": "JVM heap and GC flags passed as LS_JAVA_OPTS." },
+        "extraEnv": { "type": "array", "items": { "type": "object" }, "description": "Extra env vars appended to the Logstash container." },
         "resources": { "$ref": "#/$defs/resources" },
         "service": {
           "type": "object",
@@ -480,7 +491,9 @@
           "additionalProperties": false,
           "properties": {
             "enabled": { "type": "boolean" },
-            "image": { "$ref": "#/$defs/image" }
+            "image": { "$ref": "#/$defs/image" },
+            "datasource": { "type": "boolean", "description": "Create/update Elasticsearch datasource(s) in Grafana." },
+            "dashboards": { "type": "boolean", "description": "Push ALO dashboards to Grafana." }
           }
         },
         "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
@@ -516,9 +529,14 @@
         "setup": {
           "type": "object",
           "additionalProperties": false,
+          "description": "Kibana saved-object setup job (data view, saved searches, dashboards).",
           "properties": {
             "enabled": { "type": "boolean" },
-            "image": { "$ref": "#/$defs/image" }
+            "image": { "$ref": "#/$defs/image" },
+            "dataView": { "type": "boolean", "description": "Create the alo-data-view index pattern." },
+            "savedSearches": { "type": "boolean", "description": "Create saved searches." },
+            "dashboards": { "type": "boolean", "description": "Import ALO dashboards." },
+            "rebuild": { "type": "boolean", "description": "Rebuild dashboards via API and re-export ndjson." }
           }
         },
         "nodeSelector": { "$ref": "#/$defs/nodeSelector" },

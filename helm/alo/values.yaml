@@ -4,15 +4,6 @@
 # When "nifi":     deploys NiFi, skips Logstash.
 pipelineMode: logstash
 
-# ── Dashboard UI ──────────────────────────────────────────────────────────
-# Which dashboard UI to deploy: "kibana", "grafana", or "none".
-#   kibana  → deploys Kibana + ALO dashboard setup job (default)
-#   grafana → deploys Grafana + ALO dashboard setup job
-#   none    → no dashboard UI deployed
-# For external instances, set this to the matching value and configure
-# the external section under kibana or grafana below.
-dashboardUI: kibana
-
 # ── Global ──────────────────────────────────────────────────────────────────
 global:
   # Name of the monitored Elasticsearch cluster (used as data stream namespace)
@@ -21,7 +12,7 @@ global:
   observabilityIndex: alo
 
 # ── Index Performance Settings ──────────────────────────────────────────────
-# Passed to kibana setup.py as CLI args. Controls ES index templates and ILM.
+# Passed to the es-setup job. Controls ES index templates and ILM.
 indexSettings:
   shards: 1
   replicas: 0
@@ -78,11 +69,11 @@ elasticsearch:
   replicas: 1
   resources:
     requests:
-      cpu: 500m
-      memory: 1Gi
+      cpu: 250m
+      memory: 512Mi
     limits:
-      cpu: "2"
-      memory: 2Gi
+      cpu: "1"
+      memory: 1Gi
   initResources:
     requests:
       cpu: 50m
@@ -90,7 +81,7 @@ elasticsearch:
     limits:
       cpu: 100m
       memory: 64Mi
-  javaOpts: "-Xms512m -Xmx512m"
+  javaOpts: "-Xms256m -Xmx256m"
   persistence:
     enabled: true
     size: 10Gi
@@ -124,6 +115,21 @@ elasticsearch:
   tolerations: []
   affinity: {}
   podAnnotations: {}
+  # ES setup job — creates ILM policies, component template (field mappings),
+  # composable index templates, summary index template, and summary transform.
+  # Runs as a pre-Kibana hook (hook-weight: 1) so ES resources are ready
+  # before any UI setup job runs, regardless of which UI is chosen.
+  setup:
+    enabled: true
+    image:
+      repository: oracle1012/applicative-load-observability
+      tag: kibana-setup-1.22.1
+      pullPolicy: IfNotPresent
+    ilm: true               # PUT _ilm/policy/* (4 policies)
+    componentTemplate: true # PUT _component_template/alo-mappings (field mappings)
+    indexTemplates: true    # PUT _index_template/alo-search-operations|alo-write-operations|alo-default|alo-dead-letter
+    summaryTemplate: true   # PUT _index_template/alo-summary
+    transform: true         # recreate + start _transform/alo-summary-transform
 
 # ── NiFi ────────────────────────────────────────────────────────────────────
 nifi:
@@ -191,16 +197,21 @@ logstash:
   # ── Internal deployment (ignored when external.enabled=true) ──
   image:
     repository: oracle1012/applicative-load-observability
-    tag: logstash-1.21.3
+    tag: logstash-1.22.1
     pullPolicy: IfNotPresent
   replicas: 1
+  javaOpts: "-Xms512m -Xmx512m"
+  extraEnv: []
+  # extraEnv:
+  #   - name: PIPELINE_WORKERS
+  #     value: "8"
   resources:
     requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
       cpu: 500m
       memory: 1Gi
-    limits:
-      cpu: "2"
-      memory: 2Gi
   service:
     httpPort: 8080
     monitoringPort: 9600
@@ -241,9 +252,9 @@ analyzer:
   enabled: true
   image:
     repository: oracle1012/applicative-load-observability
-    tag: analyzer-1.21.3
+    tag: analyzer-1.22.1
     pullPolicy: IfNotPresent
-  replicas: 2
+  replicas: 1
   port: 8000
   # Dynamic baselines — P50 from recent search traffic, refreshed every cacheTTL.
   # ES connection is injected automatically from the elasticsearch config above.
@@ -266,11 +277,11 @@ analyzer:
     storeMaxBytes: 32000
   resources:
     requests:
-      cpu: 100m
-      memory: 128Mi
+      cpu: 50m
+      memory: 64Mi
     limits:
-      cpu: 500m
-      memory: 256Mi
+      cpu: 200m
+      memory: 128Mi
   nodeSelector: {}
   tolerations: []
   affinity: {}
@@ -307,17 +318,17 @@ gateway:
   dnsResolver: ""
   image:
     repository: oracle1012/applicative-load-observability
-    tag: gateway-1.21.3
+    tag: gateway-1.22.1
     pullPolicy: IfNotPresent
   replicas: 2
   port: 9200
   resources:
     requests:
-      cpu: 100m
-      memory: 256Mi
+      cpu: 50m
+      memory: 64Mi
     limits:
-      cpu: "1"
-      memory: 1Gi
+      cpu: 200m
+      memory: 256Mi
   initResources:
     requests:
       cpu: 50m
@@ -350,7 +361,7 @@ gateway:
       initialDelaySeconds: 5
       periodSeconds: 5
   service:
-    type: ClusterIP
+    type: LoadBalancer
     port: 9200
   nodeSelector: {}
   tolerations: []
@@ -382,7 +393,7 @@ gateway:
 
 # ── Kibana ──────────────────────────────────────────────────────────────────
 kibana:
-  enabled: true
+  enabled: false
   # Set external.enabled=true to skip deploying Kibana
   external:
     enabled: false
@@ -403,15 +414,20 @@ kibana:
   service:
     type: ClusterIP
     port: 5601
-  # Kibana setup job — runs setup.py to create index templates and import dashboards.
-  # Set enabled=false to skip the job (e.g. if you manage dashboards manually
-  # or want to avoid re-importing on upgrades).
+  # Kibana setup job — creates Kibana saved objects (data view, saved searches,
+  # dashboards). ES resources (ILM, mappings, templates, transform) are handled
+  # by the elasticsearch.setup job. Set enabled=false to skip entirely, or use
+  # per-section flags to control individual steps.
   setup:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: kibana-setup-1.21.3
+      tag: kibana-setup-1.22.1
       pullPolicy: IfNotPresent
+    dataView: true      # create alo-data-view
+    savedSearches: true # create "Top 10 Heaviest Operations" saved search
+    dashboards: true    # import ALO dashboards (main, cost indicators, usage)
+    rebuild: false      # rebuild dashboards via API + re-export ndjson instead of importing packaged ndjson
   nodeSelector: {}
   tolerations: []
   affinity: {}
@@ -420,7 +436,7 @@ kibana:
 
 # ── Grafana ────────────────────────────────────────────────────────────────
 grafana:
-  enabled: false
+  enabled: true
   # Set external.enabled=true to push dashboards to an existing Grafana via API
   # (no Grafana pod deployed, only setup job runs).
   external:
@@ -445,13 +461,13 @@ grafana:
   prometheusUrl: ""
   resources:
     requests:
-      cpu: 100m
-      memory: 128Mi
+      cpu: 50m
+      memory: 64Mi
     limits:
-      cpu: 500m
-      memory: 256Mi
+      cpu: 200m
+      memory: 128Mi
   service:
-    type: ClusterIP
+    type: LoadBalancer
     port: 3000
   # Setup job — pushes datasource + dashboards via Grafana API.
   # Runs automatically for external Grafana; also runs for internal Grafana
@@ -460,8 +476,10 @@ grafana:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: grafana-setup-1.21.3
+      tag: grafana-setup-1.22.1
       pullPolicy: IfNotPresent
+    datasource: true    # create/update Elasticsearch datasource(s) in Grafana
+    dashboards: true    # push ALO dashboards (main, cost indicators, usage) to Grafana
   nodeSelector: {}
   tolerations: []
   affinity: {}

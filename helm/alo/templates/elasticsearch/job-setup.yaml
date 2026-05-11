@@ -1,15 +1,15 @@
-{{- $gf := .Values.grafana.setup -}}
-{{- if and .Values.grafana.enabled $gf.enabled (or $gf.datasource $gf.dashboards) }}
+{{- $es := .Values.elasticsearch.setup -}}
+{{- if and $es.enabled (or $es.ilm $es.componentTemplate $es.indexTemplates $es.summaryTemplate $es.transform) }}
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "alo.fullname" . }}-grafana-setup
+  name: {{ include "alo.fullname" . }}-es-setup
   labels:
     {{- include "alo.labels" . | nindent 4 }}
-    {{- include "alo.selectorLabels" (dict "ctx" . "component" "grafana-setup") | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "es-setup") | nindent 4 }}
   annotations:
     "helm.sh/hook": post-install,post-upgrade
-    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-weight": "1"
     "helm.sh/hook-delete-policy": before-hook-creation
 spec:
   activeDeadlineSeconds: 300
@@ -18,7 +18,7 @@ spec:
     metadata:
       labels:
         {{- include "alo.labels" . | nindent 8 }}
-        {{- include "alo.selectorLabels" (dict "ctx" . "component" "grafana-setup") | nindent 8 }}
+        {{- include "alo.selectorLabels" (dict "ctx" . "component" "es-setup") | nindent 8 }}
     spec:
       serviceAccountName: {{ include "alo.serviceAccountName" . }}
       {{- with .Values.imagePullSecrets }}
@@ -30,24 +30,38 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: setup
-          image: "{{ $gf.image.repository }}:{{ $gf.image.tag }}"
-          imagePullPolicy: {{ $gf.image.pullPolicy }}
+          image: "{{ $es.image.repository }}:{{ $es.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ $es.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           command:
             - python
             - /app/setup.py
-            - --mode
-            - api
-            {{- if not $gf.datasource }}
-            - --no-datasource
-            {{- end }}
-            {{- if not $gf.dashboards }}
+            - --no-data-view
+            - --no-saved-searches
             - --no-dashboards
+            {{- if not $es.ilm }}
+            - --no-ilm
             {{- end }}
+            {{- if not $es.componentTemplate }}
+            - --no-component-template
+            {{- end }}
+            {{- if not $es.indexTemplates }}
+            - --no-index-templates
+            {{- end }}
+            {{- if not $es.summaryTemplate }}
+            - --no-summary-template
+            {{- end }}
+            {{- if not $es.transform }}
+            - --no-transform
+            {{- end }}
+            - --shards={{ .Values.indexSettings.shards }}
+            - --replicas={{ .Values.indexSettings.replicas }}
+            - --refresh-interval={{ .Values.indexSettings.refreshInterval }}
+            - --raw-retention={{ .Values.indexSettings.rawRetention }}
+            - --rollover-max-age={{ .Values.indexSettings.rolloverMaxAge }}
+            - --summary-retention={{ .Values.indexSettings.summaryRetention }}
           env:
-            - name: GRAFANA_URL
-              value: {{ include "alo.grafanaUrl" . | quote }}
             - name: ELASTICSEARCH_URL
               value: {{ include "alo.elasticsearchUrl" . | quote }}
             {{- if eq (include "alo.esAuthEnabled" .) "true" }}
@@ -70,37 +84,6 @@ spec:
             - name: ES_INSECURE
               value: "true"
             {{- end }}
-            {{- if .Values.grafana.external.enabled }}
-            {{- if .Values.grafana.external.auth.existingSecret }}
-            - name: GRAFANA_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.grafana.external.auth.existingSecret }}
-                  key: username
-            - name: GRAFANA_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.grafana.external.auth.existingSecret }}
-                  key: password
-            {{- else }}
-            - name: GRAFANA_USERNAME
-              value: {{ .Values.grafana.external.auth.username | quote }}
-            - name: GRAFANA_ADMIN_PASSWORD
-              value: {{ .Values.grafana.external.auth.password | quote }}
-            {{- end }}
-            {{- else }}
-            - name: GRAFANA_USERNAME
-              value: "admin"
-            - name: GRAFANA_ADMIN_PASSWORD
-              {{- if .Values.grafana.adminPasswordExistingSecret }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.grafana.adminPasswordExistingSecret }}
-                  key: password
-              {{- else }}
-              value: {{ .Values.grafana.adminPassword | quote }}
-              {{- end }}
-            {{- end }}
           {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
           volumeMounts:
             - name: es-ca
@@ -113,5 +96,5 @@ spec:
           secret:
             secretName: {{ include "alo.esCaSecretName" . }}
       {{- end }}
-      {{- include "alo.scheduling" .Values.grafana | nindent 6 }}
+      {{- include "alo.scheduling" .Values.elasticsearch | nindent 6 }}
 {{- end }}

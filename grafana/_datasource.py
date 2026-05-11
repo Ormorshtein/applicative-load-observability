@@ -3,15 +3,94 @@
 import os
 import textwrap
 
+
+def _read_cert(es_ca_cert: str) -> str:
+    """Return PEM content — read from file if path, else treat as literal."""
+    if es_ca_cert and os.path.isfile(es_ca_cert):
+        with open(es_ca_cert, encoding="utf-8") as f:
+            return f.read()
+    return es_ca_cert
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DS_DIR = os.path.join(SCRIPT_DIR, "provisioning", "datasources")
 DS_PATH = os.path.join(DS_DIR, "elasticsearch.yml")
 PROM_DS_PATH = os.path.join(DS_DIR, "prometheus.yml")
 
 
-def generate_datasource_yaml(elasticsearch_url="http://elasticsearch:9200",
-                             index_pattern="logs-alo.*-*,alo-summary"):
-    content = textwrap.dedent(f"""\
+def _ds_tls_block(es_insecure: bool, es_ca_cert: str) -> str:
+    lines = []
+    if es_insecure:
+        lines.append("              tlsSkipVerify: true")
+    if es_ca_cert:
+        lines.append("              tlsAuthWithCACert: true")
+    return ("\n" + "\n".join(lines)) if lines else ""
+
+
+def _ds_secure_block(es_username: str, es_password: str, es_ca_cert: str) -> str:
+    """Generate the secureJsonData block (auth password + CA cert PEM content)."""
+    lines = []
+    if es_username:
+        lines.append(f"              basicAuthPassword: {es_password}")
+    cert_pem = _read_cert(es_ca_cert)
+    if cert_pem:
+        indented = "\n".join(f"                {ln}" for ln in cert_pem.splitlines())
+        lines.append(f"              tlsCACert: |\n{indented}")
+    if not lines:
+        return ""
+    return "\n            secureJsonData:\n" + "\n".join(lines)
+
+
+def _ds_auth_block(es_username: str) -> str:
+    if not es_username:
+        return ""
+    return textwrap.dedent(f"""\
+
+            basicAuth: true
+            basicAuthUser: {es_username}""")
+
+
+def _ds_entry(name: str, uid: str, url: str, database: str, is_default: bool,
+              es_username: str, es_password: str,
+              es_insecure: bool, es_ca_cert: str) -> str:
+    tls = _ds_tls_block(es_insecure, es_ca_cert)
+    auth = _ds_auth_block(es_username)
+    secure = _ds_secure_block(es_username, es_password, es_ca_cert)
+    return textwrap.dedent(f"""\
+          - name: {name}
+            type: elasticsearch
+            uid: {uid}
+            access: proxy
+            url: {url}
+            database: "{database}"
+            isDefault: {"true" if is_default else "false"}{auth}{secure}
+            jsonData:
+              esVersion: "8.0.0"
+              timeField: "@timestamp"
+              logMessageField: ""
+              logLevelField: ""
+              maxConcurrentShardRequests: 5
+              interval: ""{tls}
+            editable: true
+    """)
+
+
+def generate_datasource_yaml(elasticsearch_url: str = "http://elasticsearch:9200",
+                             index_pattern: str = "logs-alo.*-*,alo-summary",
+                             es_username: str = "",
+                             es_password: str = "",
+                             es_insecure: bool = False,
+                             es_ca_cert: str = "") -> str:
+    main = _ds_entry(
+        "Elasticsearch (ALO)", "alo-elasticsearch",
+        elasticsearch_url, index_pattern, True,
+        es_username, es_password, es_insecure, es_ca_cert,
+    )
+    summary = _ds_entry(
+        "Elasticsearch (ALO Summary)", "alo-elasticsearch-summary",
+        elasticsearch_url, "alo-summary", False,
+        es_username, es_password, es_insecure, es_ca_cert,
+    )
+    content = textwrap.dedent("""\
         apiVersion: 1
 
         # Primary datasource queries raw + summary. While raw data exists it
@@ -19,38 +98,7 @@ def generate_datasource_yaml(elasticsearch_url="http://elasticsearch:9200",
         # summary seamlessly provides avg metrics and percentiles at hourly
         # granularity.
         datasources:
-          - name: Elasticsearch (ALO)
-            type: elasticsearch
-            uid: alo-elasticsearch
-            access: proxy
-            url: {elasticsearch_url}
-            database: "{index_pattern}"
-            isDefault: true
-            jsonData:
-              esVersion: "8.0.0"
-              timeField: "@timestamp"
-              logMessageField: ""
-              logLevelField: ""
-              maxConcurrentShardRequests: 5
-              interval: ""
-            editable: true
-
-          - name: Elasticsearch (ALO Summary)
-            type: elasticsearch
-            uid: alo-elasticsearch-summary
-            access: proxy
-            url: {elasticsearch_url}
-            database: "alo-summary"
-            isDefault: false
-            jsonData:
-              esVersion: "8.0.0"
-              timeField: "@timestamp"
-              logMessageField: ""
-              logLevelField: ""
-              maxConcurrentShardRequests: 5
-              interval: ""
-            editable: true
-    """)
+    """) + main + summary
     os.makedirs(DS_DIR, exist_ok=True)
     with open(DS_PATH, "w", encoding="utf-8") as f:
         f.write(content)
