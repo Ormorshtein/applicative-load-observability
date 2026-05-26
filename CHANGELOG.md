@@ -19,6 +19,8 @@
 
 - **ClickHouse 24.8 LTS** replaces Elasticsearch as the analytics sink.
 - Logstash now writes via `logstash-output-clickhouse` plugin (HTTP insert, `JSONEachRow`).
+  Auth via `X-ClickHouse-User`/`X-ClickHouse-Key` headers; `http_hosts` (array) instead of `hosts`.
+- Timestamp format in `ObservabilityRecord` uses CH-compatible `"YYYY-MM-DD HH:MM:SS.mmm"` (no ISO-8601 T/Z).
 - Schema: `alo_raw` (`MergeTree`), `alo_dead_letter` (`MergeTree`), `alo_summary` (`AggregatingMergeTree`) + incremental materialized view replacing the ES continuous transform.
 - All `ObservabilityRecord` fields are now flat snake_case columns (e.g. `identity_username`, `response_es_took_ms`).
 - **Cluster mode** (`clickhouse.cluster.enabled`): `ReplicatedMergeTree` local tables + `Distributed` front tables. Clients always write/read through the unsuffixed table name.
@@ -49,7 +51,7 @@ clickhouse:
   setup.enabled / setup.rawTable / setup.summaryTable / setup.materializedView / setup.deadLetterTable
 logstash:
   clickhouseOutput.flushSize / .deadLetterFlushSize / .idleFlushTime / .automaticRetries
-  clickhouseOutput.mutationsSync / .poolMax / .chSettings / .httpCompression
+  clickhouseOutput.poolMax / .chSettings
 tableSettings:
   rawRetentionDays / summaryRetentionDays / rawPartitionBy / summaryPartitionBy
 ```
