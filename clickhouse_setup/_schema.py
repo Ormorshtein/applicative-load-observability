@@ -29,15 +29,16 @@ per-insert ``*State`` rows into the summary table, which retains 120
 days. Grafana finalises summary state with ``*Merge`` aggregates.
 """
 
+import os
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
 class TableSettings:
     """User-tunable retention and topology knobs."""
 
-    database:                 str  = "alo"
+    database:                 str  = field(default_factory=lambda: os.getenv("CLICKHOUSE_DATABASE", "alo"))
     raw_retention_days:       int  = 3
     summary_retention_days:   int  = 120
     raw_partition_by:         str  = "toYYYYMMDD(timestamp)"
