@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.0.2
+
+### Analyzer
+
+- **`assemble_record` now emits flat columns** — prior versions still built nested dicts (`record["request"]["operation"]`, `record["response"]["es_took_ms"]`, etc.) which ClickHouse `JSONEachRow` inserts rejected. Records now match the CH schema 1:1: `request_operation`, `response_es_took_ms`, `identity_username`, etc.
+- **All `stress_components_*` and `cost_indicators_*` columns always emitted** — CH requires every declared column on every INSERT; absent components now default to `0` rather than being omitted.
+- **`partial_error_record`** uses `request_path` / `request_method` (matching dead_letter schema) and includes a `raw` field with the full payload JSON.
+- **msearch sub-records** carry flat `msearch_request_id`, `msearch_batch_size`, `msearch_sub_query_index` keys.
+- **`utc_timestamp`** format corrected to `"YYYY-MM-DD HH:MM:SS.mmm"` (CH `DateTime64(3, 'UTC')` JSONEachRow requirement).
+
+### Helm / templates
+
+- Removed stale `helm/alo/templates/elasticsearch/` directory (leftover from bad git rebase).
+
+### CHANGELOG
+
+- Removed duplicate `## 2.0.0` section and raw conflict markers left by automated rebase.
+
+---
+
 ## 2.0.0 — ClickHouse migration (breaking)
 
 ### Breaking changes
