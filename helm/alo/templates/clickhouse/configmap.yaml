@@ -1,0 +1,67 @@
+{{- if and .Values.clickhouse.enabled (not .Values.clickhouse.external.enabled) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "alo.fullname" . }}-clickhouse-config
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+data:
+  00-listen.xml: |
+    <clickhouse>
+      <listen_host>0.0.0.0</listen_host>
+    </clickhouse>
+  users.xml: |
+    <clickhouse>
+      <users>
+        <default>
+          <access_management>1</access_management>
+          <named_collection_control>1</named_collection_control>
+        </default>
+      </users>
+    </clickhouse>
+  {{- if .Values.clickhouse.cluster.enabled }}
+  01-cluster.xml: |
+    <clickhouse>
+      <remote_servers>
+        <{{ .Values.clickhouse.cluster.name }}>
+        {{- range $shard := until (int .Values.clickhouse.cluster.shards) }}
+          <shard>
+            <internal_replication>true</internal_replication>
+            <replica>
+              <host>{{ include "alo.fullname" $ }}-clickhouse-{{ $shard }}.{{ include "alo.fullname" $ }}-clickhouse</host>
+              <port>9000</port>
+            </replica>
+          </shard>
+        {{- end }}
+        </{{ .Values.clickhouse.cluster.name }}>
+      </remote_servers>
+      <macros>
+        <cluster>{{ .Values.clickhouse.cluster.name }}</cluster>
+        <shard from_env="HOSTNAME"></shard>
+        <replica from_env="HOSTNAME"></replica>
+      </macros>
+      {{- if .Values.clickhouse.cluster.keeper.external }}
+      <zookeeper>
+        {{- range $node := splitList "," .Values.clickhouse.cluster.keeper.external }}
+        <node>
+          <host>{{ (splitList ":" $node) | first }}</host>
+          <port>{{ (splitList ":" $node) | last }}</port>
+        </node>
+        {{- end }}
+      </zookeeper>
+      {{- end }}
+    </clickhouse>
+  {{- end }}
+  {{- if .Values.clickhouse.exporter.enabled }}
+  02-prometheus.xml: |
+    <clickhouse>
+      <prometheus>
+        <endpoint>/metrics</endpoint>
+        <port>{{ .Values.clickhouse.exporter.port }}</port>
+        <metrics>true</metrics>
+        <events>true</events>
+        <asynchronous_metrics>true</asynchronous_metrics>
+      </prometheus>
+    </clickhouse>
+  {{- end }}
+{{- end }}

@@ -1,4 +1,4 @@
-{{- if and (eq .Values.pipelineMode "logstash") (not .Values.logstash.external.enabled) }}
+{{- if not .Values.logstash.external.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -38,16 +38,18 @@ spec:
           env:
             - name: LS_JAVA_OPTS
               value: {{ .Values.logstash.javaOpts | quote }}
-            {{- if eq (include "alo.esAuthEnabled" .) "true" }}
-            - name: ES_USERNAME
+            - name: CLICKHOUSE_URL
+              value: {{ include "alo.clickhouseUrl" . | quote }}
+            {{- if eq (include "alo.clickhouseAuthEnabled" .) "true" }}
+            - name: CLICKHOUSE_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "alo.esAuthSecretName" . | trim }}
+                  name: {{ include "alo.clickhouseAuthSecretName" . | trim }}
                   key: username
-            - name: ES_PASSWORD
+            - name: CLICKHOUSE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "alo.esAuthSecretName" . | trim }}
+                  name: {{ include "alo.clickhouseAuthSecretName" . | trim }}
                   key: password
             {{- end }}
             {{- with .Values.logstash.extraEnv }}
@@ -73,9 +75,9 @@ spec:
               mountPath: /usr/share/logstash/pipeline/observability.conf
               subPath: observability.conf
               readOnly: true
-            {{- if eq (include "alo.esCaEnabled" .) "true" }}
-            - name: es-ca
-              mountPath: /etc/ssl/es
+            {{- if eq (include "alo.clickhouseCaEnabled" .) "true" }}
+            - name: ch-ca
+              mountPath: /etc/ssl/ch
               readOnly: true
             {{- end }}
           readinessProbe:
@@ -111,10 +113,10 @@ spec:
         - name: config
           configMap:
             name: {{ include "alo.fullname" . }}-logstash
-        {{- if eq (include "alo.esCaEnabled" .) "true" }}
-        - name: es-ca
+        {{- if eq (include "alo.clickhouseCaEnabled" .) "true" }}
+        - name: ch-ca
           secret:
-            secretName: {{ include "alo.esCaSecretName" . }}
+            secretName: {{ include "alo.clickhouseCaSecretName" . }}
         {{- end }}
       {{- include "alo.scheduling" .Values.logstash | nindent 6 }}
 {{- end }}

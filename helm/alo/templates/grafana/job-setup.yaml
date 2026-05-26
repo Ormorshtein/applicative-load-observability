@@ -48,28 +48,24 @@ spec:
           env:
             - name: GRAFANA_URL
               value: {{ include "alo.grafanaUrl" . | quote }}
-            - name: ELASTICSEARCH_URL
-              value: {{ include "alo.elasticsearchUrl" . | quote }}
-            {{- if eq (include "alo.esAuthEnabled" .) "true" }}
-            - name: ES_USERNAME
+            - name: CLICKHOUSE_URL
+              value: {{ include "alo.clickhouseUrl" . | quote }}
+            - name: CLICKHOUSE_DATABASE
+              value: {{ .Values.clickhouse.database | quote }}
+            {{- if eq (include "alo.clickhouseAuthEnabled" .) "true" }}
+            - name: CLICKHOUSE_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "alo.esAuthSecretName" . }}
+                  name: {{ include "alo.clickhouseAuthSecretName" . }}
                   key: username
-            - name: ES_PASSWORD
+            - name: CLICKHOUSE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "alo.esAuthSecretName" . }}
+                  name: {{ include "alo.clickhouseAuthSecretName" . }}
                   key: password
             {{- end }}
-            {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
-            - name: ES_CA_CERT
-              value: /etc/ssl/es/ca.crt
-            {{- end }}
-            {{- if and .Values.elasticsearch.external.enabled .Values.elasticsearch.external.tls.insecureSkipVerify }}
-            - name: ES_INSECURE
-              value: "true"
-            {{- end }}
+            - name: CLICKHOUSE_INSECURE
+              value: {{ include "alo.clickhouseInsecure" . | quote }}
             {{- if .Values.grafana.external.enabled }}
             {{- if .Values.grafana.external.auth.existingSecret }}
             - name: GRAFANA_USERNAME
@@ -101,17 +97,5 @@ spec:
               value: {{ .Values.grafana.adminPassword | quote }}
               {{- end }}
             {{- end }}
-          {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
-          volumeMounts:
-            - name: es-ca
-              mountPath: /etc/ssl/es
-              readOnly: true
-          {{- end }}
-      {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
-      volumes:
-        - name: es-ca
-          secret:
-            secretName: {{ include "alo.esCaSecretName" . }}
-      {{- end }}
       {{- include "alo.scheduling" .Values.grafana | nindent 6 }}
 {{- end }}

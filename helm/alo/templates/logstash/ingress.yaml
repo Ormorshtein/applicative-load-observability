@@ -1,4 +1,4 @@
-{{- if and .Values.ingress.enabled (eq .Values.pipelineMode "logstash") (not .Values.logstash.external.enabled) .Values.ingress.logstash.host }}
+{{- if and .Values.ingress.enabled (not .Values.logstash.external.enabled) .Values.ingress.logstash.host }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

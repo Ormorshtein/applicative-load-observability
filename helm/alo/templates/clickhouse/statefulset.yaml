@@ -1,0 +1,118 @@
+{{- if and .Values.clickhouse.enabled (not .Values.clickhouse.external.enabled) }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "alo.fullname" . }}-clickhouse
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "clickhouse") | nindent 4 }}
+spec:
+  serviceName: {{ include "alo.fullname" . }}-clickhouse
+  replicas: {{ .Values.clickhouse.replicas }}
+  selector:
+    matchLabels:
+      {{- include "alo.selectorLabels" (dict "ctx" . "component" "clickhouse") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "alo.labels" . | nindent 8 }}
+        {{- include "alo.selectorLabels" (dict "ctx" . "component" "clickhouse") | nindent 8 }}
+      {{- with .Values.clickhouse.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "alo.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- include "alo.imagePullSecrets" $ | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: clickhouse
+          image: "{{ .Values.clickhouse.image.repository }}:{{ .Values.clickhouse.image.tag }}"
+          imagePullPolicy: {{ .Values.clickhouse.image.pullPolicy }}
+          env:
+            - name: CLICKHOUSE_DB
+              value: {{ .Values.clickhouse.database | quote }}
+            {{- if .Values.clickhouse.auth.enabled }}
+            - name: CLICKHOUSE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.clickhouseAuthSecretName" . }}
+                  key: username
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.clickhouseAuthSecretName" . }}
+                  key: password
+            {{- end }}
+            - name: CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT
+              value: "1"
+          ports:
+            - name: http
+              containerPort: 8123
+            - name: native
+              containerPort: 9000
+            {{- if .Values.clickhouse.exporter.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.clickhouse.exporter.port }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            {{- toYaml .Values.clickhouse.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/clickhouse
+            - name: config-d
+              mountPath: /etc/clickhouse-server/config.d
+            - name: users-d
+              mountPath: /etc/clickhouse-server/users.d
+      volumes:
+        - name: config-d
+          configMap:
+            name: {{ include "alo.fullname" . }}-clickhouse-config
+            items:
+              - key: 00-listen.xml
+                path: 00-listen.xml
+              {{- if .Values.clickhouse.cluster.enabled }}
+              - key: 01-cluster.xml
+                path: 01-cluster.xml
+              {{- end }}
+              {{- if .Values.clickhouse.exporter.enabled }}
+              - key: 02-prometheus.xml
+                path: 02-prometheus.xml
+              {{- end }}
+        - name: users-d
+          configMap:
+            name: {{ include "alo.fullname" . }}-clickhouse-config
+            items:
+              - key: users.xml
+                path: users.xml
+      {{- include "alo.scheduling" .Values.clickhouse | nindent 6 }}
+  {{- if .Values.clickhouse.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.clickhouse.persistence.storageClass }}
+        storageClassName: {{ .Values.clickhouse.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.clickhouse.persistence.size }}
+  {{- end }}
+{{- end }}

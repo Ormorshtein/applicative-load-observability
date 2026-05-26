@@ -1,0 +1,25 @@
+{{- if and .Values.clickhouse.enabled (not .Values.clickhouse.external.enabled) }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "alo.fullname" . }}-clickhouse
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "clickhouse") | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "alo.selectorLabels" (dict "ctx" . "component" "clickhouse") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.clickhouse.service.httpPort }}
+      targetPort: http
+    - name: native
+      port: {{ .Values.clickhouse.service.nativePort }}
+      targetPort: native
+    {{- if .Values.clickhouse.exporter.enabled }}
+    - name: metrics
+      port: {{ .Values.clickhouse.exporter.port }}
+      targetPort: metrics
+    {{- end }}
+{{- end }}

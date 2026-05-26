@@ -6,7 +6,7 @@ ALO (Applicative Load Observability) has been deployed!
   export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
   echo "Gateway: http://$NODE_IP:$NODE_PORT"
 {{- else if contains "LoadBalancer" .Values.gateway.service.type }}
-  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "alo.fullname" . }}-gateway --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "alo.fullname" . }}-gateway --template "{{"{{"}} range (index .status.loadBalancer.ingress 0) {{"}}"}}{{"{{"}}."{{"}}"}}{{"{{"}} end {{"}}"}}")
   echo "Gateway: http://$SERVICE_IP:{{ .Values.gateway.service.port }}"
 {{- else }}
   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "alo.fullname" . }}-gateway {{ .Values.gateway.service.port }}:{{ .Values.gateway.service.port }}
@@ -15,47 +15,32 @@ ALO (Applicative Load Observability) has been deployed!
 
 Point your applications to the gateway instead of Elasticsearch directly.
 
-=== Pipeline Mode: {{ .Values.pipelineMode }} ===
-{{- if eq .Values.pipelineMode "logstash" }}
+=== Logstash (Pipeline) ===
 {{- if .Values.logstash.external.enabled }}
   Logstash (external): {{ .Values.logstash.external.url }}
 {{- else }}
   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "alo.fullname" . }}-logstash {{ .Values.logstash.service.httpPort }}:{{ .Values.logstash.service.httpPort }}
   echo "Logstash HTTP: http://localhost:{{ .Values.logstash.service.httpPort }}"
-  echo "Logstash Monitoring: http://localhost:{{ .Values.logstash.service.monitoringPort }}"
-{{- end }}
-{{- else }}
-{{- if .Values.nifi.external.enabled }}
-  NiFi (external): {{ .Values.nifi.external.listenUrl }}
-  Auth: {{ if .Values.nifi.external.auth.enabled }}{{ .Values.nifi.external.auth.headerName }}{{ if .Values.nifi.external.auth.existingSecret }} (secret: {{ .Values.nifi.external.auth.existingSecret }}){{ end }}{{ else }}disabled{{ end }}
-{{- else }}
-  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "alo.fullname" . }}-nifi {{ .Values.nifi.service.httpsPort }}:{{ .Values.nifi.service.httpsPort }}
-  echo "NiFi: https://localhost:{{ .Values.nifi.service.httpsPort }}/nifi"
-{{- end }}
 {{- end }}
 
-{{- if .Values.elasticsearch.external.enabled }}
+{{- if .Values.clickhouse.external.enabled }}
 
-=== Elasticsearch (external) ===
-  URL: {{ .Values.elasticsearch.external.url }}
-  Auth: {{ if .Values.elasticsearch.external.auth.enabled }}{{ .Values.elasticsearch.external.auth.type }}{{ if .Values.elasticsearch.external.auth.existingSecret }} (secret: {{ .Values.elasticsearch.external.auth.existingSecret }}){{ end }}{{ else }}disabled{{ end }}
-  TLS CA: {{ if eq (include "alo.esCaEnabled" .) "true" }}{{ include "alo.esCaSecretName" . }}{{ if .Values.elasticsearch.external.tls.create }} (chart-managed){{ end }}{{ else }}system default{{ end }}
-{{- else }}
+=== ClickHouse (external — analytics sink) ===
+  URL: {{ .Values.clickhouse.external.url }}
+  Database: {{ .Values.clickhouse.database }}
+  Auth: {{ if .Values.clickhouse.external.auth.enabled }}enabled{{ if .Values.clickhouse.external.auth.existingSecret }} (secret: {{ .Values.clickhouse.external.auth.existingSecret }}){{ end }}{{ else }}disabled{{ end }}
+  Cluster mode: {{ if .Values.clickhouse.cluster.enabled }}{{ .Values.clickhouse.cluster.name }} ({{ .Values.clickhouse.cluster.shards }} shards × {{ .Values.clickhouse.cluster.replicas }} replicas){{ else }}single-node{{ end }}
+{{- else if .Values.clickhouse.enabled }}
 
-=== Elasticsearch (internal) ===
-  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "alo.fullname" . }}-elasticsearch {{ .Values.elasticsearch.service.port }}:{{ .Values.elasticsearch.service.port }}
-  Security: {{ if .Values.elasticsearch.security.enabled }}enabled{{ else }}disabled{{ end }}
+=== ClickHouse (internal — analytics sink) ===
+  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "alo.fullname" . }}-clickhouse {{ .Values.clickhouse.service.httpPort }}:{{ .Values.clickhouse.service.httpPort }}
+  Database: {{ .Values.clickhouse.database }}
+  Cluster mode: {{ if .Values.clickhouse.cluster.enabled }}{{ .Values.clickhouse.cluster.name }} ({{ .Values.clickhouse.cluster.shards }} shards × {{ .Values.clickhouse.cluster.replicas }} replicas){{ else }}single-node{{ end }}
 {{- end }}
 
-{{- if and .Values.kibana.enabled (not .Values.kibana.external.enabled) }}
-
-=== Kibana ===
-  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "alo.fullname" . }}-kibana {{ .Values.kibana.service.port }}:{{ .Values.kibana.service.port }}
-  echo "Kibana: http://localhost:{{ .Values.kibana.service.port }}"
-{{- if .Values.kibana.setup.enabled }}
-  Dashboard setup job will run automatically (post-install/post-upgrade hook).
-{{- end }}
-{{- end }}
+=== Gateway upstream Elasticsearch (customer's ES) ===
+  URL: {{ .Values.gateway.elasticsearch.url | default "(unset — required)" }}
+  Auth: {{ if .Values.gateway.elasticsearch.auth.injectAuth }}{{ .Values.gateway.elasticsearch.auth.type }}{{ else }}disabled{{ end }}
 
 {{- if and .Values.grafana.enabled (not .Values.grafana.external.enabled) }}
 
@@ -67,14 +52,17 @@ Point your applications to the gateway instead of Elasticsearch directly.
 {{- end }}
 {{- end }}
 
-{{- if or .Values.gateway.exporter.enabled .Values.logstash.exporter.enabled }}
+{{- if or .Values.gateway.exporter.enabled .Values.logstash.exporter.enabled .Values.clickhouse.exporter.enabled }}
 
 === Prometheus Exporters ===
   {{- if .Values.gateway.exporter.enabled }}
   Gateway (nginx-exporter): port {{ .Values.gateway.exporter.port }}
   {{- end }}
-  {{- if and .Values.logstash.exporter.enabled (eq .Values.pipelineMode "logstash") (not .Values.logstash.external.enabled) }}
+  {{- if and .Values.logstash.exporter.enabled (not .Values.logstash.external.enabled) }}
   Logstash (logstash-exporter): port {{ .Values.logstash.exporter.port }}
+  {{- end }}
+  {{- if and .Values.clickhouse.exporter.enabled (not .Values.clickhouse.external.enabled) }}
+  ClickHouse (built-in): port {{ .Values.clickhouse.exporter.port }}/metrics
   {{- end }}
   {{- if .Values.serviceMonitors.enabled }}
   ServiceMonitors deployed for Prometheus Operator autodiscovery.
@@ -87,10 +75,7 @@ Point your applications to the gateway instead of Elasticsearch directly.
 {{- if .Values.ingress.gateway.host }}
   Gateway: http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.gateway.host }}{{ .Values.ingress.gateway.path }}
 {{- end }}
-{{- if .Values.ingress.kibana.host }}
-  Kibana:  http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.kibana.host }}{{ .Values.ingress.kibana.path }}
-{{- end }}
-{{- if and .Values.ingress.nifi.host (eq .Values.pipelineMode "nifi") }}
-  NiFi:    http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.nifi.host }}{{ .Values.ingress.nifi.path }}
+{{- if .Values.ingress.logstash.host }}
+  Logstash: http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.logstash.host }}{{ .Values.ingress.logstash.path }}
 {{- end }}
 {{- end }}

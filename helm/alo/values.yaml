@@ -1,163 +1,53 @@
-# ── Pipeline mode ───────────────────────────────────────────────────────────
-# Controls which pipeline processor is deployed: "logstash" or "nifi".
-# When "logstash": deploys Logstash, skips NiFi.
-# When "nifi":     deploys NiFi, skips Logstash.
-pipelineMode: logstash
-
-# ── Global ──────────────────────────────────────────────────────────────────
+﻿# ΓöÇΓöÇ Global ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 global:
-  # Name of the monitored Elasticsearch cluster (used as data stream namespace)
+  # Name of the monitored Elasticsearch cluster (used as the cluster_name
+  # column in ClickHouse, the source of multi-tenant separation).
   clusterName: default
-  # Observability data stream pattern written by the pipeline
+  # Logical name of the observability dataset (cosmetic; no longer used for
+  # ES data stream routing).
   observabilityIndex: alo
 
-# ── Index Performance Settings ──────────────────────────────────────────────
-# Passed to the es-setup job. Controls ES index templates and ILM.
-indexSettings:
-  shards: 1
-  replicas: 0
-  refreshInterval: "5s"
-  rawRetention: "3d"
-  rolloverMaxAge: "3d"
-  summaryRetention: "120d"
+# ΓöÇΓöÇ Table settings (ClickHouse retention / partitioning) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# Passed to the ch-setup job. The DDL builder uses these to issue TTL clauses.
+tableSettings:
+  rawRetentionDays: 3
+  summaryRetentionDays: 120
+  rawPartitionBy: "toYYYYMMDD(timestamp)"
+  summaryPartitionBy: "toYYYYMM(time_bucket)"
 
-# ── Elasticsearch (ALO storage) ────────────────────────────────────────────
-# The ES cluster where ALO observability data is stored.
-# Used by: logstash (writes), kibana (reads), setup job.
-# For the ES cluster the gateway proxies to, see gateway.elasticsearch below.
-elasticsearch:
-  # Set external.enabled=true to use an existing Elasticsearch cluster.
-  # When external, no ES pods are deployed by this chart.
+# ΓöÇΓöÇ ClickHouse (analytics sink) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# Where Logstash writes, Grafana reads, and the analyzer fetches baselines.
+# This is NOT the customer's ES that the gateway proxies ΓÇö see gateway.elasticsearch.
+clickhouse:
+  enabled: true
+  database: alo
+  # Set external.enabled=true to use a CH instance you provide. When external,
+  # no ClickHouse pods are deployed by this chart.
   external:
     enabled: false
-    # Full URL including scheme and port, e.g. https://es.prod.internal:9200
+    # HTTP URL including scheme and port (e.g. https://ch.prod:8443).
     url: ""
-    # Basic auth or API key for the external cluster.
-    # These are used by the gateway (proxy headers) and Kibana.
+    # Host used by the Grafana datasource native-protocol connection.
+    # Defaults to url's host when empty.
+    host: ""
     auth:
       enabled: false
-      # "basic" or "apiKey"
-      type: basic
       username: ""
       password: ""
-      # Elasticsearch API key (used when type=apiKey)
-      apiKey: ""
-      # Reference a pre-existing Secret instead of inlining credentials.
-      # The secret must contain keys matching the auth type:
-      #   basic  → keys: "username", "password"
-      #   apiKey → key:  "apiKey"
+      # Pre-existing Secret with keys "username" and "password".
       existingSecret: ""
-    # TLS settings for the external cluster.
     tls:
-      # CA certificate PEM content (used when create=true).
       caCert: ""
-      # Name of the Secret containing key "ca.crt".
-      # When create=true, this is the name of the chart-managed secret.
-      # When create=false, this references a pre-existing secret.
       caCertSecret: ""
-      # true  → chart creates a Secret from caCert.
-      # false → use a pre-existing Secret named by caCertSecret.
       create: false
-      # Skip TLS verification (not recommended in production).
       insecureSkipVerify: false
 
-  # ── Internal deployment (ignored when external.enabled=true) ──
+  # ΓöÇΓöÇ Internal deployment (ignored when external.enabled=true) ΓöÇΓöÇ
   image:
-    repository: docker.elastic.co/elasticsearch/elasticsearch
-    tag: "8.13.0"
+    repository: clickhouse/clickhouse-server
+    tag: "24.8"
     pullPolicy: IfNotPresent
   replicas: 1
-  resources:
-    requests:
-      cpu: 250m
-      memory: 512Mi
-    limits:
-      cpu: "1"
-      memory: 1Gi
-  initResources:
-    requests:
-      cpu: 50m
-      memory: 32Mi
-    limits:
-      cpu: 100m
-      memory: 64Mi
-  javaOpts: "-Xms256m -Xmx256m"
-  persistence:
-    enabled: true
-    size: 10Gi
-    storageClass: ""
-  security:
-    enabled: false
-    # Credentials for the internal ES cluster (xpack.security).
-    # Ignored when security.enabled=false.
-    username: elastic
-    password: changeme
-    existingSecret: ""
-  service:
-    port: 9200
-  # Prometheus exporter sidecar (elasticsearch-exporter).
-  # Disabled by default — enable to monitor the ES cluster via Prometheus.
-  exporter:
-    enabled: false
-    image:
-      repository: quay.io/prometheuscommunity/elasticsearch-exporter
-      tag: "v1.10.0"
-      pullPolicy: IfNotPresent
-    port: 9114
-    resources:
-      requests:
-        cpu: 50m
-        memory: 64Mi
-      limits:
-        cpu: 200m
-        memory: 128Mi
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  podAnnotations: {}
-  # ES setup job — creates ILM policies, component template (field mappings),
-  # composable index templates, summary index template, and summary transform.
-  # Runs as a pre-Kibana hook (hook-weight: 1) so ES resources are ready
-  # before any UI setup job runs, regardless of which UI is chosen.
-  setup:
-    enabled: true
-    image:
-      repository: oracle1012/applicative-load-observability
-      tag: kibana-setup-1.22.1
-      pullPolicy: IfNotPresent
-    ilm: true               # PUT _ilm/policy/* (4 policies)
-    componentTemplate: true # PUT _component_template/alo-mappings (field mappings)
-    indexTemplates: true    # PUT _index_template/alo-search-operations|alo-write-operations|alo-default|alo-dead-letter
-    summaryTemplate: true   # PUT _index_template/alo-summary
-    transform: true         # recreate + start _transform/alo-summary-transform
-
-# ── NiFi ────────────────────────────────────────────────────────────────────
-nifi:
-  # Set external.enabled=true to point at an existing NiFi instance.
-  # The gateway will send observations to external.listenUrl.
-  external:
-    enabled: false
-    # Full URL to the ListenHTTP endpoint, e.g. https://nifi.prod:8080/observe
-    listenUrl: ""
-    # Auth header sent with every observation POST.
-    auth:
-      enabled: false
-      # Header name and value, e.g. "Authorization" / "Bearer <token>"
-      headerName: Authorization
-      headerValue: ""
-      # Reference a pre-existing Secret instead of inlining the token.
-      # The secret must contain key "authHeaderValue".
-      existingSecret: ""
-    # TLS settings for the external NiFi endpoint.
-    tls:
-      caSecret: ""
-      insecureSkipVerify: false
-
-  # ── Internal deployment (ignored when external.enabled=true) ──
-  image:
-    repository: apache/nifi
-    tag: "2.2.0"
-    pullPolicy: IfNotPresent
   resources:
     requests:
       cpu: 500m
@@ -165,53 +55,74 @@ nifi:
     limits:
       cpu: "2"
       memory: 2Gi
-  # Credentials for the NiFi UI (single-user mode).
-  auth:
-    username: admin
-    password: adminadminadmin
-    # Reference a pre-existing Secret with keys "username" and "password".
-    existingSecret: ""
-  sensitivePropsKey: observabilitykey
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: ""
   service:
-    httpsPort: 8443
-    listenPort: 8080
-  # Base path for the ListenHTTP processor
-  listenBasePath: observe
-  # Seed flow — mounted from ConfigMap
-  flow:
-    # Set to false to let NiFi start with an empty canvas
-    seedEnabled: true
+    httpPort: 8123
+    nativePort: 9000
+  # Internal auth (when running the embedded StatefulSet).
+  auth:
+    enabled: false
+    username: "default"
+    password: ""
+  # ClickHouse exposes a built-in Prometheus endpoint on configurable port.
+  # No separate exporter container is needed.
+  exporter:
+    enabled: false
+    port: 9363
+
+  # Distributed-table mode. When true, every table becomes a Replicated*MergeTree
+  # local + Distributed front pair; clients write/read via the unsuffixed name.
+  cluster:
+    enabled: false
+    name: alo_cluster
+    shards: 1
+    replicas: 1
+    shardingKey: "cityHash64(cluster_name, request_operation)"
+    keeper:
+      # External keeper/zookeeper hosts, comma-separated (e.g. "zk1:2181,zk2:2181").
+      # Empty when running single-node. The chart does NOT yet deploy embedded
+      # ClickHouse Keeper ΓÇö supply your own when cluster.enabled=true.
+      external: ""
+
+  # ch-setup job ΓÇö runs the schema DDL after install/upgrade.
+  setup:
+    enabled: true
+    image:
+      repository: oracle1012/applicative-load-observability
+      tag: ch-setup-2.0.0
+      pullPolicy: IfNotPresent
+    database: true
+    rawTable: true
+    deadLetterTable: true
+    summaryTable: true
+    materializedView: true
+
   nodeSelector: {}
   tolerations: []
   affinity: {}
   podAnnotations: {}
 
-# ── Logstash ────────────────────────────────────────────────────────────────
+# ΓöÇΓöÇ Logstash ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 logstash:
-  # Set external.enabled=true to use an existing Logstash instance.
-  # The gateway will send observations to external.url.
   external:
     enabled: false
     url: ""
 
-  # ── Internal deployment (ignored when external.enabled=true) ──
   image:
     repository: oracle1012/applicative-load-observability
-    tag: logstash-1.22.1
+    tag: logstash-2.0.0
     pullPolicy: IfNotPresent
   replicas: 1
-  javaOpts: "-Xms512m -Xmx512m"
-  extraEnv: []
-  # extraEnv:
-  #   - name: PIPELINE_WORKERS
-  #     value: "8"
   resources:
     requests:
-      cpu: 100m
-      memory: 512Mi
-    limits:
       cpu: 500m
       memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 2Gi
   service:
     httpPort: 8080
     monitoringPort: 9600
@@ -222,8 +133,23 @@ logstash:
   queue:
     type: memory
     maxBytes: 256mb
-  # Prometheus exporter sidecar (kuskoman/logstash-exporter).
-  # Enable to add a Prometheus exporter sidecar to this component.
+
+  # Tunables for logstash-output-clickhouse. Two outputs share most knobs
+  # but use different flush sizes (raw is high-throughput; dead-letter is rare).
+  clickhouseOutput:
+    httpCompression: true
+    flushSize: 5000
+    deadLetterFlushSize: 1000
+    idleFlushTime: 5
+    automaticRetries: 3
+    mutationsSync: 0
+    poolMax: 10
+    # Settings passed via the X-ClickHouse-Settings HTTP header on every
+    # insert request. ``async_insert=1`` batches small inserts into larger
+    # blocks server-side; ``input_format_skip_unknown_fields=1`` tolerates
+    # transient schema drift.
+    chSettings: "input_format_skip_unknown_fields=1,async_insert=1,wait_for_async_insert=0"
+
   exporter:
     enabled: false
     image:
@@ -244,44 +170,31 @@ logstash:
   podAnnotations: {}
   pdb:
     enabled: false
-    # minAvailable: 1
-    # maxUnavailable: 1
 
-# ── Analyzer ────────────────────────────────────────────────────────────────
+# ΓöÇΓöÇ Analyzer ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 analyzer:
   enabled: true
   image:
     repository: oracle1012/applicative-load-observability
-    tag: analyzer-1.22.1
+    tag: analyzer-2.0.0
     pullPolicy: IfNotPresent
-  replicas: 1
+  replicas: 2
   port: 8000
-  # Dynamic baselines — P50 from recent search traffic, refreshed every cacheTTL.
-  # ES connection is injected automatically from the elasticsearch config above.
   dynamicBaselines:
     cacheTTL: "60"
-    queryWindow: "1h"
-  # Static baseline overrides — bypass dynamic computation for these keys.
-  # Empty string means use the code default (or dynamic value when available).
+    queryWindow: "1 HOUR"
   stressBaselines:
     tookMs: ""
     hits: ""
     shardsTotal: ""
     docsAffected: ""
-  requestBody:
-    # Max bytes kept on the stored request.body field. Parsing always runs
-    # on the full body — only the persisted value is truncated. Default
-    # leaves a safety margin under the 32 766-byte ES keyword limit.
-    # Override only when the request.body mapping has been changed (raise
-    # for text mappings, set to 0 to disable truncation entirely).
-    storeMaxBytes: 32000
   resources:
     requests:
-      cpu: 50m
-      memory: 64Mi
-    limits:
-      cpu: 200m
+      cpu: 100m
       memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
   nodeSelector: {}
   tolerations: []
   affinity: {}
@@ -289,46 +202,40 @@ analyzer:
   extraEnv: []
   pdb:
     enabled: false
-    # minAvailable: 1
-    # maxUnavailable: 1
 
-# ── Gateway ─────────────────────────────────────────────────────────────────
+# ΓöÇΓöÇ Gateway ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 gateway:
   enabled: true
-  # The ES cluster the gateway proxies to (the one being monitored).
-  # If url is empty, falls back to the main elasticsearch config above.
+  # The Elasticsearch cluster the gateway proxies (the *customer's* ES being
+  # monitored). REQUIRED when gateway.enabled=true.
   elasticsearch:
     url: ""
     auth:
-      # When true, the gateway injects its own Authorization header, overriding
-      # any credentials the client sends. When false (default), client auth
-      # headers pass through to ES untouched (transparent proxy).
       injectAuth: false
-      type: basic           # "basic" or "apiKey"
+      type: basic
       username: ""
       password: ""
       apiKey: ""
-      existingSecret: ""    # Secret with keys matching the auth type
+      existingSecret: ""
     tls:
       caCert: ""
       caCertSecret: ""
       create: false
       insecureSkipVerify: false
-  # DNS resolver for OpenResty. Leave empty to auto-detect from /etc/resolv.conf (works on K8s and OpenShift).
   dnsResolver: ""
   image:
     repository: oracle1012/applicative-load-observability
-    tag: gateway-1.22.1
+    tag: gateway-2.0.0
     pullPolicy: IfNotPresent
   replicas: 2
   port: 9200
   resources:
     requests:
-      cpu: 50m
-      memory: 64Mi
-    limits:
-      cpu: 200m
+      cpu: 100m
       memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
   initResources:
     requests:
       cpu: 50m
@@ -336,21 +243,11 @@ gateway:
     limits:
       cpu: 100m
       memory: 64Mi
-  # Nginx error log level (debug, info, notice, warn, error, crit)
   errorLogLevel: warn
-  # Workers and connections per OpenResty instance
   workerProcesses: 2
   workerConnections: 4096
-  # In-memory cap for request bodies (nginx client_body_buffer_size).
-  # Lazy-allocated per request — only consumes memory when a body actually
-  # arrives. Bodies above this size spool to a temp file and the gateway
-  # reads the file, so the analyzer always receives the full body. Bump
-  # only if disk I/O on huge bulks becomes a bottleneck.
-  clientBodyBufferSize: "64m"
-  # Timeout for ES proxy
   proxyReadTimeout: 60s
   proxyConnectTimeout: 10s
-  # Timeout for pipeline notification (ms)
   pipelineTimeout: 1000
   probes:
     enabled: false
@@ -361,13 +258,11 @@ gateway:
       initialDelaySeconds: 5
       periodSeconds: 5
   service:
-    type: LoadBalancer
+    type: ClusterIP
     port: 9200
   nodeSelector: {}
   tolerations: []
   affinity: {}
-  # Prometheus exporter sidecar (nginx-prometheus-exporter).
-  # Enable to add a Prometheus exporter sidecar to this component.
   exporter:
     enabled: false
     image:
@@ -375,7 +270,6 @@ gateway:
       tag: "1.4.0"
       pullPolicy: IfNotPresent
     port: 9113
-    # Internal port for stub_status (not exposed on the Service)
     stubStatusPort: 9145
     resources:
       requests:
@@ -388,57 +282,10 @@ gateway:
   extraEnv: []
   pdb:
     enabled: false
-    # minAvailable: 1
-    # maxUnavailable: 1
 
-# ── Kibana ──────────────────────────────────────────────────────────────────
-kibana:
-  enabled: false
-  # Set external.enabled=true to skip deploying Kibana
-  external:
-    enabled: false
-    url: ""
-
-  image:
-    repository: docker.elastic.co/kibana/kibana
-    tag: "8.13.0"
-    pullPolicy: IfNotPresent
-  replicas: 1
-  resources:
-    requests:
-      cpu: 250m
-      memory: 512Mi
-    limits:
-      cpu: "1"
-      memory: 1Gi
-  service:
-    type: ClusterIP
-    port: 5601
-  # Kibana setup job — creates Kibana saved objects (data view, saved searches,
-  # dashboards). ES resources (ILM, mappings, templates, transform) are handled
-  # by the elasticsearch.setup job. Set enabled=false to skip entirely, or use
-  # per-section flags to control individual steps.
-  setup:
-    enabled: true
-    image:
-      repository: oracle1012/applicative-load-observability
-      tag: kibana-setup-1.22.1
-      pullPolicy: IfNotPresent
-    dataView: true      # create alo-data-view
-    savedSearches: true # create "Top 10 Heaviest Operations" saved search
-    dashboards: true    # import ALO dashboards (main, cost indicators, usage)
-    rebuild: false      # rebuild dashboards via API + re-export ndjson instead of importing packaged ndjson
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  podAnnotations: {}
-  extraEnv: []
-
-# ── Grafana ────────────────────────────────────────────────────────────────
+# ΓöÇΓöÇ Grafana ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 grafana:
   enabled: true
-  # Set external.enabled=true to push dashboards to an existing Grafana via API
-  # (no Grafana pod deployed, only setup job runs).
   external:
     enabled: false
     url: ""
@@ -453,39 +300,30 @@ grafana:
     pullPolicy: IfNotPresent
   replicas: 1
   adminPassword: admin
-  # Reference a pre-existing Secret for the admin password (key: password).
-  # When set, adminPassword above is ignored.
   adminPasswordExistingSecret: ""
-  # Prometheus URL for the Grafana datasource. Leave empty to skip.
-  # Example: http://prometheus:9090
   prometheusUrl: ""
   resources:
     requests:
-      cpu: 50m
-      memory: 64Mi
-    limits:
-      cpu: 200m
+      cpu: 100m
       memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
   service:
-    type: LoadBalancer
+    type: ClusterIP
     port: 3000
-  # Setup job — pushes datasource + dashboards via Grafana API.
-  # Runs automatically for external Grafana; also runs for internal Grafana
-  # as a post-install hook to ensure dashboards are imported via API too.
   setup:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: grafana-setup-1.22.1
+      tag: grafana-setup-2.0.0
       pullPolicy: IfNotPresent
-    datasource: true    # create/update Elasticsearch datasource(s) in Grafana
-    dashboards: true    # push ALO dashboards (main, cost indicators, usage) to Grafana
   nodeSelector: {}
   tolerations: []
   affinity: {}
   podAnnotations: {}
 
-# ── Ingress (Kubernetes) ────────────────────────────────────────────────────
+# ΓöÇΓöÇ Ingress (Kubernetes) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 ingress:
   enabled: false
   className: ""
@@ -493,10 +331,7 @@ ingress:
   gateway:
     host: ""
     path: /
-  kibana:
-    host: ""
-    path: /
-  elasticsearch:
+  clickhouse:
     host: ""
     path: /
   grafana:
@@ -508,46 +343,26 @@ ingress:
   logstash:
     host: ""
     path: /
-  nifi:
-    host: ""
-    path: /
   tls: []
 
-# ── Route (OpenShift) ──────────────────────────────────────────────────────
+# ΓöÇΓöÇ Route (OpenShift) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 route:
   enabled: false
   annotations: {}
-  # TLS settings. Set tls.enabled=false for plain HTTP routes.
-  # termination: edge, passthrough, or reencrypt
   tls:
     enabled: true
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
-    # Optional certs — if empty, OpenShift uses its default router cert.
     certificate: ""
     key: ""
     caCertificate: ""
-    # Required for reencrypt termination (cert of the upstream service).
     destinationCACertificate: ""
-  # Per-service routes.  host is optional — OpenShift assigns one when empty.
-  # Each service can override tls and annotations from the global defaults above.
-  # Example: gateway with passthrough while others use edge:
-  #   gateway:
-  #     tls:
-  #       termination: passthrough
-  #     annotations:
-  #       haproxy.router.openshift.io/timeout: 120s
   gateway:
     enabled: true
     host: ""
     tls: {}
     annotations: {}
-  kibana:
-    enabled: true
-    host: ""
-    tls: {}
-    annotations: {}
-  elasticsearch:
+  clickhouse:
     enabled: false
     host: ""
     tls: {}
@@ -567,39 +382,27 @@ route:
     host: ""
     tls: {}
     annotations: {}
-  nifi:
-    enabled: false
-    host: ""
-    tls: {}
-    annotations: {}
 
-# ── Service accounts ───────────────────────────────────────────────────────
+# ΓöÇΓöÇ Service accounts ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 serviceAccount:
-  # Create a dedicated ServiceAccount for ALO pods
   create: false
   name: ""
   annotations: {}
 
-# ── Pod security defaults (applied to all components) ──────────────────────
+# ΓöÇΓöÇ Pod security defaults ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 podSecurityContext: {}
-
 securityContext: {}
 
-# ── Helm test pods ────────────────────────────────────────────────────────
+# ΓöÇΓöÇ Helm test pods ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 testImage:
   repository: busybox
   tag: "1.36"
 
-# ── Prometheus ServiceMonitors ────────────────────────────────────────────
-# Deploy ServiceMonitor CRDs for Prometheus Operator autodiscovery.
-# Requires at least one exporter to be enabled.
+# ΓöÇΓöÇ Prometheus ServiceMonitors ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 serviceMonitors:
   enabled: false
-  # Extra labels for ServiceMonitor resources (e.g. { release: prometheus })
   labels: {}
-  # Scrape interval
   interval: "15s"
 
-# ── Image pull secrets (shared across all deployments) ──────────────────────
+# ΓöÇΓöÇ Image pull secrets ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 imagePullSecrets: []
-

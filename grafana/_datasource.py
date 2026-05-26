@@ -1,104 +1,58 @@
-"""Grafana datasource provisioning helpers."""
+﻿"""Grafana datasource provisioning helpers (ClickHouse)."""
 
 import os
 import textwrap
-
-
-def _read_cert(es_ca_cert: str) -> str:
-    """Return PEM content — read from file if path, else treat as literal."""
-    if es_ca_cert and os.path.isfile(es_ca_cert):
-        with open(es_ca_cert, encoding="utf-8") as f:
-            return f.read()
-    return es_ca_cert
+from urllib.parse import urlparse
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DS_DIR = os.path.join(SCRIPT_DIR, "provisioning", "datasources")
-DS_PATH = os.path.join(DS_DIR, "elasticsearch.yml")
+DS_PATH = os.path.join(DS_DIR, "clickhouse.yml")
 PROM_DS_PATH = os.path.join(DS_DIR, "prometheus.yml")
 
 
-def _ds_tls_block(es_insecure: bool, es_ca_cert: str) -> str:
-    lines = []
-    if es_insecure:
-        lines.append("              tlsSkipVerify: true")
-    if es_ca_cert:
-        lines.append("              tlsAuthWithCACert: true")
-    return ("\n" + "\n".join(lines)) if lines else ""
+def _parse_host(url: str) -> tuple[str, int, bool]:
+    parsed = urlparse(url if "://" in url else f"http://{url}")
+    host = parsed.hostname or "clickhouse"
+    secure = parsed.scheme == "https"
+    port = parsed.port or (8443 if secure else 8123)
+    return host, port, secure
 
 
-def _ds_secure_block(es_username: str, es_password: str, es_ca_cert: str) -> str:
-    """Generate the secureJsonData block (auth password + CA cert PEM content)."""
-    lines = []
-    if es_username:
-        lines.append(f"              basicAuthPassword: {es_password}")
-    cert_pem = _read_cert(es_ca_cert)
-    if cert_pem:
-        indented = "\n".join(f"                {ln}" for ln in cert_pem.splitlines())
-        lines.append(f"              tlsCACert: |\n{indented}")
-    if not lines:
-        return ""
-    return "\n            secureJsonData:\n" + "\n".join(lines)
-
-
-def _ds_auth_block(es_username: str) -> str:
-    if not es_username:
-        return ""
-    return textwrap.dedent(f"""\
-
-            basicAuth: true
-            basicAuthUser: {es_username}""")
-
-
-def _ds_entry(name: str, uid: str, url: str, database: str, is_default: bool,
-              es_username: str, es_password: str,
-              es_insecure: bool, es_ca_cert: str) -> str:
-    tls = _ds_tls_block(es_insecure, es_ca_cert)
-    auth = _ds_auth_block(es_username)
-    secure = _ds_secure_block(es_username, es_password, es_ca_cert)
-    return textwrap.dedent(f"""\
-          - name: {name}
-            type: elasticsearch
-            uid: {uid}
-            access: proxy
-            url: {url}
-            database: "{database}"
-            isDefault: {"true" if is_default else "false"}{auth}{secure}
-            jsonData:
-              esVersion: "8.0.0"
-              timeField: "@timestamp"
-              logMessageField: ""
-              logLevelField: ""
-              maxConcurrentShardRequests: 5
-              interval: ""{tls}
-            editable: true
-    """)
-
-
-def generate_datasource_yaml(elasticsearch_url: str = "http://elasticsearch:9200",
-                             index_pattern: str = "logs-alo.*-*,alo-summary",
-                             es_username: str = "",
-                             es_password: str = "",
-                             es_insecure: bool = False,
-                             es_ca_cert: str = "") -> str:
-    main = _ds_entry(
-        "Elasticsearch (ALO)", "alo-elasticsearch",
-        elasticsearch_url, index_pattern, True,
-        es_username, es_password, es_insecure, es_ca_cert,
-    )
-    summary = _ds_entry(
-        "Elasticsearch (ALO Summary)", "alo-elasticsearch-summary",
-        elasticsearch_url, "alo-summary", False,
-        es_username, es_password, es_insecure, es_ca_cert,
-    )
-    content = textwrap.dedent("""\
+def generate_datasource_yaml(clickhouse_url: str = "http://clickhouse:8123",
+                             database: str = "alo",
+                             native_port: int = 9000,
+                             username: str = "default",
+                             password: str = "",
+                             insecure_skip_verify: bool = False) -> str:
+    host, http_port, secure = _parse_host(clickhouse_url)
+    # The plugin reads its primary connection from `host`/`port`/`protocol`.
+    # `protocol: native` is faster (typed wire format) so we expose the
+    # native port and fall back to HTTP if the user only exposed 8123.
+    port = native_port if native_port else http_port
+    protocol = "native" if native_port else "http"
+    content = textwrap.dedent(f"""\
         apiVersion: 1
 
-        # Primary datasource queries raw + summary. While raw data exists it
-        # outnumbers summary docs ~50:1 (<2% noise). After ILM deletes raw,
-        # summary seamlessly provides avg metrics and percentiles at hourly
-        # granularity.
+        # Single ClickHouse datasource serves both raw and summary tables.
+        # Panels select the right table in their SQL.
         datasources:
-    """) + main + summary
+          - name: ClickHouse (ALO)
+            type: grafana-clickhouse-datasource
+            uid: alo-clickhouse
+            access: proxy
+            isDefault: true
+            jsonData:
+              host: {host}
+              port: {port}
+              protocol: {protocol}
+              secure: {str(secure).lower()}
+              tlsSkipVerify: {str(insecure_skip_verify).lower()}
+              username: "{username}"
+              defaultDatabase: {database}
+            secureJsonData:
+              password: "{password}"
+            editable: true
+    """)
     os.makedirs(DS_DIR, exist_ok=True)
     with open(DS_PATH, "w", encoding="utf-8") as f:
         f.write(content)
@@ -106,12 +60,11 @@ def generate_datasource_yaml(elasticsearch_url: str = "http://elasticsearch:9200
     return DS_PATH
 
 
-def generate_prometheus_datasource_yaml(prometheus_url=""):
+def generate_prometheus_datasource_yaml(prometheus_url: str = "") -> str | None:
     """Write or remove the Prometheus datasource provisioning file.
 
-    When ``prometheus_url`` is empty, any existing file is removed so
-    re-runs without the env var leave a clean state. Mirrors the Helm
-    chart's opt-in pattern (``grafana.prometheusUrl``).
+    Empty URL ΓåÆ remove any existing file (mirrors ``grafana.prometheusUrl``
+    opt-in semantics in Helm).
     """
     if not prometheus_url:
         if os.path.exists(PROM_DS_PATH):

@@ -1,4 +1,3 @@
-{{- if eq .Values.pipelineMode "logstash" }}
 {{- if not .Values.logstash.external.enabled }}
 apiVersion: v1
 kind: Pod
@@ -23,5 +22,4 @@ spec:
           echo "Testing Logstash HTTP input connectivity..."
           wget -qO- --timeout=10 http://{{ include "alo.fullname" . }}-logstash:{{ .Values.logstash.service.httpPort }}/ || exit 1
           echo "Logstash is reachable."
-{{- end }}
 {{- end }}

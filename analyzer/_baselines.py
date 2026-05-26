@@ -1,14 +1,17 @@
 """
-Dynamic stress baselines from ES percentile aggregations.
+Dynamic stress baselines from ClickHouse percentile aggregations.
 
-When ELASTICSEARCH_URL is set, refreshes took_ms and shards_total from
-P50 of recent search traffic every BASELINE_CACHE_TTL seconds (default 60).
-Falls back to static defaults when ES is unavailable or has no data.
+When ``CLICKHOUSE_URL`` is set, refreshes ``took_ms`` and ``shards_total``
+from the median of recent search traffic every ``BASELINE_CACHE_TTL``
+seconds (default 60). Falls back to static defaults when ClickHouse is
+unavailable or returns no rows.
 
-Supports the same ES connection config as the rest of the stack:
-ELASTICSEARCH_URL, ES_USERNAME, ES_PASSWORD, ES_CA_CERT, ES_INSECURE.
+Connection env vars match the rest of the stack:
+``CLICKHOUSE_URL``, ``CLICKHOUSE_USER``, ``CLICKHOUSE_PASSWORD``,
+``CLICKHOUSE_DATABASE``, ``CLICKHOUSE_CA_CERT``, ``CLICKHOUSE_INSECURE``.
 """
 
+import base64
 import json
 import logging
 import math
@@ -17,19 +20,20 @@ import ssl
 import time
 import urllib.error
 import urllib.request
-from base64 import b64encode
 
 logger = logging.getLogger(__name__)
 
-_ES_URL = os.environ.get("ELASTICSEARCH_URL")
-_ES_USERNAME = os.environ.get("ES_USERNAME", "")
-_ES_PASSWORD = os.environ.get("ES_PASSWORD", "")
-_ES_CA_CERT = os.environ.get("ES_CA_CERT", "")
-_ES_INSECURE = os.environ.get("ES_INSECURE", "").lower() in ("1", "true", "yes")
+_CH_URL = os.environ.get("CLICKHOUSE_URL")
+_CH_USER = os.environ.get("CLICKHOUSE_USER", "default")
+_CH_PASSWORD = os.environ.get("CLICKHOUSE_PASSWORD", "")
+_CH_DATABASE = os.environ.get("CLICKHOUSE_DATABASE", "alo")
+_CH_CA_CERT = os.environ.get("CLICKHOUSE_CA_CERT", "")
+_CH_INSECURE = os.environ.get("CLICKHOUSE_INSECURE", "").lower() in ("1", "true", "yes")
 
 _CACHE_TTL = float(os.environ.get("BASELINE_CACHE_TTL", "60"))
-_QUERY_WINDOW = os.environ.get("BASELINE_QUERY_WINDOW", "1h")
-_ES_QUERY_TIMEOUT = 5
+# CH interval syntax; default 1h matches the ES setup's "1h".
+_QUERY_WINDOW = os.environ.get("BASELINE_QUERY_WINDOW", "1 HOUR")
+_CH_QUERY_TIMEOUT = 5
 
 _STATIC: dict[str, float] = {
     "took_ms":       float(os.environ.get("STRESS_BASELINE_TOOK_MS", "100")),
@@ -45,56 +49,63 @@ _cache_ts: float = 0.0
 
 
 def _build_ssl_context() -> ssl.SSLContext | None:
-    if _ES_INSECURE:
+    if _CH_INSECURE:
         ctx = ssl.create_default_context()
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
         return ctx
-    if _ES_CA_CERT:
-        return ssl.create_default_context(cafile=_ES_CA_CERT)
+    if _CH_CA_CERT:
+        return ssl.create_default_context(cafile=_CH_CA_CERT)
     return None
 
 
 def _build_headers() -> dict[str, str]:
-    headers: dict[str, str] = {"Content-Type": "application/json"}
-    if _ES_USERNAME and _ES_PASSWORD:
-        token = b64encode(f"{_ES_USERNAME}:{_ES_PASSWORD}".encode()).decode()
+    headers: dict[str, str] = {"Content-Type": "text/plain; charset=utf-8"}
+    if _CH_USER:
+        headers["X-ClickHouse-User"] = _CH_USER
+    if _CH_PASSWORD:
+        headers["X-ClickHouse-Key"] = _CH_PASSWORD
+        token = base64.b64encode(f"{_CH_USER}:{_CH_PASSWORD}".encode()).decode()
         headers["Authorization"] = f"Basic {token}"
     return headers
 
 
 def _fetch_p50() -> dict[str, float]:
-    """Query ES for P50 of took_ms and shards_total from recent searches."""
-    if _ES_URL is None:
-        raise RuntimeError("_fetch_p50 called without ELASTICSEARCH_URL set")
-    body = json.dumps({
-        "size": 0,
-        "query": {"bool": {"filter": [
-            {"range": {"@timestamp": {"gte": f"now-{_QUERY_WINDOW}"}}},
-        ]}},
-        "aggs": {
-            "took_p50": {"percentiles": {
-                "field": "response.es_took_ms", "percents": [50],
-            }},
-            "shards_p50": {"percentiles": {
-                "field": "response.shards_total", "percents": [50],
-            }},
-        },
-    }).encode()
-
-    url = f"{_ES_URL.rstrip('/')}/logs-alo.search-*/_search"
-    req = urllib.request.Request(url, data=body, headers=_build_headers(), method="POST")
+    """Query ClickHouse for the median of took_ms and shards_total."""
+    assert _CH_URL is not None  # caller checks _CH_URL before calling
+    sql = (
+        f"SELECT "
+        f"quantile(0.5)(response_es_took_ms)  AS took_ms, "
+        f"quantile(0.5)(response_shards_total) AS shards_total "
+        f"FROM {_CH_DATABASE}.alo_raw "
+        f"WHERE timestamp >= now() - INTERVAL {_QUERY_WINDOW} "
+        f"  AND request_operation IN ('_search','_msearch','_count') "
+        f"FORMAT JSON"
+    )
+    url = f"{_CH_URL.rstrip('/')}/?database={_CH_DATABASE}"
+    req = urllib.request.Request(url, data=sql.encode(),
+                                 headers=_build_headers(), method="POST")
 
     ssl_ctx = _build_ssl_context()
-    with urllib.request.urlopen(req, timeout=_ES_QUERY_TIMEOUT, context=ssl_ctx) as resp:
+    with urllib.request.urlopen(req, timeout=_CH_QUERY_TIMEOUT, context=ssl_ctx) as resp:
         data = json.loads(resp.read())
 
-    aggs = data.get("aggregations", {})
+    rows = data.get("data", [])
+    if not rows:
+        return {}
+    row = rows[0]
     result: dict[str, float] = {}
-    for key, agg_name in (("took_ms", "took_p50"), ("shards_total", "shards_p50")):
-        val = aggs.get(agg_name, {}).get("values", {}).get("50.0")
-        if val is not None and not math.isnan(val) and val > 0:
-            result[key] = val
+    for key in _DYNAMIC_KEYS:
+        raw = row.get(key)
+        if raw is None:
+            continue
+        try:
+            val = float(raw)
+        except (TypeError, ValueError):
+            continue
+        if math.isnan(val) or val <= 0:
+            continue
+        result[key] = val
     return result
 
 
@@ -102,7 +113,7 @@ def _refresh() -> None:
     """Refresh cache if stale.
 
     NOTE: no lock — concurrent requests at TTL boundary may all fire
-    _fetch_p50().  Acceptable: results are identical and ES handles it.
+    _fetch_p50(). Acceptable: results are identical and CH handles it.
     """
     global _cache_ts
 
@@ -110,7 +121,7 @@ def _refresh() -> None:
     if now - _cache_ts < _CACHE_TTL:
         return
 
-    if _ES_URL:
+    if _CH_URL:
         try:
             dynamic = _fetch_p50()
             for key in _DYNAMIC_KEYS:
@@ -121,7 +132,7 @@ def _refresh() -> None:
             )
         except (urllib.error.URLError, OSError, TimeoutError, json.JSONDecodeError, ValueError):
             logger.warning(
-                "ES unreachable for dynamic baselines, keeping current values",
+                "ClickHouse unreachable for dynamic baselines, keeping current values",
                 exc_info=True,
             )
 
@@ -129,6 +140,6 @@ def _refresh() -> None:
 
 
 def get_baselines() -> dict[str, float]:
-    """Return current baselines, refreshing from ES if cache is stale."""
+    """Return current baselines, refreshing from ClickHouse if cache is stale."""
     _refresh()
     return dict(_cache)

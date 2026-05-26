@@ -1,0 +1,86 @@
+{{- if .Values.clickhouse.setup.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "alo.fullname" . }}-ch-setup
+  labels:
+    {{- include "alo.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 5
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        {{- include "alo.labels" . | nindent 8 }}
+        {{- include "alo.selectorLabels" (dict "ctx" . "component" "ch-setup") | nindent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: {{ include "alo.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- include "alo.imagePullSecrets" $ | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: ch-setup
+          image: "{{ .Values.clickhouse.setup.image.repository }}:{{ .Values.clickhouse.setup.image.tag }}"
+          imagePullPolicy: {{ .Values.clickhouse.setup.image.pullPolicy }}
+          args:
+            {{- if not .Values.clickhouse.setup.database }}- --no-create-database{{- else }}- --create-database{{- end }}
+            {{- if not .Values.clickhouse.setup.rawTable }}
+            - --no-raw-table
+            {{- end }}
+            {{- if not .Values.clickhouse.setup.deadLetterTable }}
+            - --no-dead-letter-table
+            {{- end }}
+            {{- if not .Values.clickhouse.setup.summaryTable }}
+            - --no-summary-table
+            {{- end }}
+            {{- if not .Values.clickhouse.setup.materializedView }}
+            - --no-materialized-view
+            {{- end }}
+            - --raw-retention-days={{ .Values.tableSettings.rawRetentionDays }}
+            - --summary-retention-days={{ .Values.tableSettings.summaryRetentionDays }}
+          env:
+            - name: CLICKHOUSE_URL
+              value: {{ include "alo.clickhouseUrl" . | quote }}
+            - name: CLICKHOUSE_DATABASE
+              value: {{ .Values.clickhouse.database | quote }}
+            {{- if eq (include "alo.clickhouseAuthEnabled" .) "true" }}
+            - name: CLICKHOUSE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.clickhouseAuthSecretName" . }}
+                  key: username
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "alo.clickhouseAuthSecretName" . }}
+                  key: password
+            {{- end }}
+            {{- if eq (include "alo.clickhouseCaEnabled" .) "true" }}
+            - name: CLICKHOUSE_CA_CERT
+              value: /etc/ssl/ch/ca.crt
+            {{- end }}
+            - name: CLICKHOUSE_INSECURE
+              value: {{ include "alo.clickhouseInsecure" . | quote }}
+            {{- with (include "alo.clickhouseClusterName" .) }}
+            - name: CLICKHOUSE_CLUSTER
+              value: {{ . | quote }}
+            {{- end }}
+          {{- if eq (include "alo.clickhouseCaEnabled" .) "true" }}
+          volumeMounts:
+            - name: ch-ca
+              mountPath: /etc/ssl/ch
+              readOnly: true
+          {{- end }}
+      {{- if eq (include "alo.clickhouseCaEnabled" .) "true" }}
+      volumes:
+        - name: ch-ca
+          secret:
+            secretName: {{ include "alo.clickhouseCaSecretName" . }}
+      {{- end }}
+{{- end }}

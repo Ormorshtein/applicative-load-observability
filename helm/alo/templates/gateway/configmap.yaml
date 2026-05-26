@@ -22,9 +22,6 @@ data:
     env ES_AUTH_API_KEY;
     {{- end }}
     {{- end }}
-    {{- if and (eq .Values.pipelineMode "nifi") .Values.nifi.external.enabled .Values.nifi.external.auth.enabled }}
-    env NIFI_AUTH_HEADER_VALUE;
-    {{- end }}
 
     events {
         worker_connections {{ .Values.gateway.workerConnections }};
@@ -76,9 +73,6 @@ data:
                 _G._alo_es_auth_header = ""
             end
             {{- end }}
-            {{- end }}
-            {{- if and (eq .Values.pipelineMode "nifi") .Values.nifi.external.enabled .Values.nifi.external.auth.enabled }}
-            _G._alo_nifi_auth = os.getenv("NIFI_AUTH_HEADER_VALUE") or ""
             {{- end }}
         }
 
@@ -182,19 +176,12 @@ data:
 
                             local pipeline_headers = { ["Content-Type"] = "application/json" }
 
-                            {{- if and (eq .Values.pipelineMode "nifi") .Values.nifi.external.enabled .Values.nifi.external.auth.enabled }}
-                            local nifi_auth = _G._alo_nifi_auth
-                            if nifi_auth and nifi_auth ~= "" then
-                                pipeline_headers["{{ .Values.nifi.external.auth.headerName }}"] = nifi_auth
-                            end
-                            {{- end }}
-
                             local pipeline_url = _G._alo_pipeline_url
                             local res, err = httpc:request_uri(pipeline_url, {
                                 method  = "POST",
                                 body    = cjson.encode(ctx),
                                 headers = pipeline_headers,
-                                ssl_verify = pipeline_url:sub(1, 5) == "https" and {{ not (and (eq .Values.pipelineMode "nifi") .Values.nifi.external.enabled .Values.nifi.external.tls.insecureSkipVerify) }} or false,
+                                ssl_verify = pipeline_url:sub(1, 5) == "https" or false,
                             })
                             if not res then
                                 ngx.log(ngx.WARN, "observability: pipeline unreachable: ", err)

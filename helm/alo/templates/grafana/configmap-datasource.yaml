@@ -7,56 +7,35 @@ metadata:
     {{- include "alo.labels" . | nindent 4 }}
     {{- include "alo.selectorLabels" (dict "ctx" . "component" "grafana") | nindent 4 }}
 data:
-  elasticsearch.yml: |
+  clickhouse.yml: |
     apiVersion: 1
     datasources:
-      {{- $esAuth := eq (include "alo.esAuthEnabled" .) "true" }}
-      {{- $esInsecure := eq (include "alo.esInsecure" .) "true" }}
-      - name: Elasticsearch (ALO)
-        type: elasticsearch
-        uid: alo-elasticsearch
+      {{- $chAuth := eq (include "alo.clickhouseAuthEnabled" .) "true" }}
+      {{- $chInsecure := eq (include "alo.clickhouseInsecure" .) "true" }}
+      {{- $chHost := include "alo.clickhouseNativeHost" . | trim }}
+      {{- $chPort := .Values.clickhouse.service.nativePort | int }}
+      {{- $chSecure := hasPrefix "https://" (include "alo.clickhouseUrl" .) }}
+      - name: ClickHouse (ALO)
+        type: grafana-clickhouse-datasource
+        uid: alo-clickhouse
         access: proxy
-        url: {{ include "alo.elasticsearchUrl" . }}
-        database: "logs-alo.*-*,alo-summary"
         isDefault: true
-        {{- if $esAuth }}
-        basicAuth: true
-        basicAuthUser: {{ .Values.elasticsearch.external.auth.username | quote }}
-        secureJsonData:
-          basicAuthPassword: {{ .Values.elasticsearch.external.auth.password | quote }}
-        {{- end }}
         jsonData:
-          esVersion: "8.0.0"
-          timeField: "@timestamp"
-          logMessageField: ""
-          logLevelField: ""
-          maxConcurrentShardRequests: 5
-          interval: ""
-          {{- if $esInsecure }}
-          tlsSkipVerify: true
+          host: {{ $chHost | quote }}
+          port: {{ $chPort }}
+          protocol: native
+          secure: {{ $chSecure }}
+          tlsSkipVerify: {{ $chInsecure }}
+          {{- if $chAuth }}
+          username: {{ .Values.clickhouse.external.auth.username | default .Values.clickhouse.auth.username | default "default" | quote }}
+          {{- else }}
+          username: "default"
           {{- end }}
-        editable: true
-
-      - name: Elasticsearch (ALO Summary)
-        type: elasticsearch
-        uid: alo-elasticsearch-summary
-        access: proxy
-        url: {{ include "alo.elasticsearchUrl" . }}
-        database: "alo-summary"
-        isDefault: false
-        {{- if $esAuth }}
-        basicAuth: true
-        basicAuthUser: {{ .Values.elasticsearch.external.auth.username | quote }}
+          defaultDatabase: {{ .Values.clickhouse.database | quote }}
+        {{- if $chAuth }}
         secureJsonData:
-          basicAuthPassword: {{ .Values.elasticsearch.external.auth.password | quote }}
+          password: {{ (.Values.clickhouse.external.auth.password | default .Values.clickhouse.auth.password) | quote }}
         {{- end }}
-        jsonData:
-          esVersion: "8.0.0"
-          timeField: "@timestamp"
-          maxConcurrentShardRequests: 5
-          {{- if $esInsecure }}
-          tlsSkipVerify: true
-          {{- end }}
         editable: true
   {{- if .Values.grafana.prometheusUrl }}
   prometheus.yml: |

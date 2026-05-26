@@ -35,28 +35,28 @@ spec:
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           env:
-            - name: ELASTICSEARCH_URL
-              value: {{ include "alo.elasticsearchUrl" . | quote }}
-            {{- if eq (include "alo.esAuthEnabled" .) "true" }}
-            - name: ES_USERNAME
+            - name: CLICKHOUSE_URL
+              value: {{ include "alo.clickhouseUrl" . | quote }}
+            - name: CLICKHOUSE_DATABASE
+              value: {{ .Values.clickhouse.database | quote }}
+            {{- if eq (include "alo.clickhouseAuthEnabled" .) "true" }}
+            - name: CLICKHOUSE_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "alo.esAuthSecretName" . }}
+                  name: {{ include "alo.clickhouseAuthSecretName" . }}
                   key: username
-            - name: ES_PASSWORD
+            - name: CLICKHOUSE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "alo.esAuthSecretName" . }}
+                  name: {{ include "alo.clickhouseAuthSecretName" . }}
                   key: password
             {{- end }}
-            {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
-            - name: ES_CA_CERT
-              value: /etc/ssl/es/ca.crt
+            {{- if eq (include "alo.clickhouseCaEnabled" .) "true" }}
+            - name: CLICKHOUSE_CA_CERT
+              value: /etc/ssl/ch/ca.crt
             {{- end }}
-            {{- if and .Values.elasticsearch.external.enabled .Values.elasticsearch.external.tls.insecureSkipVerify }}
-            - name: ES_INSECURE
-              value: "true"
-            {{- end }}
+            - name: CLICKHOUSE_INSECURE
+              value: {{ include "alo.clickhouseInsecure" . | quote }}
             - name: BASELINE_CACHE_TTL
               value: {{ .Values.analyzer.dynamicBaselines.cacheTTL | quote }}
             - name: BASELINE_QUERY_WINDOW
@@ -104,19 +104,19 @@ spec:
               port: http
             initialDelaySeconds: 10
             periodSeconds: 30
-          {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
+          {{- if eq (include "alo.clickhouseCaEnabled" .) "true" }}
           volumeMounts:
-            - name: es-ca
-              mountPath: /etc/ssl/es
+            - name: ch-ca
+              mountPath: /etc/ssl/ch
               readOnly: true
           {{- end }}
           resources:
             {{- toYaml .Values.analyzer.resources | nindent 12 }}
-      {{- if and .Values.elasticsearch.external.enabled (eq (include "alo.esCaEnabled" .) "true") }}
+      {{- if eq (include "alo.clickhouseCaEnabled" .) "true" }}
       volumes:
-        - name: es-ca
+        - name: ch-ca
           secret:
-            secretName: {{ include "alo.esCaSecretName" . }}
+            secretName: {{ include "alo.clickhouseCaSecretName" . }}
       {{- end }}
       {{- include "alo.scheduling" .Values.analyzer | nindent 6 }}
 {{- end }}

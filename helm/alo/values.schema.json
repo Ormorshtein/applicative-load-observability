@@ -1,355 +1,49 @@
-{
+﻿{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "pipelineMode": {
-      "type": "string",
-      "enum": ["logstash", "nifi"],
-      "description": "Pipeline processor to deploy: logstash or nifi."
-    },
     "global": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "clusterName": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Name of the monitored ES cluster (used as data stream namespace)."
-        },
-        "observabilityIndex": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Observability data stream pattern written by the pipeline."
-        }
+        "clusterName": { "type": "string", "minLength": 1 },
+        "observabilityIndex": { "type": "string", "minLength": 1 }
       },
-      "required": ["clusterName", "observabilityIndex"]
+      "required": ["clusterName"]
     },
-    "indexSettings": {
+    "tableSettings": {
       "type": "object",
       "additionalProperties": false,
-      "description": "ES index performance settings passed to the es-setup job.",
+      "description": "ClickHouse retention + partitioning passed to ch-setup.",
       "properties": {
-        "shards": {
-          "type": "integer", "minimum": 1,
-          "description": "Number of primary shards per index."
-        },
-        "replicas": {
-          "type": "integer", "minimum": 0,
-          "description": "Number of replica shards per index."
-        },
-        "refreshInterval": {
-          "type": "string",
-          "description": "Index refresh interval (e.g. 5s, 10s, 30s)."
-        },
-        "rawRetention": {
-          "type": "string",
-          "description": "Raw data retention before ILM delete (e.g. 3d, 7d)."
-        },
-        "rolloverMaxAge": {
-          "type": "string",
-          "description": "Max index age before rollover (e.g. 1d, 3d)."
-        },
-        "summaryRetention": {
-          "type": "string",
-          "description": "Summary transform retention (e.g. 120d, 365d)."
-        }
+        "rawRetentionDays": { "type": "integer", "minimum": 1 },
+        "summaryRetentionDays": { "type": "integer", "minimum": 1 },
+        "rawPartitionBy": { "type": "string" },
+        "summaryPartitionBy": { "type": "string" }
       }
     },
-    "elasticsearch": {
+    "clickhouse": {
       "type": "object",
       "additionalProperties": false,
-      "description": "ALO storage Elasticsearch — where observability data is written.",
-      "properties": {
-        "external": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "url": {
-              "type": "string",
-              "description": "Full URL including scheme and port, e.g. https://es.prod:9200."
-            },
-            "auth": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "enabled": { "type": "boolean" },
-                "type": { "type": "string", "enum": ["basic", "apiKey"] },
-                "username": { "type": "string" },
-                "password": { "type": "string" },
-                "apiKey": { "type": "string" },
-                "existingSecret": { "type": "string" }
-              }
-            },
-            "tls": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "caCert": { "type": "string", "description": "CA certificate PEM content (used when create=true)." },
-                "caCertSecret": { "type": "string", "description": "Name of Secret containing key ca.crt." },
-                "create": { "type": "boolean", "description": "true: chart creates Secret from caCert; false: use pre-existing Secret." },
-                "insecureSkipVerify": { "type": "boolean" }
-              }
-            }
-          }
-        },
-        "image": { "$ref": "#/$defs/image" },
-        "replicas": { "$ref": "#/$defs/replicas" },
-        "resources": { "$ref": "#/$defs/resources" },
-        "initResources": { "$ref": "#/$defs/resources", "description": "Resource requests/limits for the fix-permissions init container." },
-        "javaOpts": { "type": "string" },
-        "persistence": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "size": { "type": "string", "pattern": "^[0-9]+(Gi|Mi|Ti)$" },
-            "storageClass": { "type": "string" }
-          }
-        },
-        "security": {
-          "type": "object",
-          "additionalProperties": false,
-          "description": "xpack.security for the internal ES cluster.",
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "username": { "type": "string" },
-            "password": { "type": "string" },
-            "existingSecret": { "type": "string" }
-          }
-        },
-        "service": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "port": { "$ref": "#/$defs/port" }
-          }
-        },
-        "exporter": {
-          "type": "object",
-          "additionalProperties": false,
-          "description": "Prometheus elasticsearch-exporter sidecar.",
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "image": { "$ref": "#/$defs/image" },
-            "port": { "$ref": "#/$defs/port" },
-            "resources": { "$ref": "#/$defs/resources" }
-          }
-        },
-        "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
-        "tolerations": { "$ref": "#/$defs/tolerations" },
-        "affinity": { "$ref": "#/$defs/affinity" },
-        "podAnnotations": { "$ref": "#/$defs/podAnnotations" },
-        "setup": {
-          "type": "object",
-          "additionalProperties": false,
-          "description": "ES resource setup job (ILM, component template, index templates, summary transform).",
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "image": { "$ref": "#/$defs/image" },
-            "ilm": { "type": "boolean", "description": "Create ILM policies." },
-            "componentTemplate": { "type": "boolean", "description": "Create component template (field mappings)." },
-            "indexTemplates": { "type": "boolean", "description": "Create composable index templates." },
-            "summaryTemplate": { "type": "boolean", "description": "Create summary index template." },
-            "transform": { "type": "boolean", "description": "Recreate and start the summary transform." }
-          }
-        }
-      }
-    },
-    "nifi": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "external": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "listenUrl": { "type": "string" },
-            "auth": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "enabled": { "type": "boolean" },
-                "headerName": { "type": "string" },
-                "headerValue": { "type": "string" },
-                "existingSecret": { "type": "string" }
-              }
-            },
-            "tls": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "caSecret": { "type": "string" },
-                "insecureSkipVerify": { "type": "boolean" }
-              }
-            }
-          }
-        },
-        "image": { "$ref": "#/$defs/image" },
-        "resources": { "$ref": "#/$defs/resources" },
-        "auth": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "username": { "type": "string" },
-            "password": { "type": "string", "minLength": 12, "description": "NiFi requires at least 12 characters." },
-            "existingSecret": { "type": "string" }
-          }
-        },
-        "sensitivePropsKey": { "type": "string", "minLength": 12 },
-        "service": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "httpsPort": { "$ref": "#/$defs/port" },
-            "listenPort": { "$ref": "#/$defs/port" }
-          }
-        },
-        "listenBasePath": { "type": "string" },
-        "flow": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "seedEnabled": { "type": "boolean" }
-          }
-        },
-        "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
-        "tolerations": { "$ref": "#/$defs/tolerations" },
-        "affinity": { "$ref": "#/$defs/affinity" },
-        "podAnnotations": { "$ref": "#/$defs/podAnnotations" }
-      }
-    },
-    "logstash": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "external": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "url": { "type": "string" }
-          }
-        },
-        "image": { "$ref": "#/$defs/image" },
-        "replicas": { "$ref": "#/$defs/replicas" },
-        "javaOpts": { "type": "string", "description": "JVM heap and GC flags passed as LS_JAVA_OPTS." },
-        "extraEnv": { "type": "array", "items": { "type": "object" }, "description": "Extra env vars appended to the Logstash container." },
-        "resources": { "$ref": "#/$defs/resources" },
-        "service": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "httpPort": { "$ref": "#/$defs/port" },
-            "monitoringPort": { "$ref": "#/$defs/port" }
-          }
-        },
-        "pipeline": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "workers": { "type": "integer", "minimum": 1 },
-            "batchSize": { "type": "integer", "minimum": 1 },
-            "batchDelay": { "type": "integer", "minimum": 0 }
-          }
-        },
-        "queue": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "type": { "type": "string", "enum": ["memory", "persisted"] },
-            "maxBytes": { "type": "string" }
-          }
-        },
-        "exporter": {
-          "type": "object",
-          "additionalProperties": false,
-          "description": "Prometheus logstash-exporter sidecar.",
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "image": { "$ref": "#/$defs/image" },
-            "port": { "$ref": "#/$defs/port" },
-            "resources": { "$ref": "#/$defs/resources" }
-          }
-        },
-        "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
-        "tolerations": { "$ref": "#/$defs/tolerations" },
-        "affinity": { "$ref": "#/$defs/affinity" },
-        "podAnnotations": { "$ref": "#/$defs/podAnnotations" },
-        "pdb": { "$ref": "#/$defs/pdb" }
-      }
-    },
-    "analyzer": {
-      "type": "object",
-      "additionalProperties": false,
+      "description": "ClickHouse analytics sink (replaces v1's Elasticsearch sink).",
       "properties": {
         "enabled": { "type": "boolean" },
-        "image": { "$ref": "#/$defs/image" },
-        "replicas": { "$ref": "#/$defs/replicas" },
-        "port": { "$ref": "#/$defs/port" },
-        "dynamicBaselines": {
+        "database": { "type": "string", "minLength": 1 },
+        "external": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Dynamic baselines — P50 from recent search traffic, refreshed every cacheTTL.",
           "properties": {
-            "cacheTTL": { "type": "string", "description": "Cache TTL in seconds." },
-            "queryWindow": { "type": "string", "description": "ES time window for P50 aggregation (e.g. 1h, 30m)." }
-          }
-        },
-        "stressBaselines": {
-          "type": "object",
-          "additionalProperties": false,
-          "description": "Static baseline overrides. Empty string means use the code default (or dynamic value when available).",
-          "properties": {
-            "tookMs": { "type": "string" },
-            "hits": { "type": "string" },
-            "shardsTotal": { "type": "string" },
-            "docsAffected": { "type": "string" }
-          }
-        },
-        "requestBody": {
-          "type": "object",
-          "additionalProperties": false,
-          "description": "Per-record handling of the request.body field.",
-          "properties": {
-            "storeMaxBytes": {
-              "type": "integer",
-              "minimum": 0,
-              "description": "Max bytes kept on stored request.body (suffix included). Default 32000 sits under the 32 766-byte ES keyword cap. Set to 0 to disable truncation; raise above 32766 only when the request.body mapping has been changed away from keyword."
-            }
-          }
-        },
-        "resources": { "$ref": "#/$defs/resources" },
-        "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
-        "tolerations": { "$ref": "#/$defs/tolerations" },
-        "affinity": { "$ref": "#/$defs/affinity" },
-        "podAnnotations": { "$ref": "#/$defs/podAnnotations" },
-        "extraEnv": { "$ref": "#/$defs/extraEnv" },
-        "pdb": { "$ref": "#/$defs/pdb" }
-      }
-    },
-    "gateway": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "enabled": { "type": "boolean" },
-        "elasticsearch": {
-          "type": "object",
-          "additionalProperties": false,
-          "description": "The ES cluster the gateway proxies to (monitored cluster). Falls back to main elasticsearch when url is empty.",
-          "properties": {
+            "enabled": { "type": "boolean" },
             "url": { "type": "string" },
+            "host": { "type": "string" },
             "auth": {
               "type": "object",
               "additionalProperties": false,
               "properties": {
-                "injectAuth": { "type": "boolean", "description": "When true, the gateway injects its own Authorization header, overriding client credentials. When false (default), client auth passes through." },
-                "type": { "type": "string", "enum": ["basic", "apiKey"] },
+                "enabled": { "type": "boolean" },
                 "username": { "type": "string" },
                 "password": { "type": "string" },
-                "apiKey": { "type": "string" },
                 "existingSecret": { "type": "string" }
               }
             },
@@ -360,391 +54,270 @@
                 "caCert": { "type": "string" },
                 "caCertSecret": { "type": "string" },
                 "create": { "type": "boolean" },
-                "insecureSkipVerify": { "type": "boolean" },
-                "verifyDepth": { "type": "integer", "minimum": 1 }
+                "insecureSkipVerify": { "type": "boolean" }
               }
             }
           }
         },
-        "dnsResolver": {
-          "type": "string",
-          "description": "DNS resolver for OpenResty. Empty = auto-detect from /etc/resolv.conf."
-        },
         "image": { "$ref": "#/$defs/image" },
-        "replicas": { "$ref": "#/$defs/replicas" },
-        "port": { "$ref": "#/$defs/port" },
+        "replicas": { "type": "integer", "minimum": 1 },
         "resources": { "$ref": "#/$defs/resources" },
-        "initResources": { "$ref": "#/$defs/resources", "description": "Resource requests/limits for the resolve-dns init container." },
-        "errorLogLevel": {
-          "type": "string",
-          "enum": ["debug", "info", "notice", "warn", "error", "crit"],
-          "description": "Nginx error log level."
-        },
-        "proxyConnectTimeout": {
-          "type": "string",
-          "pattern": "^[0-9]+(s|m|h)$"
-        },
-        "workerProcesses": {
-          "oneOf": [
-            { "type": "string", "enum": ["auto"] },
-            { "type": "integer", "minimum": 1 }
-          ]
-        },
-        "workerConnections": { "type": "integer", "minimum": 1 },
-        "clientBodyBufferSize": {
-          "type": "string",
-          "pattern": "^[0-9]+[kmKM]?$",
-          "description": "Nginx client_body_buffer_size. Bodies above this size spool to a temp file; the gateway reads the file so request_body still reaches the analyzer in full."
-        },
-        "proxyReadTimeout": { "type": "string", "pattern": "^[0-9]+(s|m|h)$" },
-        "pipelineTimeout": { "type": "integer", "minimum": 0, "description": "Timeout for pipeline notification in milliseconds." },
-        "probes": {
+        "persistence": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Liveness/readiness probes for the gateway container.",
           "properties": {
             "enabled": { "type": "boolean" },
-            "liveness": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "initialDelaySeconds": { "type": "integer", "minimum": 0 },
-                "periodSeconds": { "type": "integer", "minimum": 1 }
-              }
-            },
-            "readiness": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "initialDelaySeconds": { "type": "integer", "minimum": 0 },
-                "periodSeconds": { "type": "integer", "minimum": 1 }
-              }
-            }
+            "size": { "type": "string" },
+            "storageClass": { "type": "string" }
           }
         },
         "service": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "type": { "type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"] },
-            "port": { "$ref": "#/$defs/port" }
+            "httpPort": { "type": "integer", "minimum": 1, "maximum": 65535 },
+            "nativePort": { "type": "integer", "minimum": 1, "maximum": 65535 }
+          }
+        },
+        "auth": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "username": { "type": "string" },
+            "password": { "type": "string" }
           }
         },
         "exporter": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Prometheus nginx-exporter sidecar.",
           "properties": {
             "enabled": { "type": "boolean" },
-            "image": { "$ref": "#/$defs/image" },
-            "port": { "$ref": "#/$defs/port" },
-            "stubStatusPort": { "$ref": "#/$defs/port" },
-            "resources": { "$ref": "#/$defs/resources" }
+            "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
           }
         },
-        "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
-        "tolerations": { "$ref": "#/$defs/tolerations" },
-        "affinity": { "$ref": "#/$defs/affinity" },
-        "podAnnotations": { "$ref": "#/$defs/podAnnotations" },
-        "extraEnv": { "$ref": "#/$defs/extraEnv" },
-        "pdb": { "$ref": "#/$defs/pdb" }
-      }
-    },
-    "grafana": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "enabled": { "type": "boolean" },
-        "external": {
+        "cluster": {
           "type": "object",
           "additionalProperties": false,
+          "description": "Distributed-table mode toggle. When enabled, every table becomes a Replicated*MergeTree local + Distributed front pair.",
           "properties": {
             "enabled": { "type": "boolean" },
-            "url": { "type": "string" },
-            "auth": {
+            "name": { "type": "string", "minLength": 1 },
+            "shards": { "type": "integer", "minimum": 1 },
+            "replicas": { "type": "integer", "minimum": 1 },
+            "shardingKey": { "type": "string" },
+            "keeper": {
               "type": "object",
               "additionalProperties": false,
               "properties": {
-                "username": { "type": "string" },
-                "password": { "type": "string" },
-                "existingSecret": { "type": "string" }
+                "external": { "type": "string" }
               }
             }
           }
         },
-        "image": { "$ref": "#/$defs/image" },
-        "replicas": { "$ref": "#/$defs/replicas" },
-        "adminPassword": { "type": "string" },
-        "adminPasswordExistingSecret": { "type": "string", "description": "Existing Secret with key 'password' for Grafana admin." },
-        "prometheusUrl": { "type": "string", "description": "Prometheus URL for Grafana datasource. Empty to skip." },
-        "resources": { "$ref": "#/$defs/resources" },
-        "service": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "type": { "type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"] },
-            "port": { "$ref": "#/$defs/port" }
-          }
-        },
         "setup": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
             "enabled": { "type": "boolean" },
             "image": { "$ref": "#/$defs/image" },
-            "datasource": { "type": "boolean", "description": "Create/update Elasticsearch datasource(s) in Grafana." },
-            "dashboards": { "type": "boolean", "description": "Push ALO dashboards to Grafana." }
+            "database": { "type": "boolean" },
+            "rawTable": { "type": "boolean" },
+            "deadLetterTable": { "type": "boolean" },
+            "summaryTable": { "type": "boolean" },
+            "materializedView": { "type": "boolean" }
           }
         },
         "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
-        "tolerations": { "$ref": "#/$defs/tolerations" },
-        "affinity": { "$ref": "#/$defs/affinity" },
-        "podAnnotations": { "$ref": "#/$defs/podAnnotations" }
+        "tolerations":  { "$ref": "#/$defs/tolerations" },
+        "affinity":     { "$ref": "#/$defs/affinity" },
+        "podAnnotations": { "$ref": "#/$defs/annotations" }
       }
     },
-    "kibana": {
+    "logstash": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "enabled": { "type": "boolean" },
-        "external": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "url": { "type": "string" }
-          }
-        },
+        "external": { "$ref": "#/$defs/external" },
         "image": { "$ref": "#/$defs/image" },
-        "replicas": { "$ref": "#/$defs/replicas" },
+        "replicas": { "type": "integer", "minimum": 1 },
         "resources": { "$ref": "#/$defs/resources" },
         "service": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "type": { "type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"] },
-            "port": { "$ref": "#/$defs/port" }
+            "httpPort":       { "type": "integer", "minimum": 1, "maximum": 65535 },
+            "monitoringPort": { "type": "integer", "minimum": 1, "maximum": 65535 }
           }
         },
-        "setup": {
+        "pipeline": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Kibana saved-object setup job (data view, saved searches, dashboards).",
           "properties": {
-            "enabled": { "type": "boolean" },
-            "image": { "$ref": "#/$defs/image" },
-            "dataView": { "type": "boolean", "description": "Create the alo-data-view index pattern." },
-            "savedSearches": { "type": "boolean", "description": "Create saved searches." },
-            "dashboards": { "type": "boolean", "description": "Import ALO dashboards." },
-            "rebuild": { "type": "boolean", "description": "Rebuild dashboards via API and re-export ndjson." }
+            "workers":    { "type": "integer", "minimum": 1 },
+            "batchSize":  { "type": "integer", "minimum": 1 },
+            "batchDelay": { "type": "integer", "minimum": 0 }
           }
         },
+        "queue": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type":     { "type": "string", "enum": ["memory", "persisted"] },
+            "maxBytes": { "type": "string" }
+          }
+        },
+        "clickhouseOutput": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Tunables passed to logstash-output-clickhouse for both raw and dead-letter routes.",
+          "properties": {
+            "httpCompression":      { "type": "boolean" },
+            "flushSize":            { "type": "integer", "minimum": 1 },
+            "deadLetterFlushSize":  { "type": "integer", "minimum": 1 },
+            "idleFlushTime":        { "type": "integer", "minimum": 1 },
+            "automaticRetries":     { "type": "integer", "minimum": 0 },
+            "mutationsSync":        { "type": "integer", "minimum": 0, "maximum": 2 },
+            "poolMax":              { "type": "integer", "minimum": 1 },
+            "chSettings":           { "type": "string" }
+          }
+        },
+        "exporter": { "$ref": "#/$defs/exporter" },
         "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
-        "tolerations": { "$ref": "#/$defs/tolerations" },
-        "affinity": { "$ref": "#/$defs/affinity" },
-        "podAnnotations": { "$ref": "#/$defs/podAnnotations" },
-        "extraEnv": { "$ref": "#/$defs/extraEnv" },
+        "tolerations":  { "$ref": "#/$defs/tolerations" },
+        "affinity":     { "$ref": "#/$defs/affinity" },
+        "podAnnotations": { "$ref": "#/$defs/annotations" },
+        "pdb":          { "$ref": "#/$defs/pdb" }
+      }
+    },
+    "analyzer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled":  { "type": "boolean" },
+        "image":    { "$ref": "#/$defs/image" },
+        "replicas": { "type": "integer", "minimum": 1 },
+        "port":     { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "dynamicBaselines": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cacheTTL":    { "type": "string" },
+            "queryWindow": { "type": "string" }
+          }
+        },
+        "stressBaselines": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tookMs":       { "type": "string" },
+            "hits":         { "type": "string" },
+            "shardsTotal":  { "type": "string" },
+            "docsAffected": { "type": "string" }
+          }
+        },
+        "resources": { "$ref": "#/$defs/resources" },
+        "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
+        "tolerations":  { "$ref": "#/$defs/tolerations" },
+        "affinity":     { "$ref": "#/$defs/affinity" },
+        "podAnnotations": { "$ref": "#/$defs/annotations" },
+        "extraEnv": { "type": "array" },
         "pdb": { "$ref": "#/$defs/pdb" }
       }
     },
-    "ingress": {
+    "gateway": {
       "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "enabled": { "type": "boolean" },
-        "className": { "type": "string" },
-        "annotations": { "type": "object", "additionalProperties": { "type": "string" } },
-        "gateway": { "$ref": "#/$defs/ingressRoute" },
-        "kibana": { "$ref": "#/$defs/ingressRoute" },
-        "elasticsearch": { "$ref": "#/$defs/ingressRoute" },
-        "grafana": { "$ref": "#/$defs/ingressRoute" },
-        "analyzer": { "$ref": "#/$defs/ingressRoute" },
-        "logstash": { "$ref": "#/$defs/ingressRoute" },
-        "nifi": { "$ref": "#/$defs/ingressRoute" },
-        "tls": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "secretName": { "type": "string" },
-              "hosts": { "type": "array", "items": { "type": "string" } }
-            }
-          }
-        }
-      }
+      "additionalProperties": true,
+      "description": "Gateway upstream Elasticsearch (the customer's ES being proxied) is configured under gateway.elasticsearch. Gateway untouched by the v2 CH migration."
     },
-    "route": {
+    "grafana": {
       "type": "object",
-      "additionalProperties": false,
-      "description": "OpenShift Route configuration.",
-      "properties": {
-        "enabled": { "type": "boolean" },
-        "annotations": { "type": "object", "additionalProperties": { "type": "string" } },
-        "tls": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "enabled": { "type": "boolean", "description": "Set false for plain HTTP routes." },
-            "termination": { "type": "string", "enum": ["edge", "passthrough", "reencrypt"] },
-            "insecureEdgeTerminationPolicy": { "type": "string", "enum": ["Allow", "Redirect", "None"] },
-            "certificate": { "type": "string", "description": "PEM-encoded TLS certificate." },
-            "key": { "type": "string", "description": "PEM-encoded TLS private key." },
-            "caCertificate": { "type": "string", "description": "PEM-encoded CA certificate." },
-            "destinationCACertificate": { "type": "string", "description": "PEM-encoded upstream CA cert (reencrypt only)." }
-          }
-        },
-        "gateway": { "$ref": "#/$defs/routeHost" },
-        "kibana": { "$ref": "#/$defs/routeHost" },
-        "elasticsearch": { "$ref": "#/$defs/routeHost" },
-        "grafana": { "$ref": "#/$defs/routeHost" },
-        "analyzer": { "$ref": "#/$defs/routeHost" },
-        "logstash": { "$ref": "#/$defs/routeHost" },
-        "nifi": { "$ref": "#/$defs/routeHost" }
-      }
+      "additionalProperties": true
     },
+    "ingress": { "type": "object", "additionalProperties": true },
+    "route":   { "type": "object", "additionalProperties": true },
     "serviceAccount": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "create": { "type": "boolean" },
-        "name": { "type": "string" },
-        "annotations": { "type": "object", "additionalProperties": { "type": "string" } }
+        "name":   { "type": "string" },
+        "annotations": { "$ref": "#/$defs/annotations" }
       }
     },
-    "podSecurityContext": { "type": "object", "description": "Pod-level security context applied to all components." },
-    "securityContext": { "type": "object", "description": "Container-level security context applied to all components." },
+    "podSecurityContext": { "type": "object", "additionalProperties": true },
+    "securityContext":    { "type": "object", "additionalProperties": true },
     "testImage": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "repository": { "type": "string" },
-        "tag": { "type": "string" }
-      },
-      "required": ["repository", "tag"]
+        "tag":        { "type": "string" }
+      }
     },
     "serviceMonitors": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Prometheus ServiceMonitor CRDs for operator autodiscovery.",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "labels": { "type": "object", "additionalProperties": { "type": "string" } },
-        "interval": { "type": "string", "pattern": "^[0-9]+(s|m)$" }
+        "enabled":  { "type": "boolean" },
+        "labels":   { "$ref": "#/$defs/annotations" },
+        "interval": { "type": "string" }
       }
     },
     "imagePullSecrets": {
       "type": "array",
-      "items": { "type": "string" },
-      "description": "List of Secret names for pulling images from private registries."
-    }
+      "items": { "type": "string" }
+    },
+    "nameOverride":     { "type": "string" },
+    "fullnameOverride": { "type": "string" }
   },
-  "required": ["pipelineMode", "global"],
   "$defs": {
     "image": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "repository": { "type": "string", "minLength": 1 },
-        "tag": { "type": "string", "minLength": 1 },
+        "repository": { "type": "string" },
+        "tag":        { "type": "string" },
         "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] }
-      },
-      "required": ["repository", "tag"]
-    },
-    "replicas": {
-      "type": "integer",
-      "minimum": 0
-    },
-    "port": {
-      "type": "integer",
-      "minimum": 1,
-      "maximum": 65535
+      }
     },
     "resources": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "requests": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "cpu": { "type": ["string", "number"] },
-            "memory": { "type": "string" }
-          }
-        },
-        "limits": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "cpu": { "type": ["string", "number"] },
-            "memory": { "type": "string" }
-          }
-        }
+        "requests": { "type": "object", "additionalProperties": true },
+        "limits":   { "type": "object", "additionalProperties": true }
       }
     },
-    "nodeSelector": {
-      "type": "object",
-      "additionalProperties": { "type": "string" }
-    },
-    "tolerations": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "key": { "type": "string" },
-          "operator": { "type": "string", "enum": ["Exists", "Equal"] },
-          "value": { "type": "string" },
-          "effect": { "type": "string", "enum": ["NoSchedule", "PreferNoSchedule", "NoExecute"] },
-          "tolerationSeconds": { "type": "integer" }
-        }
-      }
-    },
-    "affinity": {
-      "type": "object",
-      "description": "Kubernetes affinity rules."
-    },
-    "podAnnotations": {
-      "type": "object",
-      "additionalProperties": { "type": "string" }
-    },
-    "extraEnv": {
-      "type": "array",
-      "description": "Additional environment variables injected into the container.",
-      "items": {
-        "type": "object",
-        "required": ["name"],
-        "properties": {
-          "name": { "type": "string" },
-          "value": { "type": "string" },
-          "valueFrom": { "type": "object" }
-        }
-      }
-    },
-    "ingressRoute": {
+    "exporter": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "host": { "type": "string" },
-        "path": { "type": "string" }
+        "enabled":   { "type": "boolean" },
+        "image":     { "$ref": "#/$defs/image" },
+        "port":      { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "resources": { "$ref": "#/$defs/resources" }
       }
     },
-    "routeHost": {
+    "external": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "enabled": { "type": "boolean" },
-        "host": { "type": "string" },
-        "tls": { "type": "object", "description": "Per-service TLS override (merges with route.tls)." },
-        "annotations": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Per-service annotation override (merges with route.annotations)." }
+        "url":     { "type": "string" }
       }
     },
+    "annotations":  { "type": "object", "additionalProperties": { "type": "string" } },
+    "nodeSelector": { "type": "object", "additionalProperties": { "type": "string" } },
+    "tolerations":  { "type": "array" },
+    "affinity":     { "type": "object", "additionalProperties": true },
     "pdb": {
       "type": "object",
       "additionalProperties": false,
-      "description": "PodDisruptionBudget configuration.",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "minAvailable": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "string" }] },
-        "maxUnavailable": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "string" }] }
+        "enabled":        { "type": "boolean" },
+        "minAvailable":   { "type": ["integer", "string"] },
+        "maxUnavailable": { "type": ["integer", "string"] }
       }
     }
   }

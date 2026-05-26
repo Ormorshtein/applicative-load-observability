@@ -1,4 +1,4 @@
-{{- if and .Values.route.enabled (eq .Values.pipelineMode "logstash") (not .Values.logstash.external.enabled) .Values.route.logstash.enabled }}
+{{- if and .Values.route.enabled (not .Values.logstash.external.enabled) .Values.route.logstash.enabled }}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:

@@ -58,7 +58,7 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           env:
             - name: PIPELINE_URL
-              value: {{ include "alo.pipelineUrl" . | quote }}
+              value: {{ include "alo.logstashUrl" . | quote }}
             - name: CLUSTER_NAME
               value: {{ .Values.global.clusterName | quote }}
             {{- if eq (include "alo.gatewayEsAuthEnabled" .) "true" }}
@@ -81,13 +81,6 @@ spec:
                   name: {{ include "alo.gatewayEsAuthSecretName" . }}
                   key: apiKey
             {{- end }}
-            {{- end }}
-            {{- if and (eq .Values.pipelineMode "nifi") .Values.nifi.external.enabled .Values.nifi.external.auth.enabled }}
-            - name: NIFI_AUTH_HEADER_VALUE
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "alo.nifiAuthSecretName" . }}
-                  key: authHeaderValue
             {{- end }}
             {{- with .Values.gateway.extraEnv }}
             {{- toYaml . | nindent 12 }}
@@ -127,11 +120,6 @@ spec:
               mountPath: /etc/ssl/es
               readOnly: true
             {{- end }}
-            {{- if and (eq .Values.pipelineMode "nifi") .Values.nifi.external.enabled .Values.nifi.external.tls.caSecret }}
-            - name: nifi-ca
-              mountPath: /etc/ssl/nifi
-              readOnly: true
-            {{- end }}
           resources:
             {{- toYaml .Values.gateway.resources | nindent 12 }}
         {{- if .Values.gateway.exporter.enabled }}
@@ -161,11 +149,6 @@ spec:
         - name: es-ca
           secret:
             secretName: {{ include "alo.gatewayEsCaSecretName" . }}
-        {{- end }}
-        {{- if and (eq .Values.pipelineMode "nifi") .Values.nifi.external.enabled .Values.nifi.external.tls.caSecret }}
-        - name: nifi-ca
-          secret:
-            secretName: {{ .Values.nifi.external.tls.caSecret }}
         {{- end }}
       {{- include "alo.scheduling" .Values.gateway | nindent 6 }}
 {{- end }}

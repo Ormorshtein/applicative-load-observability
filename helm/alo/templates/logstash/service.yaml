@@ -1,4 +1,4 @@
-{{- if and (eq .Values.pipelineMode "logstash") (not .Values.logstash.external.enabled) }}
+{{- if not .Values.logstash.external.enabled }}
 apiVersion: v1
 kind: Service
 metadata:

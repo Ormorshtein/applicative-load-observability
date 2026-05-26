@@ -1,4 +1,4 @@
-{{- if and (eq .Values.pipelineMode "logstash") (not .Values.logstash.external.enabled) }}
+{{- if not .Values.logstash.external.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -76,30 +76,27 @@ data:
             resp = event.get("[analyzer_response]")
 
             if resp.is_a?(Hash) && resp.key?("_msearch_records")
-              records = resp["_msearch_records"]
               event.to_hash.keys.each { |k| event.remove(k) }
-              event.set("[_msearch_records]", records)
+              event.set("[_msearch_records]", resp["_msearch_records"])
               event.set("[@metadata][is_msearch]", "true")
 
             elsif resp.is_a?(Hash)
-              op = (resp.dig("request", "operation") || "unknown").sub(/^_/, "")
-              ts_str = resp.delete("@timestamp")
+              op = (resp["request_operation"] || "unknown").to_s
+              ts_str = resp["timestamp"]
 
               event.to_hash.keys.each { |k| event.remove(k) }
               resp.each { |k, v| event.set(k, v) }
 
               event.set("@timestamp", LogStash::Timestamp.new(ts_str)) if ts_str
-              if op == "unknown"
-                event.tag("_httprequestfailure")
-              else
-                event.set("[@metadata][ds_dataset]", op)
+
+              if op == "unknown" || resp.key?("error")
+                event.set("[@metadata][dead_letter]", "true")
               end
             end
           '
         }
       }
 
-      # _msearch fan-out: split array into individual events
       if [@metadata][is_msearch] {
         split {
           field => "[_msearch_records]"
@@ -108,13 +105,10 @@ data:
           code => '
             record = event.get("[_msearch_records]")
             if record.is_a?(Hash)
-              ts_str = record.delete("@timestamp")
+              ts_str = record["timestamp"]
               event.remove("[_msearch_records]")
               record.each { |k, v| event.set(k, v) }
               event.set("@timestamp", LogStash::Timestamp.new(ts_str)) if ts_str
-              op = (record.dig("request", "operation") || "unknown").sub(/^_/, "")
-              event.set("[@metadata][ds_dataset]", op)
-              event.remove("@version")
             end
           '
         }
@@ -127,46 +121,44 @@ data:
         }
       }
 
+      mutate {
+        remove_field => ["@timestamp", "@version", "host", "headers", "tags"]
+      }
     }
 
     output {
-      if "_httprequestfailure" in [tags] {
-        elasticsearch {
-          hosts => ["{{ include "alo.elasticsearchUrl" . }}"]
-          index => "logs-alo.dead_letter-%{cluster_name}"
-          action => "create"
-          {{- if eq (include "alo.esAuthEnabled" .) "true" }}
-          user => "${ES_USERNAME}"
-          password => "${ES_PASSWORD}"
+      {{- $out := .Values.logstash.clickhouseOutput }}
+      if [@metadata][dead_letter] {
+        clickhouse {
+          hosts             => ["{{ include "alo.clickhouseUrl" . }}"]
+          table             => "{{ .Values.clickhouse.database }}.alo_dead_letter"
+          {{- if eq (include "alo.clickhouseAuthEnabled" .) "true" }}
+          user              => "${CLICKHOUSE_USER}"
+          password          => "${CLICKHOUSE_PASSWORD}"
           {{- end }}
-          {{- if eq (include "alo.esSslEnabled" .) "true" }}
-          ssl_enabled => true
-          {{- end }}
-          {{- if eq (include "alo.esCaEnabled" .) "true" }}
-          ssl_certificate_authorities => ["/etc/ssl/es/ca.crt"]
-          {{- end }}
-          {{- if eq (include "alo.esInsecure" .) "true" }}
-          ssl_verification_mode => none
-          {{- end }}
+          http_compression  => {{ $out.httpCompression }}
+          flush_size        => {{ $out.deadLetterFlushSize }}
+          idle_flush_time   => {{ $out.idleFlushTime }}
+          automatic_retries => {{ $out.automaticRetries }}
+          mutations_sync    => {{ $out.mutationsSync }}
+          pool_max          => {{ $out.poolMax }}
+          headers           => { "X-ClickHouse-Settings" => {{ $out.chSettings | quote }} }
         }
-      } else if [@metadata][ds_dataset] {
-        elasticsearch {
-          hosts => ["{{ include "alo.elasticsearchUrl" . }}"]
-          index => "logs-alo.%{[@metadata][ds_dataset]}-%{cluster_name}"
-          action => "create"
-          {{- if eq (include "alo.esAuthEnabled" .) "true" }}
-          user => "${ES_USERNAME}"
-          password => "${ES_PASSWORD}"
+      } else {
+        clickhouse {
+          hosts             => ["{{ include "alo.clickhouseUrl" . }}"]
+          table             => "{{ .Values.clickhouse.database }}.alo_raw"
+          {{- if eq (include "alo.clickhouseAuthEnabled" .) "true" }}
+          user              => "${CLICKHOUSE_USER}"
+          password          => "${CLICKHOUSE_PASSWORD}"
           {{- end }}
-          {{- if eq (include "alo.esSslEnabled" .) "true" }}
-          ssl_enabled => true
-          {{- end }}
-          {{- if eq (include "alo.esCaEnabled" .) "true" }}
-          ssl_certificate_authorities => ["/etc/ssl/es/ca.crt"]
-          {{- end }}
-          {{- if eq (include "alo.esInsecure" .) "true" }}
-          ssl_verification_mode => none
-          {{- end }}
+          http_compression  => {{ $out.httpCompression }}
+          flush_size        => {{ $out.flushSize }}
+          idle_flush_time   => {{ $out.idleFlushTime }}
+          automatic_retries => {{ $out.automaticRetries }}
+          mutations_sync    => {{ $out.mutationsSync }}
+          pool_max          => {{ $out.poolMax }}
+          headers           => { "X-ClickHouse-Settings" => {{ $out.chSettings | quote }} }
         }
       }
     }

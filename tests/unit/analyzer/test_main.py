@@ -70,36 +70,31 @@ class TestAnalyzeHappyPath:
 
     def test_search_record_has_required_structure(self):
         rec = client.post("/analyze", json=self._payload()).json()
-        # Top-level keys
-        assert "@timestamp" in rec
-        assert "identity" in rec
-        assert "request" in rec
-        assert "response" in rec
-        assert "clause_counts" in rec
-        assert "cost_indicators" in rec
-        assert "stress" in rec
-        # Nested identity
-        for f in ["username", "applicative_provider", "user_agent", "client_host"]:
-            assert f in rec["identity"], f"Missing identity.{f}"
-        # Nested request
-        for f in ["method", "path", "operation", "target", "template", "body", "size_bytes"]:
-            assert f in rec["request"], f"Missing request.{f}"
-        # Nested response
-        for f in ["es_took_ms", "gateway_took_ms", "hits", "shards_total", "docs_affected", "size_bytes"]:
-            assert f in rec["response"], f"Missing response.{f}"
-        # Nested stress
-        for f in ["score", "multiplier", "cost_indicator_count", "cost_indicator_names", "bonuses"]:
-            assert f in rec["stress"], f"Missing stress.{f}"
+        for col in (
+            "timestamp", "cluster_name",
+            "identity_username", "identity_applicative_provider",
+            "identity_user_agent", "identity_client_host",
+            "request_method", "request_path", "request_operation",
+            "request_target", "request_template", "request_body",
+            "request_size_bytes",
+            "response_es_took_ms", "response_gateway_took_ms",
+            "response_hits", "response_shards_total",
+            "response_docs_affected", "response_size_bytes",
+            "stress_score", "stress_multiplier",
+            "stress_cost_indicator_count", "stress_cost_indicator_names",
+            "stress_bonuses",
+        ):
+            assert col in rec, f"Missing column {col}"
 
     def test_search_record_values(self):
         rec = client.post("/analyze", json=self._payload()).json()
-        assert rec["request"]["operation"] == "_search"
-        assert rec["request"]["target"] == "products"
-        assert rec["identity"]["username"] == "alice"
-        assert rec["identity"]["applicative_provider"] == "search-api"
-        assert rec["response"]["es_took_ms"] == 42
-        assert rec["response"]["hits"] == 1500
-        assert rec["request"]["size"] == 10
+        assert rec["request_operation"] == "_search"
+        assert rec["request_target"] == "products"
+        assert rec["identity_username"] == "alice"
+        assert rec["identity_applicative_provider"] == "search-api"
+        assert rec["response_es_took_ms"] == 42
+        assert rec["response_hits"] == 1500
+        assert rec["request_size"] == 10
 
     def test_bulk_operation(self):
         payload = self._payload(
@@ -115,8 +110,8 @@ class TestAnalyzeHappyPath:
             }),
         )
         rec = client.post("/analyze", json=payload).json()
-        assert rec["request"]["operation"] == "_bulk"
-        assert rec["response"]["docs_affected"] == 2
+        assert rec["request_operation"] == "_bulk"
+        assert rec["response_docs_affected"] == 2
 
     def test_index_operation(self):
         payload = self._payload(
@@ -126,8 +121,9 @@ class TestAnalyzeHappyPath:
             response_body=json.dumps({"took": 5, "_shards": {"total": 2}}),
         )
         rec = client.post("/analyze", json=payload).json()
-        assert rec["request"]["operation"] == "index"
-        assert "size" not in rec["request"]
+        assert rec["request_operation"] == "index"
+        # Flat schema always emits the column; non-search defaults to 0.
+        assert rec["request_size"] == 0
 
     def test_delete_operation(self):
         payload = self._payload(
@@ -137,7 +133,7 @@ class TestAnalyzeHappyPath:
             response_body=json.dumps({"took": 3, "_shards": {"total": 2}}),
         )
         rec = client.post("/analyze", json=payload).json()
-        assert rec["request"]["operation"] == "delete"
+        assert rec["request_operation"] == "delete"
 
     def test_script_query_flags(self):
         body = {
@@ -149,8 +145,8 @@ class TestAnalyzeHappyPath:
         }
         payload = self._payload(request_body=json.dumps(body))
         rec = client.post("/analyze", json=payload).json()
-        assert "has_script" in rec["cost_indicators"]
-        assert rec["stress"]["multiplier"] >= 1.5
+        assert rec["cost_indicators_has_script"] >= 1
+        assert rec["stress_multiplier"] >= 1.5
 
 
 # ---------------------------------------------------------------------------
@@ -168,18 +164,17 @@ class TestAnalyzeErrorHandling:
         resp = client.post("/analyze", json={})
         assert resp.status_code == 200
         rec = resp.json()
-        assert "request" in rec
-        assert rec["request"]["method"] == "GET"
-        assert rec["request"]["path"] == "/"
-        assert rec["request"]["operation"] == "get"
+        assert rec["request_method"] == "GET"
+        assert rec["request_path"] == "/"
+        assert rec["request_operation"] == "get"
 
     def test_missing_fields_best_effort(self):
         resp = client.post("/analyze", json={"method": "GET", "path": "/"})
         assert resp.status_code == 200
         rec = resp.json()
-        assert rec["request"]["operation"] == "get"
-        assert rec["response"]["es_took_ms"] == 0
-        assert rec["identity"]["username"] == ""
+        assert rec["request_operation"] == "get"
+        assert rec["response_es_took_ms"] == 0
+        assert rec["identity_username"] == ""
 
     def test_malformed_request_body_still_works(self):
         payload = {
@@ -191,7 +186,7 @@ class TestAnalyzeErrorHandling:
         resp = client.post("/analyze", json=payload)
         assert resp.status_code == 200
         rec = resp.json()
-        assert rec["request"]["operation"] == "_search"
+        assert rec["request_operation"] == "_search"
 
     def test_malformed_response_body_still_works(self):
         payload = {
@@ -203,8 +198,8 @@ class TestAnalyzeErrorHandling:
         resp = client.post("/analyze", json=payload)
         assert resp.status_code == 200
         rec = resp.json()
-        assert rec["response"]["es_took_ms"] == 0
-        assert rec["response"]["hits"] == 0
+        assert rec["response_es_took_ms"] == 0
+        assert rec["response_hits"] == 0
 
     def test_build_record_exception_returns_partial_error(self):
         """Payload that parses as JSON but causes build_record to throw."""
@@ -217,8 +212,8 @@ class TestAnalyzeErrorHandling:
         assert resp.status_code == 200
         rec = resp.json()
         assert "error" in rec
-        assert rec["path"] == "/idx/_search"
-        assert rec["method"] == "POST"
+        assert rec["request_path"] == "/idx/_search"
+        assert rec["request_method"] == "POST"
 
 
 # ---------------------------------------------------------------------------
@@ -293,28 +288,27 @@ class TestAnalyzeBulk:
         payloads = [_search_payload(), _search_payload()]
         results = client.post("/analyze/bulk", json=payloads).json()
         for rec in results:
-            assert "@timestamp" in rec
-            assert "identity" in rec
-            assert "request" in rec
-            assert "response" in rec
-            assert "stress" in rec
+            for col in ("timestamp", "identity_username", "request_operation",
+                        "response_es_took_ms", "stress_score"):
+                assert col in rec
 
     def test_item_matches_single_endpoint(self):
         payload = _search_payload()
         single = client.post("/analyze", json=payload).json()
         bulk = client.post("/analyze/bulk", json=[payload]).json()
         assert len(bulk) == 1
-        # Compare everything except @timestamp (generated independently)
-        for key in ("identity", "request", "response", "clause_counts",
-                    "cost_indicators"):
+        # Compare everything except timestamp (generated independently)
+        for key in single:
+            if key == "timestamp":
+                continue
             assert bulk[0][key] == single[key], f"Mismatch in {key}"
 
     def test_mixed_operations(self):
         payloads = [_search_payload(), _bulk_payload(), _index_payload()]
         results = client.post("/analyze/bulk", json=payloads).json()
-        assert results[0]["request"]["operation"] == "_search"
-        assert results[1]["request"]["operation"] == "_bulk"
-        assert results[2]["request"]["operation"] == "index"
+        assert results[0]["request_operation"] == "_search"
+        assert results[1]["request_operation"] == "_bulk"
+        assert results[2]["request_operation"] == "index"
 
     def test_per_item_error_isolation(self):
         """One bad item doesn't poison the batch."""

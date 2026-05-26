@@ -44,6 +44,8 @@ spec:
               {{- else }}
               value: {{ .Values.grafana.adminPassword | quote }}
               {{- end }}
+            - name: GF_INSTALL_PLUGINS
+              value: "grafana-clickhouse-datasource"
           ports:
             - name: http
               containerPort: 3000

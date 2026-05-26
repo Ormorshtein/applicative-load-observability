@@ -1,16 +1,17 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
-Set up Grafana for Applicative Load Observability.
+Set up Grafana for Applicative Load Observability (ClickHouse datasource).
 
 Two modes:
   --mode provision  (default) Generate provisioning files for volume-mounted Grafana.
   --mode api        Push datasource + dashboards to an existing Grafana via HTTP API.
 
 Usage:
-    python grafana/setup.py                                          # generate provisioning files
-    python grafana/setup.py --prometheus-url http://prometheus:9090  # also generate Prometheus datasource
-    python grafana/setup.py --mode api --grafana http://grafana:3000 # push to external Grafana
-    python grafana/setup.py --mode api --grafana http://grafana:3000 --elasticsearch http://es:9200
+    python -m grafana.setup
+    python -m grafana.setup --prometheus-url http://prometheus:9090
+    python -m grafana.setup --mode api --grafana http://grafana:3000
+    python -m grafana.setup --mode api --grafana http://grafana:3000 \\
+        --clickhouse-url http://clickhouse:8123 --user default --password xxx
 """
 
 import argparse
@@ -22,25 +23,24 @@ import time
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from _dashboard_builders import (
+from ._dashboard_builders import (
     build_cost_indicators_dashboard,
     build_main_dashboard,
     build_usage_dashboard,
 )
-from _dashboards import export_dashboards
-from _datasource import generate_datasource_yaml, generate_prometheus_datasource_yaml
+from ._dashboards import export_dashboards
+from ._datasource import (
+    _parse_host,
+    generate_datasource_yaml,
+    generate_prometheus_datasource_yaml,
+)
 
-INDEX_PATTERN = "logs-alo.*-*,alo-summary"
-SUMMARY_INDEX_PATTERN = "alo-summary"
-DATASOURCE_UID = "alo-elasticsearch"
-SUMMARY_DATASOURCE_UID = "alo-elasticsearch-summary"
+DATASOURCE_UID = "alo-clickhouse"
 
 
-# ---------------------------------------------------------------------------
-# HTTP helpers
-# ---------------------------------------------------------------------------
+# ΓöÇΓöÇ HTTP helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
-def _auth_header(username, password):
+def _auth_header(username: str, password: str) -> str:
     creds = base64.b64encode(f"{username}:{password}".encode()).decode()
     return f"Basic {creds}"
 
@@ -63,12 +63,10 @@ def _grafana_request(grafana_url, method, path, body=None,
             return exc.code, {}
 
 
-# ---------------------------------------------------------------------------
-# API mode — push to external Grafana
-# ---------------------------------------------------------------------------
+# ΓöÇΓöÇ API mode ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 def wait_grafana(grafana_url, username, password):
-    print(f"  Waiting for Grafana ...", end=" ", flush=True)
+    print("  Waiting for Grafana ...", end=" ", flush=True)
     for _ in range(30):
         try:
             status, data = _grafana_request(
@@ -84,90 +82,50 @@ def wait_grafana(grafana_url, username, password):
     return False
 
 
-def _build_datasource_body(name, uid, elasticsearch_url, index_pattern,
-                           is_default, es_username, es_password, es_ca_cert,
-                           es_insecure):
+def create_datasource(grafana_url, clickhouse_url, username, password,
+                      ch_user="default", ch_password="", ch_database="alo",
+                      ch_native_port=9000, ch_insecure=False):
+    host, http_port, secure = _parse_host(clickhouse_url)
+    port = ch_native_port if ch_native_port else http_port
+    protocol = "native" if ch_native_port else "http"
     json_data = {
-        "esVersion": "8.0.0",
-        "timeField": "@timestamp",
-        "maxConcurrentShardRequests": 5,
+        "host": host,
+        "port": port,
+        "protocol": protocol,
+        "secure": secure,
+        "tlsSkipVerify": ch_insecure,
+        "username": ch_user,
+        "defaultDatabase": ch_database,
     }
-    secure_json = {}
-    if es_ca_cert:
-        json_data["tlsAuth"] = False
-        json_data["tlsAuthWithCACert"] = True
-        if os.path.isfile(es_ca_cert):
-            with open(es_ca_cert, encoding="utf-8") as f:
-                secure_json["tlsCACert"] = f.read()
-        else:
-            secure_json["tlsCACert"] = es_ca_cert
-    if es_insecure:
-        json_data["tlsSkipVerify"] = True
+    secure_json = {"password": ch_password}
     body = {
-        "name": name,
-        "type": "elasticsearch",
-        "uid": uid,
+        "name": "ClickHouse (ALO)",
+        "type": "grafana-clickhouse-datasource",
+        "uid": DATASOURCE_UID,
         "access": "proxy",
-        "url": elasticsearch_url,
-        "database": index_pattern,
-        "isDefault": is_default,
+        "isDefault": True,
         "jsonData": json_data,
+        "secureJsonData": secure_json,
     }
-    if es_username:
-        body["basicAuth"] = True
-        body["basicAuthUser"] = es_username
-        secure_json["basicAuthPassword"] = es_password
-    if secure_json:
-        body["secureJsonData"] = secure_json
-    return body
-
-
-def _upsert_datasource(grafana_url, body, username, password, label):
-    uid = body["uid"]
+    # Upsert: update first, then create.
     status, _ = _grafana_request(
-        grafana_url, "PUT", f"/api/datasources/uid/{uid}",
+        grafana_url, "PUT", f"/api/datasources/uid/{DATASOURCE_UID}",
         body=body, username=username, password=password)
     if status in (200, 201):
-        print(f"  OK: {label} (updated)")
+        print("  OK: Datasource (updated)")
         return True
-
     status, _ = _grafana_request(
         grafana_url, "POST", "/api/datasources",
         body=body, username=username, password=password)
     ok = status in (200, 201)
-    tag = "created" if ok else f"FAIL ({status})"
-    print(f"  {'OK' if ok else 'FAIL'}: {label} ({tag})")
-    return ok
-
-
-def create_datasource(grafana_url, elasticsearch_url, username, password,
-                      es_username="", es_password="", es_ca_cert="",
-                      es_insecure=False):
-    main = _build_datasource_body(
-        "Elasticsearch (ALO)", DATASOURCE_UID, elasticsearch_url,
-        INDEX_PATTERN, True, es_username, es_password, es_ca_cert,
-        es_insecure)
-    summary = _build_datasource_body(
-        "Elasticsearch (ALO Summary)", SUMMARY_DATASOURCE_UID,
-        elasticsearch_url, SUMMARY_INDEX_PATTERN, False, es_username,
-        es_password, es_ca_cert, es_insecure)
-
-    ok = _upsert_datasource(grafana_url, main, username, password,
-                            "Datasource (Elasticsearch)")
-    ok &= _upsert_datasource(grafana_url, summary, username, password,
-                             "Datasource (Elasticsearch Summary)")
+    label = "created" if ok else f"FAIL ({status})"
+    print(f"  {'OK' if ok else 'FAIL'}: Datasource ({label})")
     return ok
 
 
 def import_dashboard(grafana_url, dashboard, username, password):
-    body = {
-        "dashboard": dashboard,
-        "overwrite": True,
-        "folderId": 0,
-    }
-    # Remove id to let Grafana assign one, keep uid for idempotency
+    body = {"dashboard": dashboard, "overwrite": True, "folderId": 0}
     body["dashboard"].pop("id", None)
-
     status, resp = _grafana_request(
         grafana_url, "POST", "/api/dashboards/db",
         body=body, username=username, password=password)
@@ -178,56 +136,44 @@ def import_dashboard(grafana_url, dashboard, username, password):
     return ok
 
 
-def do_api_setup(grafana_url, elasticsearch_url, username, password,
-                 es_username="", es_password="", es_ca_cert="",
-                 es_insecure=False, datasource=True, dashboards=True):
+def do_api_setup(grafana_url, clickhouse_url, username, password,
+                 ch_user="default", ch_password="", ch_database="alo",
+                 ch_native_port=9000, ch_insecure=False):
     if not wait_grafana(grafana_url, username, password):
         return False
 
     print()
-    all_ok = True
-    if datasource:
-        all_ok = create_datasource(grafana_url, elasticsearch_url, username,
-                                   password, es_username=es_username,
-                                   es_password=es_password, es_ca_cert=es_ca_cert,
-                                   es_insecure=es_insecure)
+    all_ok = create_datasource(grafana_url, clickhouse_url, username, password,
+                               ch_user=ch_user, ch_password=ch_password,
+                               ch_database=ch_database,
+                               ch_native_port=ch_native_port,
+                               ch_insecure=ch_insecure)
 
-    if dashboards:
-        builders = [
-            lambda: build_main_dashboard("en"),
-            lambda: build_main_dashboard("he"),
-            build_cost_indicators_dashboard,
-            build_usage_dashboard,
-        ]
-        for builder in builders:
-            all_ok &= import_dashboard(grafana_url, builder(), username, password)
+    for builder in (build_main_dashboard, build_cost_indicators_dashboard,
+                    build_usage_dashboard):
+        all_ok &= import_dashboard(grafana_url, builder(), username, password)
 
-    print(f"\n  Main dashboard (EN):       {grafana_url}/d/alo-main")
-    print(f"  Main dashboard (HE):       {grafana_url}/d/alo-main-he")
+    print(f"\n  Main dashboard:            {grafana_url}/d/alo-main")
     print(f"  Cost indicators dashboard: {grafana_url}/d/alo-cost-indicators")
     print(f"  Usage dashboard:           {grafana_url}/d/alo-usage\n")
     return all_ok
 
 
-# ---------------------------------------------------------------------------
-# Provision mode — generate files
-# ---------------------------------------------------------------------------
+# ΓöÇΓöÇ Provision mode ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
-def do_provision(elasticsearch_url, grafana_url, prometheus_url="",
-                 es_username="", es_password="", es_insecure=False,
-                 es_ca_cert="", datasource=True, dashboards=True):
+def do_provision(clickhouse_url, grafana_url, prometheus_url="",
+                 ch_user="default", ch_password="", ch_database="alo",
+                 ch_native_port=9000, ch_insecure=False):
     print("  Generating provisioning files:\n")
-    if datasource:
-        generate_datasource_yaml(elasticsearch_url,
-                                 es_username=es_username,
-                                 es_password=es_password,
-                                 es_insecure=es_insecure,
-                                 es_ca_cert=es_ca_cert)
-        generate_prometheus_datasource_yaml(prometheus_url)
-    if dashboards:
-        export_dashboards()
-    print(f"\n  Main dashboard (EN):       {grafana_url}/d/alo-main")
-    print(f"  Main dashboard (HE):       {grafana_url}/d/alo-main-he")
+    generate_datasource_yaml(clickhouse_url=clickhouse_url,
+                             database=ch_database,
+                             native_port=ch_native_port,
+                             username=ch_user,
+                             password=ch_password,
+                             insecure_skip_verify=ch_insecure)
+    generate_prometheus_datasource_yaml(prometheus_url)
+    export_dashboards()
+    print(f"\n  Main dashboard:            {grafana_url}/d/alo-main")
     print(f"  Cost indicators dashboard: {grafana_url}/d/alo-cost-indicators")
     print(f"  Cluster usage dashboard:   {grafana_url}/d/alo-usage\n")
     print("  Mount grafana/provisioning/ at /etc/grafana/provisioning/.")
@@ -235,12 +181,10 @@ def do_provision(elasticsearch_url, grafana_url, prometheus_url="",
     return True
 
 
-# ---------------------------------------------------------------------------
-# CLI
-# ---------------------------------------------------------------------------
+# ΓöÇΓöÇ CLI ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 def main():
-    default_es = os.getenv("ELASTICSEARCH_URL", "http://elasticsearch:9200")
+    default_ch = os.getenv("CLICKHOUSE_URL", "http://clickhouse:8123")
     default_grafana = os.getenv("GRAFANA_URL", "http://localhost:3000")
     default_prometheus = os.getenv("PROMETHEUS_URL", "")
 
@@ -248,18 +192,16 @@ def main():
         description="Set up Grafana for ALO (provisioning or API)")
     parser.add_argument(
         "--mode", choices=["provision", "api"], default="provision",
-        help="Setup mode: 'provision' generates files, 'api' pushes to Grafana (default: provision)")
+        help="'provision' generates files; 'api' pushes to Grafana (default: %(default)s)")
     parser.add_argument(
-        "--elasticsearch", default=default_es,
-        help="Elasticsearch URL (default: %(default)s)")
+        "--clickhouse-url", default=default_ch,
+        help="ClickHouse HTTP URL (default: %(default)s)")
     parser.add_argument(
         "--grafana", default=default_grafana,
         help="Grafana URL (default: %(default)s)")
     parser.add_argument(
         "--prometheus-url", default=default_prometheus,
-        help="Prometheus URL for Grafana datasource (provision mode). "
-             "Empty to skip — re-running with empty also removes any "
-             "previously generated prometheus.yml. (default: %(default)r)")
+        help="Prometheus URL for Grafana datasource (empty to skip).")
     parser.add_argument(
         "--username", default=os.getenv("GRAFANA_USERNAME", "admin"),
         help="Grafana admin username (default: admin)")
@@ -267,50 +209,44 @@ def main():
         "--password", default=os.getenv("GRAFANA_ADMIN_PASSWORD", "admin"),
         help="Grafana admin password (default: admin)")
 
-    es_auth = parser.add_argument_group("Elasticsearch datasource auth/TLS")
-    es_auth.add_argument(
-        "--es-username", default=os.getenv("ES_USERNAME", ""),
-        help="ES username for Grafana datasource (default: ES_USERNAME env)")
-    es_auth.add_argument(
-        "--es-password", default=os.getenv("ES_PASSWORD", ""),
-        help="ES password for Grafana datasource (default: ES_PASSWORD env)")
-    es_auth.add_argument(
-        "--es-ca-cert", default=os.getenv("ES_CA_CERT", ""),
-        help="Path to CA cert for ES TLS (default: ES_CA_CERT env)")
-    es_auth.add_argument(
-        "--es-insecure", action="store_true",
-        default=os.getenv("ES_INSECURE", "").lower() in ("1", "true", "yes"),
-        help="Skip ES TLS verification")
-
-    sections = parser.add_argument_group("sections")
-    sections.add_argument(
-        "--datasource", action=argparse.BooleanOptionalAction, default=True,
-        help="Create/update Elasticsearch datasource(s)")
-    sections.add_argument(
-        "--dashboards", action=argparse.BooleanOptionalAction, default=True,
-        help="Import/export dashboards")
+    ch_auth = parser.add_argument_group("ClickHouse datasource auth/TLS")
+    ch_auth.add_argument(
+        "--user", default=os.getenv("CLICKHOUSE_USER", "default"),
+        help="CH username (default: %(default)s)")
+    ch_auth.add_argument(
+        "--ch-password", default=os.getenv("CLICKHOUSE_PASSWORD", ""),
+        help="CH password (default: CLICKHOUSE_PASSWORD env)")
+    ch_auth.add_argument(
+        "--database", default=os.getenv("CLICKHOUSE_DATABASE", "alo"),
+        help="CH database (default: %(default)s)")
+    ch_auth.add_argument(
+        "--native-port", type=int,
+        default=int(os.getenv("CLICKHOUSE_NATIVE_PORT", "9000") or 9000),
+        help="CH native protocol port (default: %(default)s; 0 = HTTP only)")
+    ch_auth.add_argument(
+        "--insecure", action="store_true",
+        default=os.getenv("CLICKHOUSE_INSECURE", "").lower() in ("1", "true", "yes"),
+        help="Skip TLS verification")
     args = parser.parse_args()
 
-    print(f"\n  Elasticsearch: {args.elasticsearch}")
-    print(f"  Grafana:       {args.grafana}")
-    print(f"  Mode:          {args.mode}\n")
+    print(f"\n  ClickHouse: {args.clickhouse_url}")
+    print(f"  Grafana:    {args.grafana}")
+    print(f"  Mode:       {args.mode}\n")
 
     if args.mode == "api":
-        ok = do_api_setup(args.grafana, args.elasticsearch, args.username,
-                          args.password, es_username=args.es_username,
-                          es_password=args.es_password,
-                          es_ca_cert=args.es_ca_cert,
-                          es_insecure=args.es_insecure,
-                          datasource=args.datasource,
-                          dashboards=args.dashboards)
+        ok = do_api_setup(args.grafana, args.clickhouse_url, args.username,
+                          args.password,
+                          ch_user=args.user, ch_password=args.ch_password,
+                          ch_database=args.database,
+                          ch_native_port=args.native_port,
+                          ch_insecure=args.insecure)
     else:
-        ok = do_provision(args.elasticsearch, args.grafana, args.prometheus_url,
-                          es_username=args.es_username,
-                          es_password=args.es_password,
-                          es_insecure=args.es_insecure,
-                          es_ca_cert=args.es_ca_cert,
-                          datasource=args.datasource,
-                          dashboards=args.dashboards)
+        ok = do_provision(args.clickhouse_url, args.grafana,
+                          args.prometheus_url,
+                          ch_user=args.user, ch_password=args.ch_password,
+                          ch_database=args.database,
+                          ch_native_port=args.native_port,
+                          ch_insecure=args.insecure)
 
     sys.exit(0 if ok else 1)
 
