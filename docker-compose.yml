@@ -25,7 +25,7 @@ services:
       retries: 10
 
   ch-setup:
-    image: oracle1012/applicative-load-observability:ch-setup-2.0.0
+    image: oracle1012/applicative-load-observability:ch-setup-2.0.1
     environment:
       - CLICKHOUSE_URL=${CLICKHOUSE_URL:-http://clickhouse:8123}
       - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
@@ -45,7 +45,7 @@ services:
     build:
       context: .
       dockerfile: logstash/Dockerfile
-    image: oracle1012/applicative-load-observability:logstash-2.0.0
+    image: oracle1012/applicative-load-observability:logstash-2.0.1
     ports:
       - "8080:8080"
       # - "9600:9600"  # Uncomment to expose Logstash monitoring API
@@ -85,7 +85,7 @@ services:
     build:
       context: .
       dockerfile: analyzer/Dockerfile
-    image: oracle1012/applicative-load-observability:analyzer-2.0.0
+    image: oracle1012/applicative-load-observability:analyzer-2.0.1
     environment:
       - CLICKHOUSE_URL=${CLICKHOUSE_URL:-http://clickhouse:8123}
       - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
@@ -136,7 +136,7 @@ services:
     build:
       context: gateway
       dockerfile: Dockerfile
-    image: oracle1012/applicative-load-observability:gateway-2.0.0
+    image: oracle1012/applicative-load-observability:gateway-2.0.1
     volumes:
       - ./gateway/nginx.conf.template:/etc/nginx/nginx.conf.template:ro
     ports:
