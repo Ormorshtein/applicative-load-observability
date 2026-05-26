@@ -69,11 +69,11 @@ def build_msearch_records(raw: RawFields) -> list[dict[str, Any]]:
                 bulk_doc_count=0,
             ),
             stress,
-            extra={"msearch": {
-                "request_id": request_id,
-                "batch_size": batch_size,
-                "sub_query_index": i,
-            }},
+            extra={
+                "msearch_request_id": request_id,
+                "msearch_batch_size": batch_size,
+                "msearch_sub_query_index": i,
+            },
         )
         records.append(record)
 

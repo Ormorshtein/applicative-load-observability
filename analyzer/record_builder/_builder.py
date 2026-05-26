@@ -121,10 +121,12 @@ def build_record(raw: RawFields) -> dict[str, Any]:
 
 
 def partial_error_record(payload: dict[str, Any], exc: Exception) -> dict[str, Any]:
+    import json as _json
     return {
-        "@timestamp": _utc_timestamp(),
-        "cluster_name": payload.get("cluster_name", "unknown"),
+        "timestamp": _utc_timestamp(),
+        "cluster_name": payload.get("cluster_name", "default"),
         "error": str(exc),
-        "path": payload.get("path", ""),
-        "method": payload.get("method", ""),
+        "request_path": payload.get("path", ""),
+        "request_method": payload.get("method", ""),
+        "raw": _json.dumps(payload, ensure_ascii=False),
     }

@@ -1,4 +1,4 @@
-"""Record assembly — builds the ES document from parsed components. No I/O."""
+"""Record assembly — builds flat ClickHouse-shaped records from parsed components. No I/O."""
 
 import json
 from datetime import UTC, datetime
@@ -16,6 +16,10 @@ from ._models import OperationMeta, RawFields, ResponseMetrics, StressResult
 _TRUNCATION_SUFFIX = "…[TRUNCATED]"
 _TRUNCATION_SUFFIX_BYTES = len(_TRUNCATION_SUFFIX.encode("utf-8"))
 _STRESS_PRECISION = 4
+
+_ALL_STRESS_COMPONENT_KEYS: tuple[str, ...] = (
+    "took", "shards", "hits", "docs_affected", "bulk_doc_count", "bonus",
+)
 
 _CLAUSE_COUNT_OUTPUT_KEYS: dict[str, str] = {
     "bool_clause_count":     "bool",
@@ -38,7 +42,9 @@ _CLAUSE_COUNT_OUTPUT_KEYS: dict[str, str] = {
 
 
 def utc_timestamp() -> str:
-    return datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+    now = datetime.now(UTC)
+    # CH DateTime64 JSONEachRow format: "YYYY-MM-DD HH:MM:SS.mmm" (no T, no Z)
+    return now.strftime("%Y-%m-%d %H:%M:%S.") + f"{now.microsecond // 1000:03d}"
 
 
 def truncate_body(body: str) -> tuple[str, bool]:
@@ -78,35 +84,6 @@ def resolve_bulk_took(operation: str, es_took_ms: float, gateway_took_ms: float)
     return es_took_ms
 
 
-def build_request_section(
-    raw: RawFields,
-    op_meta: OperationMeta,
-    geo_vertex_count: int,
-    bulk_doc_count: int = 0,
-) -> dict[str, Any]:
-    body_text = (json.dumps(raw.request_body, ensure_ascii=False)
-                 if raw.request_body else raw.request_body_raw)
-    body, body_truncated = truncate_body(body_text)
-    request: dict[str, Any] = {
-        "method": raw.method,
-        "path": raw.path,
-        "operation": op_meta.operation,
-        "target": op_meta.target,
-        "template": op_meta.template,
-        "body": body,
-        "size_bytes": raw.request_size_bytes,
-    }
-    if body_truncated:
-        request["body_truncated"] = True
-    if geo_vertex_count > 0:
-        request["geo_vertex_count"] = geo_vertex_count
-    if op_meta.operation == "_search":
-        request["size"] = parse_size(raw.request_body)
-    if op_meta.operation == "_bulk":
-        request["bulk_doc_count"] = bulk_doc_count
-    return request
-
-
 def assemble_record(
     raw: RawFields,
     op_meta: OperationMeta,
@@ -114,44 +91,70 @@ def assemble_record(
     stress: StressResult,
     extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    body_text = (json.dumps(raw.request_body, ensure_ascii=False)
+                 if raw.request_body else raw.request_body_raw)
+    body, body_truncated = truncate_body(body_text)
+    clause_counts = _output_clause_counts(stress.clause_counts)
+
     record: dict[str, Any] = {
-        "@timestamp": utc_timestamp(),
+        "timestamp": utc_timestamp(),
         "cluster_name": raw.cluster_name,
-        "identity": {
-            "username": parse_username(raw.headers),
-            "applicative_provider": parse_applicative_provider(raw.headers),
-            "user_agent": parse_user_agent(raw.headers),
-            "client_host": raw.client_host,
-            "labels": parse_labels(raw.headers),
-        },
-        "request": build_request_section(
-            raw, op_meta, stress.geo_vertex_count, metrics.bulk_doc_count,
-        ),
-        "response": {
-            "status": raw.response_status,
-            "es_took_ms": metrics.es_took_ms,
-            "gateway_took_ms": raw.gateway_took_ms,
-            "hits": metrics.hits,
-            "shards_total": metrics.shards_total,
-            "docs_affected": metrics.docs_affected,
-            "size_bytes": raw.response_size_bytes,
-        },
-        "clause_counts": _output_clause_counts(stress.clause_counts),
-        "cost_indicators": stress.cost_indicators,
-        "stress": {
-            "score": round(stress.score, _STRESS_PRECISION),
-            "base": round(sum(stress.components.values()), _STRESS_PRECISION),
-            "multiplier": stress.stress_multiplier,
-            "components": {k: round(v, _STRESS_PRECISION)
-                           for k, v in stress.components.items()},
-            "bonuses": {k: round(v, _STRESS_PRECISION)
-                        for k, v in stress.bonuses.items()},
-            "cost_indicator_count": len(stress.cost_indicators),
-            "cost_indicator_names": (list(stress.cost_indicators.keys())
-                                     or ["unflagged"]),
-            "cost_indicator_multipliers": stress.indicator_multipliers,
-        },
+
+        # identity
+        "identity_username": parse_username(raw.headers),
+        "identity_applicative_provider": parse_applicative_provider(raw.headers),
+        "identity_user_agent": parse_user_agent(raw.headers),
+        "identity_client_host": raw.client_host,
+        "identity_labels": parse_labels(raw.headers),
+
+        # request
+        "request_method": raw.method,
+        "request_path": raw.path,
+        "request_operation": op_meta.operation,
+        "request_target": op_meta.target,
+        "request_template": op_meta.template,
+        "request_body": body,
+        "request_body_truncated": int(body_truncated),
+        "request_size_bytes": raw.request_size_bytes,
+        "request_size": parse_size(raw.request_body) if op_meta.operation == "_search" else 0,
+        "request_geo_vertex_count": stress.geo_vertex_count,
+        "request_bulk_doc_count": metrics.bulk_doc_count,
+
+        # response
+        "response_status": raw.response_status,
+        "response_es_took_ms": metrics.es_took_ms,
+        "response_gateway_took_ms": raw.gateway_took_ms,
+        "response_hits": metrics.hits,
+        "response_shards_total": metrics.shards_total,
+        "response_docs_affected": metrics.docs_affected,
+        "response_size_bytes": raw.response_size_bytes,
+
+        # stress aggregates
+        "stress_score": round(stress.score, _STRESS_PRECISION),
+        "stress_base": round(sum(stress.components.values()), _STRESS_PRECISION),
+        "stress_multiplier": stress.stress_multiplier,
+        "stress_cost_indicator_count": len(stress.cost_indicators),
+        "stress_cost_indicator_names": list(stress.cost_indicators.keys()) or ["unflagged"],
+        "stress_cost_indicator_multipliers": stress.indicator_multipliers,
+        "stress_bonuses": {k: round(v, _STRESS_PRECISION) for k, v in stress.bonuses.items()},
     }
+
+    # flat clause_counts_* columns
+    for suffix, value in clause_counts.items():
+        record[f"clause_counts_{suffix}"] = value
+
+    # flat cost_indicators_* columns (0/1 per indicator)
+    from analyzer.stress._cost_indicators import _COST_INDICATORS
+    flagged = set(stress.cost_indicators)
+    for indicator in _COST_INDICATORS:
+        record[f"cost_indicators_{indicator.name}"] = int(indicator.name in flagged)
+
+    # flat stress_components_* columns — always emit all known keys (0.0 when absent)
+    for component in _ALL_STRESS_COMPONENT_KEYS:
+        record[f"stress_components_{component}"] = round(
+            stress.components.get(component, 0.0), _STRESS_PRECISION
+        )
+
     if extra:
         record.update(extra)
     return record

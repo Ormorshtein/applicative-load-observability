@@ -371,10 +371,10 @@ class TestAnalyzeCompressedBodies:
             "response_status": 200,
         }
         rec = _post_payload_with_binary_field(payload)
-        assert rec["request"]["operation"] == "_search"
-        assert rec["request"]["size"] == 25
+        assert rec["request_operation"] == "_search"
+        assert rec["request_size"] == 25
         # Template should reflect the decompressed query, not garbage.
-        assert "match" in rec["request"]["template"]
+        assert "match" in rec["request_template"]
 
     def test_gzip_bulk_request_body_decompressed(self):
         bulk = (
@@ -399,9 +399,9 @@ class TestAnalyzeCompressedBodies:
             "response_status": 200,
         }
         rec = _post_payload_with_binary_field(payload)
-        assert rec["request"]["operation"] == "_bulk"
-        assert rec["request"]["target"] == "products"
-        assert rec["response"]["docs_affected"] == 2
+        assert rec["request_operation"] == "_bulk"
+        assert rec["request_target"] == "products"
+        assert rec["response_docs_affected"] == 2
 
     def test_gzip_response_body_decompressed(self):
         response_payload = json.dumps({
@@ -419,6 +419,6 @@ class TestAnalyzeCompressedBodies:
             "response_status": 200,
         }
         rec = _post_payload_with_binary_field(payload)
-        assert rec["response"]["es_took_ms"] == 11
-        assert rec["response"]["hits"] == 99
-        assert rec["response"]["shards_total"] == 4
+        assert rec["response_es_took_ms"] == 11
+        assert rec["response_hits"] == 99
+        assert rec["response_shards_total"] == 4

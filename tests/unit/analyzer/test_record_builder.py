@@ -305,13 +305,13 @@ class TestBuildRecord:
         assert rec["request_target"] == "idx1,idx2"
         assert "index" in rec["request_template"]
 
-    def test_bulk_doc_count_absent_for_non_bulk(self):
-        """request.bulk_doc_count must not appear in non-bulk records."""
+    def test_bulk_doc_count_zero_for_non_bulk(self):
+        """Flat schema always emits request_bulk_doc_count; 0 for non-bulk."""
         rec = build_record(_make_raw())  # _search
-        assert "bulk_doc_count" not in rec["request"]
+        assert rec["request_bulk_doc_count"] == 0
 
     def test_bulk_doc_count_zero_for_empty_body(self):
-        """A bulk request with no body lines → bulk_doc_count = 0."""
+        """A bulk request with no body lines → request_bulk_doc_count = 0."""
         raw = _make_raw(
             method="POST",
             path="/_bulk",
@@ -323,7 +323,7 @@ class TestBuildRecord:
             },
         )
         rec = build_record(raw)
-        assert rec["request"]["bulk_doc_count"] == 0
+        assert rec["request_bulk_doc_count"] == 0
 
     def test_update_by_query_docs_affected(self):
         raw = _make_raw(
@@ -400,7 +400,9 @@ class TestBuildRecord:
         complex_score = build_record(complex_raw)["stress_score"]
         assert complex_score > simple_score
 
-    def test_bulk_nanosecond_took_normalized(self):
+    def test_bulk_uses_gateway_took_over_nanosecond_es_took(self):
+        # ES 8.13-8.15 bulk took was reported in nanoseconds (a known bug).
+        # The analyzer uses gateway round-trip time for bulk instead, which is correct.
         raw = _make_raw(
             method="POST",
             path="/_bulk",
@@ -413,7 +415,7 @@ class TestBuildRecord:
             gateway_took_ms=24_200.0,
         )
         rec = build_record(raw)
-        assert rec["response_es_took_ms"] == pytest.approx(24_124.26, rel=1e-3)
+        assert rec["response_es_took_ms"] == pytest.approx(24_200.0, rel=1e-3)
 
     def test_bulk_normal_took_not_normalized(self):
         raw = _make_raw(
