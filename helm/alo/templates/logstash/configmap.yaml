@@ -18,6 +18,8 @@ data:
 
     log.level: info
 
+    xpack.monitoring.enabled: false
+
   pipelines.yml: |
     - pipeline.id: observability
       path.config: "/usr/share/logstash/pipeline/observability.conf"
@@ -130,35 +132,33 @@ data:
       {{- $out := .Values.logstash.clickhouseOutput }}
       if [@metadata][dead_letter] {
         clickhouse {
-          hosts             => ["{{ include "alo.clickhouseUrl" . }}"]
+          http_hosts        => ["{{ include "alo.clickhouseUrl" . }}"]
           table             => "{{ .Values.clickhouse.database }}.alo_dead_letter"
-          {{- if eq (include "alo.clickhouseAuthEnabled" .) "true" }}
-          user              => "${CLICKHOUSE_USER}"
-          password          => "${CLICKHOUSE_PASSWORD}"
-          {{- end }}
-          http_compression  => {{ $out.httpCompression }}
+          headers           => {
+            "X-ClickHouse-User"     => "${CLICKHOUSE_USER}"
+            "X-ClickHouse-Key"      => "${CLICKHOUSE_PASSWORD}"
+            "X-ClickHouse-Settings" => {{ $out.chSettings | quote }}
+          }
           flush_size        => {{ $out.deadLetterFlushSize }}
           idle_flush_time   => {{ $out.idleFlushTime }}
           automatic_retries => {{ $out.automaticRetries }}
-          mutations_sync    => {{ $out.mutationsSync }}
           pool_max          => {{ $out.poolMax }}
-          headers           => { "X-ClickHouse-Settings" => {{ $out.chSettings | quote }} }
+          save_on_failure   => false
         }
       } else {
         clickhouse {
-          hosts             => ["{{ include "alo.clickhouseUrl" . }}"]
+          http_hosts        => ["{{ include "alo.clickhouseUrl" . }}"]
           table             => "{{ .Values.clickhouse.database }}.alo_raw"
-          {{- if eq (include "alo.clickhouseAuthEnabled" .) "true" }}
-          user              => "${CLICKHOUSE_USER}"
-          password          => "${CLICKHOUSE_PASSWORD}"
-          {{- end }}
-          http_compression  => {{ $out.httpCompression }}
+          headers           => {
+            "X-ClickHouse-User"     => "${CLICKHOUSE_USER}"
+            "X-ClickHouse-Key"      => "${CLICKHOUSE_PASSWORD}"
+            "X-ClickHouse-Settings" => {{ $out.chSettings | quote }}
+          }
           flush_size        => {{ $out.flushSize }}
           idle_flush_time   => {{ $out.idleFlushTime }}
           automatic_retries => {{ $out.automaticRetries }}
-          mutations_sync    => {{ $out.mutationsSync }}
           pool_max          => {{ $out.poolMax }}
-          headers           => { "X-ClickHouse-Settings" => {{ $out.chSettings | quote }} }
+          save_on_failure   => false
         }
       }
     }

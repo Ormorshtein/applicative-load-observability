@@ -126,14 +126,23 @@ class TestRetentionOverrides:
 
 class TestSummaryAggregates:
     def setup_method(self):
-        self.ddl = dict(all_ddl(TableSettings()))["alo_summary_local"]
+        by_label = dict(all_ddl(TableSettings()))
+        self.summary_ddl = by_label["alo_summary_local"]
+        self.mv_ddl = by_label["alo_summary_mv"]
 
     def test_quantile_states_for_es_took_gateway_took_score(self):
         for col in ("pct_es_took_ms_state",
                     "pct_gateway_took_ms_state",
                     "pct_score_state"):
-            assert f"{col}" in self.ddl
-            assert "AggregateFunction(quantiles(0.5, 0.95, 0.99)" in self.ddl
+            assert col in self.summary_ddl
+            assert "AggregateFunction(quantiles(0.5, 0.95, 0.99)" in self.summary_ddl
+
+    def test_mv_quantile_select_uses_correct_combinator_syntax(self):
+        # ClickHouse combinator syntax: quantilesState(0.5,0.95,0.99)(col)
+        # NOT: quantiles(0.5,0.95,0.99)State(col)
+        assert "quantilesState(0.5, 0.95, 0.99)(response_es_took_ms)" in self.mv_ddl
+        assert "quantilesState(0.5, 0.95, 0.99)(response_gateway_took_ms)" in self.mv_ddl
+        assert "quantilesState(0.5, 0.95, 0.99)(stress_score)" in self.mv_ddl
 
     def test_count_state(self):
-        assert "count_state                     AggregateFunction(count)" in self.ddl
+        assert "count_state                     AggregateFunction(count)" in self.summary_ddl

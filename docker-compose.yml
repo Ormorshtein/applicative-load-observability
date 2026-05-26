@@ -31,6 +31,8 @@ services:
       - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
       - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE:-alo}
+      - CLICKHOUSE_CA_CERT=${CLICKHOUSE_CA_CERT:-}
+      - CLICKHOUSE_INSECURE=${CLICKHOUSE_INSECURE:-false}
       - CLICKHOUSE_CLUSTER=${CLICKHOUSE_CLUSTER:-}
     networks:
       - obs-net
@@ -40,6 +42,9 @@ services:
     restart: on-failure
 
   logstash:
+    build:
+      context: .
+      dockerfile: logstash/Dockerfile
     image: oracle1012/applicative-load-observability:logstash-2.0.0
     ports:
       - "8080:8080"
@@ -53,12 +58,10 @@ services:
       - LOGSTASH_HTTP_PORT=${LOGSTASH_HTTP_PORT:-8080}
       - CLUSTER_NAME=${CLUSTER_NAME:-default}
       - LS_JAVA_OPTS=${LS_JAVA_OPTS:--Xms512m -Xmx512m}
-      - LS_CH_HTTP_COMPRESSION=${LS_CH_HTTP_COMPRESSION:-true}
       - LS_CH_FLUSH_SIZE=${LS_CH_FLUSH_SIZE:-5000}
       - LS_CH_DEAD_LETTER_FLUSH_SIZE=${LS_CH_DEAD_LETTER_FLUSH_SIZE:-1000}
       - LS_CH_IDLE_FLUSH_TIME=${LS_CH_IDLE_FLUSH_TIME:-5}
       - LS_CH_AUTOMATIC_RETRIES=${LS_CH_AUTOMATIC_RETRIES:-3}
-      - LS_CH_MUTATIONS_SYNC=${LS_CH_MUTATIONS_SYNC:-0}
       - LS_CH_POOL_MAX=${LS_CH_POOL_MAX:-10}
       - LS_CH_SETTINGS=${LS_CH_SETTINGS:-input_format_skip_unknown_fields=1,async_insert=1,wait_for_async_insert=0}
     volumes:
@@ -88,6 +91,8 @@ services:
       - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
       - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE:-alo}
+      - CLICKHOUSE_CA_CERT=${CLICKHOUSE_CA_CERT:-}
+      - CLICKHOUSE_INSECURE=${CLICKHOUSE_INSECURE:-false}
       # Dynamic baselines — P50 from recent ClickHouse traffic:
       #   - BASELINE_CACHE_TTL=60
       #   - BASELINE_QUERY_WINDOW=1 HOUR

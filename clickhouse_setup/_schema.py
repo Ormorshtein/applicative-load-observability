@@ -310,7 +310,9 @@ def summary_mv_ddl(s: TableSettings) -> str:
         if agg == "count":
             select_parts.append(f"countState() AS {name}")
         elif agg.startswith("quantiles"):
-            select_parts.append(f"{agg}State({source_col}) AS {name}")
+            # quantiles(0.5, 0.95, 0.99) → quantilesState(0.5, 0.95, 0.99)(col)
+            params = agg[len("quantiles"):]
+            select_parts.append(f"quantilesState{params}({source_col}) AS {name}")
         else:
             select_parts.append(f"{agg}State({source_col}) AS {name}")
 

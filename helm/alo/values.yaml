@@ -137,12 +137,10 @@ logstash:
   # Tunables for logstash-output-clickhouse. Two outputs share most knobs
   # but use different flush sizes (raw is high-throughput; dead-letter is rare).
   clickhouseOutput:
-    httpCompression: true
     flushSize: 5000
     deadLetterFlushSize: 1000
     idleFlushTime: 5
     automaticRetries: 3
-    mutationsSync: 0
     poolMax: 10
     # Settings passed via the X-ClickHouse-Settings HTTP header on every
     # insert request. ``async_insert=1`` batches small inserts into larger

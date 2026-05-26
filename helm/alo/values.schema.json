@@ -172,12 +172,10 @@
           "additionalProperties": false,
           "description": "Tunables passed to logstash-output-clickhouse for both raw and dead-letter routes.",
           "properties": {
-            "httpCompression":      { "type": "boolean" },
             "flushSize":            { "type": "integer", "minimum": 1 },
             "deadLetterFlushSize":  { "type": "integer", "minimum": 1 },
             "idleFlushTime":        { "type": "integer", "minimum": 1 },
             "automaticRetries":     { "type": "integer", "minimum": 0 },
-            "mutationsSync":        { "type": "integer", "minimum": 0, "maximum": 2 },
             "poolMax":              { "type": "integer", "minimum": 1 },
             "chSettings":           { "type": "string" }
           }

@@ -8,3 +8,5 @@ queue.type: memory
 queue.max_bytes: 256mb
 
 log.level: info
+
+xpack.monitoring.enabled: false

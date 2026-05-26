@@ -232,8 +232,8 @@ class TestBuildRecord:
     def test_timestamp_format(self):
         rec = build_record(_make_raw())
         ts = rec["timestamp"]
-        # ISO-8601 with milliseconds and trailing Z
-        datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S.%fZ")
+        # CH DateTime64 format: "YYYY-MM-DD HH:MM:SS.mmm"
+        datetime.strptime(ts, "%Y-%m-%d %H:%M:%S.%f")
 
     def test_clause_counts_flattened(self):
         rec = build_record(_make_raw())

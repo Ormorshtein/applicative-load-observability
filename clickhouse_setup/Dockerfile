@@ -1,4 +1,4 @@
 FROM python:3.12-slim
 WORKDIR /app
-COPY __init__.py setup.py _client.py _schema.py /app/clickhouse_setup/
+COPY clickhouse_setup/__init__.py clickhouse_setup/setup.py clickhouse_setup/_client.py clickhouse_setup/_schema.py /app/clickhouse_setup/
 CMD ["python", "-m", "clickhouse_setup.setup"]
