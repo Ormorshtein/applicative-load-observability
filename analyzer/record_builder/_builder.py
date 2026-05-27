@@ -17,7 +17,7 @@ from ..parser import (
     scrub_bulk_template,
     scrub_template,
 )
-from ._assembly import OperationMeta, ResponseMetrics, assemble_record, resolve_bulk_took
+from ._assembly import OperationMeta, ResponseMetrics, assemble_record, resolve_bulk_took, truncate_body
 from ._assembly import utc_timestamp as _utc_timestamp
 from ._models import RawFields
 from ._msearch import build_msearch_records
@@ -121,12 +121,12 @@ def build_record(raw: RawFields) -> dict[str, Any]:
 
 
 def partial_error_record(payload: dict[str, Any], exc: Exception) -> dict[str, Any]:
-    import json as _json
+    raw_text, _ = truncate_body(json.dumps(payload, ensure_ascii=False))
     return {
         "timestamp": _utc_timestamp(),
         "cluster_name": payload.get("cluster_name", "default"),
         "error": str(exc),
         "request_path": payload.get("path", ""),
         "request_method": payload.get("method", ""),
-        "raw": _json.dumps(payload, ensure_ascii=False),
+        "raw": raw_text,
     }

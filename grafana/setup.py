@@ -19,6 +19,9 @@ import base64
 import json
 import os
 import sys
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 import time
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -26,6 +29,7 @@ from urllib.request import Request, urlopen
 from ._dashboard_builders import (
     build_cost_indicators_dashboard,
     build_main_dashboard,
+    build_main_dashboard_he,
     build_usage_dashboard,
 )
 from ._dashboards import export_dashboards
@@ -138,22 +142,27 @@ def import_dashboard(grafana_url, dashboard, username, password):
 
 def do_api_setup(grafana_url, clickhouse_url, username, password,
                  ch_user="default", ch_password="", ch_database="alo",
-                 ch_native_port=9000, ch_insecure=False):
+                 ch_native_port=9000, ch_insecure=False, ch_ca_cert="",
+                 datasource=True, dashboards=True):
     if not wait_grafana(grafana_url, username, password):
         return False
 
     print()
-    all_ok = create_datasource(grafana_url, clickhouse_url, username, password,
-                               ch_user=ch_user, ch_password=ch_password,
-                               ch_database=ch_database,
-                               ch_native_port=ch_native_port,
-                               ch_insecure=ch_insecure)
+    all_ok = True
+    if datasource:
+        all_ok = create_datasource(grafana_url, clickhouse_url, username, password,
+                                   ch_user=ch_user, ch_password=ch_password,
+                                   ch_database=ch_database,
+                                   ch_native_port=ch_native_port,
+                                   ch_insecure=ch_insecure)
 
-    for builder in (build_main_dashboard, build_cost_indicators_dashboard,
-                    build_usage_dashboard):
-        all_ok &= import_dashboard(grafana_url, builder(), username, password)
+    if dashboards:
+        for builder in (build_main_dashboard, build_main_dashboard_he,
+                        build_cost_indicators_dashboard, build_usage_dashboard):
+            all_ok &= import_dashboard(grafana_url, builder(), username, password)
 
     print(f"\n  Main dashboard:            {grafana_url}/d/alo-main")
+    print(f"  Main dashboard (Hebrew):   {grafana_url}/d/alo-main-he")
     print(f"  Cost indicators dashboard: {grafana_url}/d/alo-cost-indicators")
     print(f"  Usage dashboard:           {grafana_url}/d/alo-usage\n")
     return all_ok
@@ -163,17 +172,19 @@ def do_api_setup(grafana_url, clickhouse_url, username, password,
 
 def do_provision(clickhouse_url, grafana_url, prometheus_url="",
                  ch_user="default", ch_password="", ch_database="alo",
-                 ch_native_port=9000, ch_insecure=False):
+                 ch_native_port=9000, ch_insecure=False, ch_ca_cert=""):
     print("  Generating provisioning files:\n")
     generate_datasource_yaml(clickhouse_url=clickhouse_url,
                              database=ch_database,
                              native_port=ch_native_port,
                              username=ch_user,
                              password=ch_password,
-                             insecure_skip_verify=ch_insecure)
+                             insecure_skip_verify=ch_insecure,
+                             ch_ca_cert=ch_ca_cert)
     generate_prometheus_datasource_yaml(prometheus_url)
     export_dashboards()
     print(f"\n  Main dashboard:            {grafana_url}/d/alo-main")
+    print(f"  Main dashboard (Hebrew):   {grafana_url}/d/alo-main-he")
     print(f"  Cost indicators dashboard: {grafana_url}/d/alo-cost-indicators")
     print(f"  Cluster usage dashboard:   {grafana_url}/d/alo-usage\n")
     print("  Mount grafana/provisioning/ at /etc/grafana/provisioning/.")
@@ -227,6 +238,19 @@ def main():
         "--insecure", action="store_true",
         default=os.getenv("CLICKHOUSE_INSECURE", "").lower() in ("1", "true", "yes"),
         help="Skip TLS verification")
+    ch_auth.add_argument(
+        "--ch-ca-cert", default=os.getenv("CLICKHOUSE_CA_CERT", ""),
+        help="Path to PEM CA certificate for ClickHouse TLS, or literal PEM "
+             "(default: CLICKHOUSE_CA_CERT env)")
+
+    setup_sections = parser.add_argument_group("Setup scope (api mode only)")
+    setup_sections.add_argument(
+        "--datasource", action=argparse.BooleanOptionalAction, default=True,
+        help="Create/update the ClickHouse datasource (default: enabled)")
+    setup_sections.add_argument(
+        "--dashboards", action=argparse.BooleanOptionalAction, default=True,
+        help="Import/update dashboards (default: enabled)")
+
     args = parser.parse_args()
 
     print(f"\n  ClickHouse: {args.clickhouse_url}")
@@ -239,14 +263,18 @@ def main():
                           ch_user=args.user, ch_password=args.ch_password,
                           ch_database=args.database,
                           ch_native_port=args.native_port,
-                          ch_insecure=args.insecure)
+                          ch_insecure=args.insecure,
+                          ch_ca_cert=args.ch_ca_cert,
+                          datasource=args.datasource,
+                          dashboards=args.dashboards)
     else:
         ok = do_provision(args.clickhouse_url, args.grafana,
                           args.prometheus_url,
                           ch_user=args.user, ch_password=args.ch_password,
                           ch_database=args.database,
                           ch_native_port=args.native_port,
-                          ch_insecure=args.insecure)
+                          ch_insecure=args.insecure,
+                          ch_ca_cert=args.ch_ca_cert)
 
     sys.exit(0 if ok else 1)
 

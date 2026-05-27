@@ -47,6 +47,7 @@ HE: dict[str, str] = {
     "Bulk Write Volume": "נפח כתיבת Bulk",
     "Request Size": "גודל בקשות",
     "Avg Documents per Query": "ממוצע מסמכים לשאילתה",
+    "Avg Documents Matched per Query": "ממוצע מסמכים שהוחזרו לשאילתה",
     "Avg Documents per Bulk": "ממוצע מסמכים לפעולת Bulk",
     "Avg Request Size": "גודל בקשה ממוצע",
     "ES Latency": "השהיית Elasticsearch",
@@ -131,10 +132,14 @@ HE: dict[str, str] = {
         "סך המסמכים שהוחזרו משאילתות. במתאם ל-CPU של ES כאשר התור רווי.",
     "Total documents written via bulk (index / create / update / delete actions) — counted from request body, accurate even for interrupted requests.":
         "סך המסמכים שנכתבו דרך Bulk — נספרים מגוף הבקשה, מדויק גם עבור בקשות שנקטעו.",
+    "Total bulk documents counted from request body, split by operation type. Accurate even for interrupted requests.":
+        "סך מסמכי Bulk שנספרו מגוף הבקשה, לפי סוג פעולה. מדויק גם עבור בקשות שנקטעו.",
     "Total inbound request payload size.":
         "סך גודל הבקשות הנכנסות.",
     "Average documents matched per query — query selectivity signal.":
         "ממוצע מסמכים שהוחזרו לשאילתה — אינדיקציה לסלקטיביות השאילתה.",
+    "Average documents matched per search query.":
+        "ממוצע מסמכים שהוחזרו לשאילתת חיפוש.",
     "Average documents per bulk operation — batch-size signal. Counted from request body action lines.":
         "ממוצע מסמכים לפעולת Bulk — אינדיקציה לגודל ה-batch. נספרים משורות הפעולה בגוף הבקשה.",
     "Average request payload size — per-call shape.":

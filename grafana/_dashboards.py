@@ -1,7 +1,7 @@
 ﻿"""
 Grafana dashboard JSON builders for ALO (ClickHouse datasource).
 
-Public helpers (``mk_stat``, ``mk_pie``, ``mk_timeseries`` ΓÇª) keep the same
+Public helpers (``mk_stat``, ``mk_pie``, ``mk_timeseries`` ...) keep the same
 signatures as the prior Elasticsearch implementation. Each builder emits a
 panel whose target carries a raw ClickHouse SQL query against the
 ``alo.alo_raw`` table.
@@ -38,6 +38,13 @@ SECTIONS = [
 _CHEAT_SHEET_PATH = os.path.join(SCRIPT_DIR, "cheat_sheet.md")
 with open(_CHEAT_SHEET_PATH, encoding="utf-8") as _f:
     CHEAT_SHEET = _f.read()
+
+_CHEAT_SHEET_HE_PATH = os.path.join(SCRIPT_DIR, "cheat_sheet_he.html")
+CHEAT_SHEET_HE: str = (
+    open(_CHEAT_SHEET_HE_PATH, encoding="utf-8").read()
+    if os.path.exists(_CHEAT_SHEET_HE_PATH)
+    else CHEAT_SHEET
+)
 
 
 PANEL_DESCRIPTIONS = {
@@ -80,21 +87,18 @@ _FIELD_TO_VAR = {field: name for name, _, field in _VARIABLES}
 
 
 def _wildcard_predicate(var: str, column: str) -> str:
-    """Build a SQL clause that honours Grafana's multi-select ``All`` macro.
+    """Build a SQL clause that honours Grafana's multi-select All.
 
-    When the variable resolves to the literal ``*`` (i.e. "All"), the
-    clause becomes ``TRUE``. Otherwise the value list is interpolated via
-    ``${var:singlequote}`` which Grafana expands to a comma-separated list
-    of quoted strings.
+    Uses $__conditionalAll which renders 1=1 when the variable is set to All
+    ($__all), and the actual condition otherwise. This avoids IN () parse
+    errors in ClickHouse when no values are selected.
 
-    The Array column ``stress_cost_indicator_names`` is handled with
-    ``hasAny`` because the values live inside the array.
+    The Array column stress_cost_indicator_names uses hasAny instead of IN.
     """
     macro = f"${{{var}:singlequote}}"
-    macro_csv = f"${{{var}:csv}}"
     if column == "stress_cost_indicator_names":
-        return f"(('{macro_csv}' = '*') OR hasAny({column}, [{macro}]))"
-    return f"(('{macro_csv}' = '*') OR {column} IN ({macro}))"
+        return f"$__conditionalAll(hasAny({column}, [{macro}]), ${var})"
+    return f"$__conditionalAll({column} IN ({macro}), ${var})"
 
 
 def _build_where(extra: str = "", time_col: str = TIME_COL) -> str:
@@ -180,7 +184,8 @@ def _base_panel(title, panel_type, gridpos, targets=None, options=None,
 
 def _ch_target(sql: str, ref_id: str = "A", datasource: dict | None = None,
                *, format_as: str = "time_series",
-               alias: str | None = None) -> dict:
+               alias: str | None = None,
+               legend_format: str | None = None) -> dict:
     target = {
         "datasource": datasource or DATASOURCE,
         "refId": ref_id,
@@ -194,6 +199,8 @@ def _ch_target(sql: str, ref_id: str = "A", datasource: dict | None = None,
     }
     if alias:
         target["alias"] = alias
+    if legend_format:
+        target["legendFormat"] = legend_format
     return target
 
 
@@ -217,8 +224,8 @@ def mk_cpu_panel(gridpos):
         "gridPos": gridpos,
         "targets": [{
             "datasource": PROMETHEUS_DS,
-            "expr": 'elasticsearch_process_cpu_percent{instance=~"$instance"}',
-            "legendFormat": "{{instance}}",
+            "expr": 'elasticsearch_process_cpu_percent{cluster=~"$cluster"}',
+            "legendFormat": "{{cluster}}",
             "refId": "A",
         }],
         "options": {
@@ -230,10 +237,6 @@ def mk_cpu_panel(gridpos):
                 "custom": {"drawStyle": "line", "fillOpacity": 20},
                 "unit": "percent",
                 "noValue": "Enable prometheus profile",
-                "links": [{
-                    "title": "Open ES Health Dashboard",
-                    "url": "/d/alo-health?orgId=1&${__url_time_range}",
-                }],
             },
             "overrides": [],
         },
@@ -246,16 +249,14 @@ _STAT_CALC = {"sum": "sum", "count": "sum", "avg": "mean", "max": "max"}
 def mk_stat(title, field, operation, gridpos, query="", description=None):
     """Single-number reduction across the visible time range."""
     sql = (
-        f"SELECT {TIME_COL} AS t, {_agg_sql(operation, field)} AS value "
+        f"SELECT {_agg_sql(operation, field)} AS value "
         f"FROM {TABLE_RAW} "
-        f"WHERE {_build_where(extra=query)} "
-        f"GROUP BY t ORDER BY t"
+        f"WHERE {_build_where(extra=query)}"
     )
-    calc = _STAT_CALC.get(operation, "lastNotNull")
     return _base_panel(title, "stat", gridpos,
-                       targets=[_ch_target(sql)],
+                       targets=[_ch_target(sql, format_as="table")],
                        options={
-                           "reduceOptions": {"calcs": [calc],
+                           "reduceOptions": {"calcs": ["lastNotNull"],
                                              "fields": "/^value$/",
                                              "values": False},
                            "colorMode": "value",
@@ -271,8 +272,21 @@ def _add_filter_link(panel, field, dashboard_uid="alo-main"):
         return
     panel["fieldConfig"]["defaults"]["links"] = [{
         "title": "Filter by ${__data.fields[0]}",
-        "url": f"/d/{dashboard_uid}?${{__url_time_range}}"
+        "url": f"/d/${{__dashboard.uid}}?${{__url_time_range}}"
                f"&var-{var_name}=${{__data.fields[0]}}",
+        "targetBlank": False,
+    }]
+
+
+def _add_pie_filter_link(panel, field, dashboard_uid="alo-main"):
+    """Datalink for pie charts after rowsToFields: slice label = ${__field.name}."""
+    var_name = _FIELD_TO_VAR.get(field)
+    if not var_name:
+        return
+    panel["fieldConfig"]["defaults"]["links"] = [{
+        "title": "Filter by ${__field.name}",
+        "url": f"/d/${{__dashboard.uid}}?${{__url_time_range}}"
+               f"&var-{var_name}=${{__field.name}}",
         "targetBlank": False,
     }]
 
@@ -280,35 +294,49 @@ def _add_filter_link(panel, field, dashboard_uid="alo-main"):
 def _bucket_expression(field: str) -> str:
     """SQL expression that produces one row per dimension value.
 
-    Array columns are unnested via ``arrayJoin`` so the ``stress score by
-    cost indicator`` slice splits multi-flag rows into one row per flag.
+    Array columns are unnested via ``arrayJoin``. Empty arrays (unflagged
+    requests) are replaced with a synthetic ``['unflagged']`` so they still
+    contribute a visible slice instead of being dropped by the join.
     """
     if field == "stress_cost_indicator_names":
-        return "arrayJoin(stress_cost_indicator_names)"
+        return ("arrayJoin(if(empty(stress_cost_indicator_names), "
+                "['unflagged'], stress_cost_indicator_names))")
     return field
 
 
 def mk_pie(title, field, gridpos, size=8, dashboard_uid="alo-main",
            description=None):
     bucket = _bucket_expression(field)
+    if field == "request_template":
+        label_expr = f"COALESCE(nullIf(LEFT(toString({bucket}), 60), ''), '(no template)')"
+    else:
+        label_expr = f"COALESCE(nullIf(toString({bucket}), ''), '(unknown)')"
     sql = (
-        f"SELECT {bucket} AS label, sum(stress_score) AS value "
+        f"SELECT {label_expr} AS label, sum(stress_score) AS __val "
         f"FROM {TABLE_RAW} "
         f"WHERE {_build_where()} "
-        f"GROUP BY label ORDER BY value DESC LIMIT {size}"
+        f"GROUP BY label ORDER BY __val DESC LIMIT {size}"
     )
     panel = _base_panel(title, "piechart", gridpos,
                        targets=[_ch_target(sql, format_as="table")],
                        options={
-                           "reduceOptions": {"calcs": ["lastNotNull"],
-                                             "fields": "", "values": True},
+                           "reduceOptions": {"calcs": ["sum"],
+                                             "fields": "",
+                                             "values": False},
                            "pieType": "pie",
                            "legend": {"displayMode": "list",
-                                      "placement": "bottom"},
+                                      "placement": "bottom",
+                                      "values": ["value", "percent"]},
                            "tooltip": {"mode": "multi"},
                        },
+                       transformations=[
+                           {"id": "partitionByValues",
+                            "options": {"fields": ["label"], "keepFields": False}},
+                           {"id": "renameByRegex",
+                            "options": {"regex": "^__val (.+)$", "renamePattern": "$1"}},
+                       ],
                        description=description)
-    _add_filter_link(panel, field, dashboard_uid)
+    _add_pie_filter_link(panel, field, dashboard_uid)
     return panel
 
 
@@ -318,26 +346,60 @@ def mk_timeseries(title, field, gridpos, metric_field="stress_score",
                   description=None):
     """Time-series panel.
 
-    When *field* is set, one series per top-N value of that column. When
-    *summary_fallback* is True, a second target reads the equivalent
-    aggregate from ``alo_summary`` (dashed line) so the chart stays
-    populated after raw TTL expiry.
+    When *field* is set the CH plugin returns narrow ``(t, series, value)``
+    format. The plugin does NOT auto-split by the string column, so we use
+    ``format_as="table"`` + a ``partitionByValues`` Grafana transformation to
+    produce one frame per series value.
+
+    When *summary_fallback* is True a second target reads ``alo_summary``
+    (dashed) so the chart stays populated after raw TTL expiry.
     """
-    targets = [_ch_target(_timeseries_sql(field, metric_field, metric_op, size),
-                          ref_id="A")]
     overrides: list[dict] = []
-    if summary_fallback:
-        targets.append(_ch_target(
-            _summary_timeseries_sql(field, metric_field, metric_op, size),
-            ref_id="B"))
-        overrides.append({
-            "matcher": {"id": "byFrameRefID", "options": "B"},
-            "properties": [
-                {"id": "custom.lineStyle",
-                 "value": {"fill": "dash", "dash": [10, 10]}},
-                {"id": "custom.lineWidth", "value": 1},
-            ],
-        })
+    transformations: list[dict] = []
+
+    if field is None:
+        col_alias = _alias_for(metric_op, metric_field)
+        targets = [_ch_target(_timeseries_sql(None, metric_field, metric_op, size),
+                              ref_id="A", legend_format=col_alias)]
+        if summary_fallback:
+            # Plain identifier alias — no spaces/parens — so the CH plugin
+            # sets a distinct field name and avoids auto-refId prefix on A.
+            summary_alias = f"{col_alias}_summary"
+            targets.append(_ch_target(
+                _summary_timeseries_sql(None, metric_field, metric_op, size,
+                                        alias_override=summary_alias),
+                ref_id="B", legend_format=summary_alias))
+            # Grafana 11 prefixes all multi-frame series with refId ("a X").
+            # displayName override wins over the auto-prefix for both A and B.
+            overrides.append({
+                "matcher": {"id": "byName", "options": col_alias},
+                "properties": [{"id": "displayName", "value": col_alias}],
+            })
+            overrides.append({
+                "matcher": {"id": "byName", "options": summary_alias},
+                "properties": [
+                    {"id": "custom.lineStyle",
+                     "value": {"fill": "dash", "dash": [10, 10]}},
+                    {"id": "custom.lineWidth", "value": 1},
+                    {"id": "displayName", "value": f"{col_alias} (summary)"},
+                ],
+            })
+    else:
+        # Narrow table format — partitionByValues splits frames by series value.
+        # renameByRegex strips the "value " prefix Grafana 11 prepends when the
+        # value field name is "value" and the frame also carries a name.
+        targets = [_ch_target(_timeseries_sql(field, metric_field, metric_op, size),
+                              ref_id="A", format_as="table")]
+        if summary_fallback:
+            targets.append(_ch_target(
+                _summary_timeseries_sql(field, metric_field, metric_op, size),
+                ref_id="B", format_as="table"))
+        transformations = [
+            {"id": "partitionByValues",
+             "options": {"fields": ["series"], "keepFields": False}},
+            {"id": "renameByRegex",
+             "options": {"regex": "^value (.+)$", "renamePattern": "$1"}},
+        ]
 
     custom = {"drawStyle": series_type, "fillOpacity": fill_opacity}
     defaults: dict = {"custom": custom}
@@ -351,6 +413,7 @@ def mk_timeseries(title, field, gridpos, metric_field="stress_score",
                        },
                        field_config={"defaults": defaults,
                                      "overrides": overrides},
+                       transformations=transformations or None,
                        description=description)
 
 
@@ -358,9 +421,10 @@ def _timeseries_sql(field: str | None, metric_field: str | None,
                     metric_op: str, size: int) -> str:
     metric_sql = _agg_sql(metric_op, metric_field)
     if field is None:
+        col_alias = _alias_for(metric_op, metric_field)
         return (
             f"SELECT $__timeInterval({TIME_COL}) AS t, "
-            f"{metric_sql} AS value "
+            f"{metric_sql} AS \"{col_alias}\" "
             f"FROM {TABLE_RAW} "
             f"WHERE {_build_where()} "
             f"GROUP BY t ORDER BY t"
@@ -398,21 +462,23 @@ _SUMMARY_AGG_OVERRIDES = {
 
 
 def _summary_timeseries_sql(field: str | None, metric_field: str | None,
-                            metric_op: str, size: int) -> str:
+                            metric_op: str, size: int,
+                            alias_override: str | None = None) -> str:
     """Equivalent of `_timeseries_sql` but against the summary table."""
     override = _SUMMARY_AGG_OVERRIDES.get((metric_op, metric_field))
     if override:
         agg_fn, state_col = override
         metric_sql = f"{agg_fn}({state_col})"
     else:
-        # Fallback: percentiles, max, etc. ΓÇö emit raw aggregate; will be
+        # Fallback: percentiles, max, etc. — emit raw aggregate; will be
         # NULL after TTL but no worse than the raw fallback.
         metric_sql = _agg_sql(metric_op, metric_field)
 
     if field is None:
+        col_alias = alias_override or _alias_for(metric_op, metric_field)
         return (
             f"SELECT toStartOfHour(time_bucket) AS t, "
-            f"{metric_sql} AS value "
+            f"{metric_sql} AS \"{col_alias}\" "
             f"FROM {TABLE_SUMMARY} "
             f"WHERE {_build_where_summary()} "
             f"GROUP BY t ORDER BY t"
@@ -424,24 +490,32 @@ def _summary_timeseries_sql(field: str | None, metric_field: str | None,
         f"{metric_sql} AS value "
         f"FROM {TABLE_SUMMARY} "
         f"WHERE {_build_where_summary()} "
-        f"GROUP BY t, series ORDER BY t LIMIT {size} BY t"
+        f"  AND {bucket} IN ("
+        f"    SELECT {bucket} FROM {TABLE_SUMMARY} "
+        f"    WHERE {_build_where_summary()} "
+        f"    GROUP BY {bucket} ORDER BY {metric_sql} DESC LIMIT {size}"
+        f"  ) "
+        f"GROUP BY t, series ORDER BY t"
     )
 
 
 def mk_timeseries_multi(title, metrics_spec, gridpos, series_type="line",
                         stacked=False, unit=None, description=None):
-    """Multi-metric time series ΓÇö one target per metric."""
-    targets = []
-    for i, (label, field, op, query) in enumerate(metrics_spec):
-        ref = chr(65 + i)
-        sql = (
-            f"SELECT $__timeInterval({TIME_COL}) AS t, "
-            f"{_agg_sql(op, field)} AS value "
-            f"FROM {TABLE_RAW} "
-            f"WHERE {_build_where(extra=query)} "
-            f"GROUP BY t ORDER BY t"
-        )
-        targets.append(_ch_target(sql, ref_id=ref, alias=label))
+    """Multi-metric time series — all metrics in one wide query."""
+    extra_filters = " AND ".join(
+        q for _, _, _, q in metrics_spec if q
+    ) or ""
+    cols = ", ".join(
+        f"{_agg_sql(op, field)} AS \"{label}\""
+        for label, field, op, _ in metrics_spec
+    )
+    sql = (
+        f"SELECT $__timeInterval({TIME_COL}) AS t, {cols} "
+        f"FROM {TABLE_RAW} "
+        f"WHERE {_build_where(extra=extra_filters)} "
+        f"GROUP BY t ORDER BY t"
+    )
+    targets = [_ch_target(sql, ref_id="A")]
     fill = 20 if series_type == "bars" else (50 if stacked else 0)
     custom = {"drawStyle": series_type, "fillOpacity": fill}
     if stacked:
@@ -460,15 +534,58 @@ def mk_timeseries_multi(title, metrics_spec, gridpos, series_type="line",
                        description=description)
 
 
+def mk_timeseries_grouped(title, field1, field2, gridpos, size=10,
+                          series_type="line", fill_opacity=20, unit=None,
+                          description=None):
+    """Time-series with one series per (field1 / field2) combination.
+
+    Emits ``field1/field2`` as series labels (e.g. ``search/200``).
+    Only the top-N most frequent combinations are shown.
+    """
+    combined = f"concat({field1}, '/', toString({field2}))"
+    sql = (
+        f"SELECT $__timeInterval({TIME_COL}) AS t, "
+        f"{combined} AS series, "
+        f"count() AS value "
+        f"FROM {TABLE_RAW} "
+        f"WHERE {_build_where()} "
+        f"  AND {combined} IN ("
+        f"    SELECT {combined} FROM {TABLE_RAW} "
+        f"    WHERE {_build_where()} "
+        f"    GROUP BY {combined} ORDER BY count() DESC LIMIT {size}"
+        f"  ) "
+        f"GROUP BY t, series ORDER BY t"
+    )
+    custom = {"drawStyle": series_type, "fillOpacity": fill_opacity}
+    defaults: dict = {"custom": custom}
+    if unit:
+        defaults["unit"] = unit
+    return _base_panel(title, "timeseries", gridpos,
+                       targets=[_ch_target(sql, ref_id="A", format_as="table")],
+                       options={
+                           "legend": {"displayMode": "list", "placement": "right"},
+                           "tooltip": {"mode": "multi"},
+                       },
+                       field_config={"defaults": defaults, "overrides": []},
+                       transformations=[
+                           {"id": "partitionByValues",
+                            "options": {"fields": ["series"], "keepFields": False}},
+                           {"id": "renameByRegex",
+                            "options": {"regex": "^value (.+)$",
+                                        "renamePattern": "$1"}},
+                       ],
+                       description=description)
+
+
 def mk_bar(title, field, metric_field, metric_op, metric_label, gridpos,
            size=10, dashboard_uid="alo-main", description=None):
     bucket = _bucket_expression(field)
     sql = (
         f"SELECT {bucket} AS bucket, "
-        f"{_agg_sql(metric_op, metric_field)} AS value "
+        f"{_agg_sql(metric_op, metric_field)} AS \"{metric_label}\" "
         f"FROM {TABLE_RAW} "
         f"WHERE {_build_where()} "
-        f"GROUP BY bucket ORDER BY value DESC LIMIT {size}"
+        f"GROUP BY bucket ORDER BY \"{metric_label}\" DESC LIMIT {size}"
     )
     panel = _base_panel(title, "barchart", gridpos,
                        targets=[_ch_target(sql, format_as="table")],
@@ -544,7 +661,17 @@ def mk_raw_docs_table(title, columns, gridpos, size=50, query="",
                       sort_field="stress_score", dashboard_uid="alo-main",
                       description=None):
     """Top-N raw documents, returned as a flat table."""
-    select = ", ".join(f"{src} AS \"{label}\"" for src, label in columns)
+    _DATETIME_COLS = {"timestamp"}
+    _ARRAY_COLS = {"stress_cost_indicator_names"}
+
+    def _col_expr(src, label):
+        if src in _DATETIME_COLS:
+            return f"formatDateTime({src}, '%Y-%m-%d %H:%M:%S') AS \"{label}\""
+        if src in _ARRAY_COLS:
+            return f"arrayStringConcat({src}, ', ') AS \"{label}\""
+        return f"{src} AS \"{label}\""
+
+    select = ", ".join(_col_expr(src, label) for src, label in columns)
     sql = (
         f"SELECT {select} "
         f"FROM {TABLE_RAW} "
@@ -560,7 +687,7 @@ def mk_raw_docs_table(title, columns, gridpos, size=50, query="",
             "matcher": {"id": "byName", "options": label},
             "properties": [{"id": "links", "value": [{
                 "title": f"Filter by {label}",
-                "url": f"/d/{dashboard_uid}?${{__url_time_range}}"
+                "url": f"/d/${{__dashboard.uid}}?${{__url_time_range}}"
                        f"&var-{var_name}=${{__value.raw}}",
                 "targetBlank": False,
             }]}],
@@ -580,22 +707,37 @@ def mk_raw_docs_table(title, columns, gridpos, size=50, query="",
 
 # ΓöÇΓöÇ Templating variables ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
+# Columns present in alo_summary — use it for variable queries (fast, pre-agg).
+# Others fall back to alo_raw with a memory cap.
+# Columns in alo_summary — tiny pre-aggregated table, safe without time filter.
+# Others fall back to alo_raw scoped to last 7 days to limit scan.
+_SUMMARY_COLUMNS = {
+    "cluster_name", "identity_applicative_provider",
+    "request_target", "request_operation", "request_template",
+}
+
+
 def _make_query_var(name: str, label: str, column: str) -> dict:
     bucket = _bucket_expression(column)
-    sql = (
-        f"SELECT DISTINCT {bucket} "
-        f"FROM {TABLE_RAW} "
-        f"WHERE $__timeFilter({TIME_COL}) "
-        f"ORDER BY 1 LIMIT 1000"
-    )
+    if column in _SUMMARY_COLUMNS:
+        sql = (
+            f"SELECT DISTINCT {bucket} FROM {TABLE_SUMMARY} "
+            f"ORDER BY 1 LIMIT 1000"
+        )
+    else:
+        sql = (
+            f"SELECT DISTINCT {bucket} FROM {TABLE_RAW} "
+            f"WHERE {TIME_COL} > now() - INTERVAL 7 DAY "
+            f"ORDER BY 1 LIMIT 500"
+        )
     return {
         "type": "query",
         "name": name,
         "label": label,
         "datasource": DATASOURCE,
-        "query": {"refId": "var", "rawSql": sql, "editorType": "sql"},
+        "query": sql,
+        "definition": sql,
         "includeAll": True,
-        "allValue": "*",
         "multi": True,
         "sort": 1,
         "refresh": 2,
@@ -604,7 +746,8 @@ def _make_query_var(name: str, label: str, column: str) -> dict:
 
 
 def _wrap_dashboard(uid: str, title: str, description: str,
-                    panels: Iterable[dict]) -> dict:
+                    panels: Iterable[dict],
+                    links: list[dict] | None = None) -> dict:
     template_vars: list[dict] = [
         {
             "type": "datasource",
@@ -627,7 +770,8 @@ def _wrap_dashboard(uid: str, title: str, description: str,
                       for n, label, col in _VARIABLES]
     template_vars.append({
         "type": "adhoc",
-        "name": "Filters",
+        "name": "filters",
+        "label": "Filters",
         "datasource": DATASOURCE,
     })
     return {
@@ -636,13 +780,14 @@ def _wrap_dashboard(uid: str, title: str, description: str,
         "description": description,
         "tags": ["alo", "observability"],
         "timezone": "browser",
-        "schemaVersion": 39,
+        "schemaVersion": 40,
         "version": 1,
         "refresh": "30s",
         "time": {"from": "now-15m", "to": "now"},
         "panels": list(panels),
         "templating": {"list": template_vars},
         "annotations": {"list": []},
+        "links": links or [],
         "editable": True,
     }
 
@@ -651,6 +796,7 @@ def export_dashboards():
     from ._dashboard_builders import (
         build_cost_indicators_dashboard,
         build_main_dashboard,
+        build_main_dashboard_he,
         build_usage_dashboard,
     )
 
@@ -658,6 +804,7 @@ def export_dashboards():
 
     for builder, filename in [
         (build_main_dashboard, "alo-main.json"),
+        (build_main_dashboard_he, "alo-main-he.json"),
         (build_cost_indicators_dashboard, "alo-cost-indicators.json"),
         (build_usage_dashboard, "alo-usage.json"),
     ]:

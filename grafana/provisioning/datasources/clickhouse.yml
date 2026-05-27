@@ -1,0 +1,21 @@
+apiVersion: 1
+
+# Single ClickHouse datasource serves both raw and summary tables.
+# Panels select the right table in their SQL.
+datasources:
+  - name: ClickHouse (ALO)
+    type: grafana-clickhouse-datasource
+    uid: alo-clickhouse
+    access: proxy
+    isDefault: true
+    jsonData:
+      host: clickhouse
+      port: 9000
+      protocol: native
+      secure: false
+      tlsSkipVerify: false
+      username: "default"
+      defaultDatabase: alo
+    secureJsonData:
+      password: ""
+    editable: true

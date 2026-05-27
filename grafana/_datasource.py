@@ -10,6 +10,14 @@ DS_PATH = os.path.join(DS_DIR, "clickhouse.yml")
 PROM_DS_PATH = os.path.join(DS_DIR, "prometheus.yml")
 
 
+def _read_cert(ch_ca_cert: str) -> str:
+    """Return PEM content — read from file if path, else treat as literal."""
+    if ch_ca_cert and os.path.isfile(ch_ca_cert):
+        with open(ch_ca_cert, encoding="utf-8") as f:
+            return f.read()
+    return ch_ca_cert
+
+
 def _parse_host(url: str) -> tuple[str, int, bool]:
     parsed = urlparse(url if "://" in url else f"http://{url}")
     host = parsed.hostname or "clickhouse"
@@ -23,13 +31,21 @@ def generate_datasource_yaml(clickhouse_url: str = "http://clickhouse:8123",
                              native_port: int = 9000,
                              username: str = "default",
                              password: str = "",
-                             insecure_skip_verify: bool = False) -> str:
+                             insecure_skip_verify: bool = False,
+                             ch_ca_cert: str = "") -> str:
     host, http_port, secure = _parse_host(clickhouse_url)
     # The plugin reads its primary connection from `host`/`port`/`protocol`.
     # `protocol: native` is faster (typed wire format) so we expose the
     # native port and fall back to HTTP if the user only exposed 8123.
     port = native_port if native_port else http_port
     protocol = "native" if native_port else "http"
+    cert_pem = _read_cert(ch_ca_cert)
+    tls_auth = f"\n              tlsAuthWithCACert: true" if cert_pem else ""
+    if cert_pem:
+        indented = "\n".join(f"                {ln}" for ln in cert_pem.splitlines())
+        secure_extra = f"\n              tlsCACert: |\n{indented}"
+    else:
+        secure_extra = ""
     content = textwrap.dedent(f"""\
         apiVersion: 1
 
@@ -46,11 +62,11 @@ def generate_datasource_yaml(clickhouse_url: str = "http://clickhouse:8123",
               port: {port}
               protocol: {protocol}
               secure: {str(secure).lower()}
-              tlsSkipVerify: {str(insecure_skip_verify).lower()}
+              tlsSkipVerify: {str(insecure_skip_verify).lower()}{tls_auth}
               username: "{username}"
               defaultDatabase: {database}
             secureJsonData:
-              password: "{password}"
+              password: "{password}"{secure_extra}
             editable: true
     """)
     os.makedirs(DS_DIR, exist_ok=True)

@@ -67,9 +67,11 @@ _RAW_COLUMNS: list[tuple[str, str]] = [
     ("request_target",                       "LowCardinality(String)"),
     ("request_template",                     "String"),
     ("request_body",                         "String CODEC(ZSTD(3))"),
+    ("request_body_truncated",               "UInt8"),
     ("request_size_bytes",                   "UInt32"),
     ("request_size",                         "UInt32"),
     ("request_geo_vertex_count",             "UInt32"),
+    ("request_bulk_doc_count",               "UInt32"),
 
     ("response_status",                      "UInt16"),
     ("response_es_took_ms",                  "Float32"),
@@ -115,6 +117,7 @@ _RAW_COLUMNS: list[tuple[str, str]] = [
     ("stress_components_shards",             "Float32"),
     ("stress_components_hits",               "Float32"),
     ("stress_components_docs_affected",      "Float32"),
+    ("stress_components_bulk_doc_count",     "Float32"),
     ("stress_components_bonus",              "Float32"),
     ("stress_cost_indicator_count",          "UInt16"),
     ("stress_cost_indicator_names",          "Array(LowCardinality(String))"),
@@ -359,6 +362,32 @@ def _distributed_ddl(s: TableSettings, base: str) -> str:
     )
 
 
+# ── Column additions (for existing deployments) ───────────────────────────
+# Columns added after v2.0.0 initial release. Each entry:
+#   (label_suffix, column_name, ch_type, default_value)
+_RAW_COLUMN_ADDITIONS: list[tuple[str, str, str, str]] = [
+    ("request_bulk_doc_count",           "request_bulk_doc_count",           "UInt32",  "0"),
+    ("stress_components_bulk_doc_count", "stress_components_bulk_doc_count", "Float32", "0"),
+    ("request_body_truncated",           "request_body_truncated",           "UInt8",   "0"),
+]
+
+
+def raw_table_column_additions_ddl(s: TableSettings) -> list[tuple[str, str]]:
+    """ALTER TABLE ADD COLUMN IF NOT EXISTS for post-v2.0.0 raw columns.
+
+    Safe to run against both fresh and existing deployments.
+    """
+    table = _local_suffix(s, "alo_raw")
+    return [
+        (
+            f"alter_alo_raw_{label}",
+            f"ALTER TABLE {s.database}.{table}{_on_cluster(s)} "
+            f"ADD COLUMN IF NOT EXISTS {col} {ch_type} DEFAULT {default}",
+        )
+        for label, col, ch_type, default in _RAW_COLUMN_ADDITIONS
+    ]
+
+
 # ── Public DDL plan ───────────────────────────────────────────────────────
 
 def all_ddl(s: TableSettings) -> list[tuple[str, str]]:
@@ -373,4 +402,5 @@ def all_ddl(s: TableSettings) -> list[tuple[str, str]]:
         ("alo_summary",           summary_distributed_ddl(s)),
         ("alo_summary_mv",        summary_mv_ddl(s)),
     ]
-    return [(label, ddl) for label, ddl in plan if ddl]
+    base = [(label, ddl) for label, ddl in plan if ddl]
+    return base + raw_table_column_additions_ddl(s)

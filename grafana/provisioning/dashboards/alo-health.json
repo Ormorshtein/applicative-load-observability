@@ -1607,8 +1607,8 @@
       "title": "DLQ Document Count",
       "description": "Documents in the dead-letter index. Growth means the analyzer is producing unindexable records.",
       "datasource": {
-        "uid": "alo-elasticsearch",
-        "type": "elasticsearch"
+        "uid": "alo-clickhouse",
+        "type": "grafana-clickhouse-datasource"
       },
       "gridPos": {
         "x": 0,
@@ -1644,28 +1644,12 @@
       "targets": [
         {
           "datasource": {
-            "uid": "alo-elasticsearch",
-            "type": "elasticsearch"
+            "uid": "alo-clickhouse",
+            "type": "grafana-clickhouse-datasource"
           },
-          "query": "_index:logs-alo.dead_letter*",
-          "metrics": [
-            {
-              "type": "count",
-              "id": "1"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ],
-          "refId": "A",
-          "alias": "DLQ docs"
+          "rawSql": "SELECT toStartOfInterval(timestamp, INTERVAL $__interval_s second) AS time, count() AS \"DLQ docs\" FROM alo.alo_dead_letter WHERE $__timeFilter(timestamp) GROUP BY time ORDER BY time",
+          "format": "time_series",
+          "refId": "A"
         }
       ],
       "options": {
@@ -1683,8 +1667,8 @@
       "title": "DLQ Documents (Recent)",
       "description": "Recent dead-letter documents. Shows what was rejected and why.",
       "datasource": {
-        "uid": "alo-elasticsearch",
-        "type": "elasticsearch"
+        "uid": "alo-clickhouse",
+        "type": "grafana-clickhouse-datasource"
       },
       "gridPos": {
         "x": 0,
@@ -1772,54 +1756,12 @@
       "targets": [
         {
           "datasource": {
-            "uid": "alo-elasticsearch",
-            "type": "elasticsearch"
+            "uid": "alo-clickhouse",
+            "type": "grafana-clickhouse-datasource"
           },
-          "query": "_index:logs-alo.dead_letter*",
-          "metrics": [
-            {
-              "type": "logs",
-              "id": "1",
-              "settings": {
-                "limit": "20"
-              }
-            }
-          ],
-          "bucketAggs": [],
+          "rawSql": "SELECT timestamp AS Time, error AS Error, request_path AS Path, request_method AS Method FROM alo.alo_dead_letter WHERE $__timeFilter(timestamp) ORDER BY timestamp DESC LIMIT 20",
+          "format": "table",
           "refId": "A"
-        }
-      ],
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "_id": true,
-              "_type": true,
-              "_index": true,
-              "_source": true,
-              "highlight": true,
-              "sort": true,
-              "_score": true,
-              "tags": true,
-              "@timestamp": false,
-              "error": false,
-              "path": false,
-              "method": false
-            },
-            "indexByName": {
-              "@timestamp": 0,
-              "error": 1,
-              "path": 2,
-              "method": 3
-            },
-            "renameByName": {
-              "@timestamp": "Time",
-              "error": "Error",
-              "path": "Path",
-              "method": "Method"
-            }
-          }
         }
       ]
     },

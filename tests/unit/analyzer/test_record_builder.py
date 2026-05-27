@@ -11,6 +11,7 @@ from analyzer import record_builder
 from analyzer.record_builder import (
     _CLAUSE_COUNT_OUTPUT_KEYS,
     _COST_INDICATOR_KEYS,
+    _MAX_BODY_BYTES,
     _STRESS_COMPONENT_KEYS,
     RawFields,
     _parse_content_length,
@@ -305,6 +306,20 @@ class TestBuildRecord:
         assert rec["request_target"] == "idx1,idx2"
         assert "index" in rec["request_template"]
 
+    def test_request_body_truncated_zero_when_within_limit(self):
+        rec = build_record(_make_raw())
+        assert rec["request_body_truncated"] == 0
+
+    def test_request_body_truncated_one_when_body_exceeds_limit(self, monkeypatch):
+        monkeypatch.setattr(record_builder, "_MAX_BODY_BYTES", 10)
+        raw = _make_raw(
+            request_body={"query": {"match": {"title": "shoes"}}},
+            request_body_raw='{"query": {"match": {"title": "shoes"}}}',
+        )
+        rec = build_record(raw)
+        assert rec["request_body_truncated"] == 1
+        assert rec["request_body"].endswith("…[TRUNCATED]")
+
     def test_bulk_doc_count_zero_for_non_bulk(self):
         """Flat schema always emits request_bulk_doc_count; 0 for non-bulk."""
         rec = build_record(_make_raw())  # _search
@@ -497,3 +512,9 @@ class TestPartialErrorRecord:
         assert rec["request_path"] == ""
         assert rec["request_method"] == ""
         assert rec["cluster_name"] == "default"
+
+    def test_oversized_payload_is_truncated(self):
+        huge = {"data": "x" * (_MAX_BODY_BYTES + 10_000)}
+        rec = partial_error_record(huge, ValueError("too big"))
+        assert len(rec["raw"].encode()) <= _MAX_BODY_BYTES + 50
+        assert rec["raw"].endswith("…[TRUNCATED]")

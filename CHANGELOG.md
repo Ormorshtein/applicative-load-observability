@@ -1,5 +1,19 @@
 # Changelog
 
+## [Unreleased]
+
+### Bug fixes
+
+- **Dead-letter routing** (`logstash/pipeline/observability.conf`): events routed via the http-filter plugin's own failure tag (`_httprequestfailure`) — i.e., when the analyzer is unreachable — were silently inserted into `alo_raw` instead of `alo_dead_letter`. Fixed by adding `or "_httprequestfailure" in [tags]` to the dead-letter output condition.
+- **Dead-letter `request_body` lost** (`logstash/pipeline/observability.conf`): a leftover ES-era `mutate { rename }` block was converting the flat `request_body` field to a nested `[request][body]` path, which ClickHouse's `input_format_skip_unknown_fields=1` then silently dropped. Block removed.
+- **`partial_error_record` unbounded payload** (`analyzer/record_builder/_builder.py`): multi-MB malformed payloads were stored in full in the `raw` column of `alo_dead_letter`. Now truncated to `ALO_REQUEST_BODY_STORE_MAX_BYTES` (default 32 KB) via the same `truncate_body` helper used for request bodies.
+
+### Upgrade notes
+
+- **`BASELINE_QUERY_WINDOW` env var** (introduced in 2.0.0): the default changed from `1h` (ES syntax) to `1 HOUR` (ClickHouse interval SQL). Deployments overriding this variable with ES-style values (`30m`, `2h`, etc.) must update to CH syntax (`30 MINUTE`, `2 HOUR`). Invalid values cause a SQL parse error → dynamic baselines silently fall back to static defaults with no other visible failure.
+
+---
+
 ## 2.0.2
 
 ### Analyzer

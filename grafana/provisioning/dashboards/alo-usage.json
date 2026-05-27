@@ -1,4 +1,4 @@
-﻿{
+{
   "uid": "alo-usage",
   "title": "ALO \u2014 Cluster Usage",
   "description": "Request rates, latency percentiles, error tracking, and data volume analytics.",
@@ -7,7 +7,7 @@
     "observability"
   ],
   "timezone": "browser",
-  "schemaVersion": 39,
+  "schemaVersion": 40,
   "version": 1,
   "refresh": "30s",
   "time": {
@@ -59,11 +59,10 @@
           "editorType": "sql",
           "queryType": "timeseries",
           "format": 1,
-          "rawSql": "SELECT $__timeInterval(timestamp) AS t, count() AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote})) GROUP BY t ORDER BY t",
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, count() AS \"Requests\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY t ORDER BY t",
           "meta": {
             "builderOptions": {}
-          },
-          "alias": "Requests"
+          }
         }
       ],
       "options": {
@@ -108,9 +107,9 @@
           },
           "refId": "A",
           "editorType": "sql",
-          "queryType": "timeseries",
-          "format": 1,
-          "rawSql": "SELECT $__timeInterval(timestamp) AS t, request_operation AS series, count() AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote}))   AND request_operation IN (    SELECT request_operation FROM alo.alo_raw     WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote}))     GROUP BY request_operation ORDER BY count() DESC LIMIT 8  ) GROUP BY t, series ORDER BY t",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, request_operation AS series, count() AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)   AND request_operation IN (    SELECT request_operation FROM alo.alo_raw     WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)     GROUP BY request_operation ORDER BY count() DESC LIMIT 8  ) GROUP BY t, series ORDER BY t",
           "meta": {
             "builderOptions": {}
           }
@@ -122,9 +121,9 @@
           },
           "refId": "B",
           "editorType": "sql",
-          "queryType": "timeseries",
-          "format": 1,
-          "rawSql": "SELECT toStartOfHour(time_bucket) AS t, request_operation AS series, countMerge(count_state) AS value FROM alo.alo_summary WHERE $__timeFilter(time_bucket) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote})) GROUP BY t, series ORDER BY t LIMIT 8 BY t",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT toStartOfHour(time_bucket) AS t, request_operation AS series, countMerge(count_state) AS value FROM alo.alo_summary WHERE $__timeFilter(time_bucket) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)   AND request_operation IN (    SELECT request_operation FROM alo.alo_summary     WHERE $__timeFilter(time_bucket) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)     GROUP BY request_operation ORDER BY countMerge(count_state) DESC LIMIT 8  ) GROUP BY t, series ORDER BY t",
           "meta": {
             "builderOptions": {}
           }
@@ -146,31 +145,26 @@
             "fillOpacity": 20
           }
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byFrameRefID",
-              "options": "B"
-            },
-            "properties": [
-              {
-                "id": "custom.lineStyle",
-                "value": {
-                  "fill": "dash",
-                  "dash": [
-                    10,
-                    10
-                  ]
-                }
-              },
-              {
-                "id": "custom.lineWidth",
-                "value": 1
-              }
-            ]
+        "overrides": []
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "series"
+            ],
+            "keepFields": false
           }
-        ]
-      }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^value (.+)$",
+            "renamePattern": "$1"
+          }
+        }
+      ]
     },
     {
       "id": 4,
@@ -195,9 +189,9 @@
           },
           "refId": "A",
           "editorType": "sql",
-          "queryType": "timeseries",
-          "format": 1,
-          "rawSql": "SELECT $__timeInterval(timestamp) AS t, identity_applicative_provider AS series, count() AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote}))   AND identity_applicative_provider IN (    SELECT identity_applicative_provider FROM alo.alo_raw     WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote}))     GROUP BY identity_applicative_provider ORDER BY count() DESC LIMIT 8  ) GROUP BY t, series ORDER BY t",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, identity_applicative_provider AS series, count() AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)   AND identity_applicative_provider IN (    SELECT identity_applicative_provider FROM alo.alo_raw     WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)     GROUP BY identity_applicative_provider ORDER BY count() DESC LIMIT 8  ) GROUP BY t, series ORDER BY t",
           "meta": {
             "builderOptions": {}
           }
@@ -209,9 +203,9 @@
           },
           "refId": "B",
           "editorType": "sql",
-          "queryType": "timeseries",
-          "format": 1,
-          "rawSql": "SELECT toStartOfHour(time_bucket) AS t, identity_applicative_provider AS series, countMerge(count_state) AS value FROM alo.alo_summary WHERE $__timeFilter(time_bucket) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote})) GROUP BY t, series ORDER BY t LIMIT 8 BY t",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT toStartOfHour(time_bucket) AS t, identity_applicative_provider AS series, countMerge(count_state) AS value FROM alo.alo_summary WHERE $__timeFilter(time_bucket) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)   AND identity_applicative_provider IN (    SELECT identity_applicative_provider FROM alo.alo_summary     WHERE $__timeFilter(time_bucket) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)     GROUP BY identity_applicative_provider ORDER BY countMerge(count_state) DESC LIMIT 8  ) GROUP BY t, series ORDER BY t",
           "meta": {
             "builderOptions": {}
           }
@@ -233,31 +227,26 @@
             "fillOpacity": 20
           }
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byFrameRefID",
-              "options": "B"
-            },
-            "properties": [
-              {
-                "id": "custom.lineStyle",
-                "value": {
-                  "fill": "dash",
-                  "dash": [
-                    10,
-                    10
-                  ]
-                }
-              },
-              {
-                "id": "custom.lineWidth",
-                "value": 1
-              }
-            ]
+        "overrides": []
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "series"
+            ],
+            "keepFields": false
           }
-        ]
-      }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^value (.+)$",
+            "renamePattern": "$1"
+          }
+        }
+      ]
     },
     {
       "id": 5,
@@ -282,9 +271,9 @@
           },
           "refId": "A",
           "editorType": "sql",
-          "queryType": "timeseries",
-          "format": 1,
-          "rawSql": "SELECT $__timeInterval(timestamp) AS t, request_target AS series, count() AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote}))   AND request_target IN (    SELECT request_target FROM alo.alo_raw     WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote}))     GROUP BY request_target ORDER BY count() DESC LIMIT 8  ) GROUP BY t, series ORDER BY t",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, request_target AS series, count() AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)   AND request_target IN (    SELECT request_target FROM alo.alo_raw     WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)     GROUP BY request_target ORDER BY count() DESC LIMIT 8  ) GROUP BY t, series ORDER BY t",
           "meta": {
             "builderOptions": {}
           }
@@ -296,9 +285,9 @@
           },
           "refId": "B",
           "editorType": "sql",
-          "queryType": "timeseries",
-          "format": 1,
-          "rawSql": "SELECT toStartOfHour(time_bucket) AS t, request_target AS series, countMerge(count_state) AS value FROM alo.alo_summary WHERE $__timeFilter(time_bucket) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote})) GROUP BY t, series ORDER BY t LIMIT 8 BY t",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT toStartOfHour(time_bucket) AS t, request_target AS series, countMerge(count_state) AS value FROM alo.alo_summary WHERE $__timeFilter(time_bucket) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)   AND request_target IN (    SELECT request_target FROM alo.alo_summary     WHERE $__timeFilter(time_bucket) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)     GROUP BY request_target ORDER BY countMerge(count_state) DESC LIMIT 8  ) GROUP BY t, series ORDER BY t",
           "meta": {
             "builderOptions": {}
           }
@@ -320,31 +309,26 @@
             "fillOpacity": 20
           }
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byFrameRefID",
-              "options": "B"
-            },
-            "properties": [
-              {
-                "id": "custom.lineStyle",
-                "value": {
-                  "fill": "dash",
-                  "dash": [
-                    10,
-                    10
-                  ]
-                }
-              },
-              {
-                "id": "custom.lineWidth",
-                "value": 1
-              }
-            ]
+        "overrides": []
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "series"
+            ],
+            "keepFields": false
           }
-        ]
-      }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^value (.+)$",
+            "renamePattern": "$1"
+          }
+        }
+      ]
     },
     {
       "id": 6,
@@ -369,9 +353,9 @@
           },
           "refId": "A",
           "editorType": "sql",
-          "queryType": "timeseries",
-          "format": 1,
-          "rawSql": "SELECT $__timeInterval(timestamp) AS t, request_template AS series, count() AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote}))   AND request_template IN (    SELECT request_template FROM alo.alo_raw     WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote}))     GROUP BY request_template ORDER BY count() DESC LIMIT 8  ) GROUP BY t, series ORDER BY t",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, request_template AS series, count() AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)   AND request_template IN (    SELECT request_template FROM alo.alo_raw     WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)     GROUP BY request_template ORDER BY count() DESC LIMIT 8  ) GROUP BY t, series ORDER BY t",
           "meta": {
             "builderOptions": {}
           }
@@ -383,9 +367,9 @@
           },
           "refId": "B",
           "editorType": "sql",
-          "queryType": "timeseries",
-          "format": 1,
-          "rawSql": "SELECT toStartOfHour(time_bucket) AS t, request_template AS series, countMerge(count_state) AS value FROM alo.alo_summary WHERE $__timeFilter(time_bucket) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote})) GROUP BY t, series ORDER BY t LIMIT 8 BY t",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT toStartOfHour(time_bucket) AS t, request_template AS series, countMerge(count_state) AS value FROM alo.alo_summary WHERE $__timeFilter(time_bucket) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)   AND request_template IN (    SELECT request_template FROM alo.alo_summary     WHERE $__timeFilter(time_bucket) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)     GROUP BY request_template ORDER BY countMerge(count_state) DESC LIMIT 8  ) GROUP BY t, series ORDER BY t",
           "meta": {
             "builderOptions": {}
           }
@@ -407,31 +391,26 @@
             "fillOpacity": 20
           }
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byFrameRefID",
-              "options": "B"
-            },
-            "properties": [
-              {
-                "id": "custom.lineStyle",
-                "value": {
-                  "fill": "dash",
-                  "dash": [
-                    10,
-                    10
-                  ]
-                }
-              },
-              {
-                "id": "custom.lineWidth",
-                "value": 1
-              }
-            ]
+        "overrides": []
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "series"
+            ],
+            "keepFields": false
           }
-        ]
-      }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^value (.+)$",
+            "renamePattern": "$1"
+          }
+        }
+      ]
     },
     {
       "id": 7,
@@ -477,56 +456,10 @@
           "editorType": "sql",
           "queryType": "timeseries",
           "format": 1,
-          "rawSql": "SELECT $__timeInterval(timestamp) AS t, avg(response_es_took_ms) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote})) GROUP BY t ORDER BY t",
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, avg(response_es_took_ms) AS \"Avg\", quantile(0.5)(response_es_took_ms) AS \"P50\", quantile(0.95)(response_es_took_ms) AS \"P95\", quantile(0.99)(response_es_took_ms) AS \"P99\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY t ORDER BY t",
           "meta": {
             "builderOptions": {}
-          },
-          "alias": "Avg"
-        },
-        {
-          "datasource": {
-            "type": "grafana-clickhouse-datasource",
-            "uid": "${datasource}"
-          },
-          "refId": "B",
-          "editorType": "sql",
-          "queryType": "timeseries",
-          "format": 1,
-          "rawSql": "SELECT $__timeInterval(timestamp) AS t, quantile(0.5)(response_es_took_ms) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote})) GROUP BY t ORDER BY t",
-          "meta": {
-            "builderOptions": {}
-          },
-          "alias": "P50"
-        },
-        {
-          "datasource": {
-            "type": "grafana-clickhouse-datasource",
-            "uid": "${datasource}"
-          },
-          "refId": "C",
-          "editorType": "sql",
-          "queryType": "timeseries",
-          "format": 1,
-          "rawSql": "SELECT $__timeInterval(timestamp) AS t, quantile(0.95)(response_es_took_ms) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote})) GROUP BY t ORDER BY t",
-          "meta": {
-            "builderOptions": {}
-          },
-          "alias": "P95"
-        },
-        {
-          "datasource": {
-            "type": "grafana-clickhouse-datasource",
-            "uid": "${datasource}"
-          },
-          "refId": "D",
-          "editorType": "sql",
-          "queryType": "timeseries",
-          "format": 1,
-          "rawSql": "SELECT $__timeInterval(timestamp) AS t, quantile(0.99)(response_es_took_ms) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote})) GROUP BY t ORDER BY t",
-          "meta": {
-            "builderOptions": {}
-          },
-          "alias": "P99"
+          }
         }
       ],
       "options": {
@@ -593,26 +526,10 @@
           "editorType": "sql",
           "queryType": "timeseries",
           "format": 1,
-          "rawSql": "SELECT $__timeInterval(timestamp) AS t, count() AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote})) AND response_status >= 400 GROUP BY t ORDER BY t",
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, count() AS \"Errors (4xx+5xx)\", count() AS \"Total Requests\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) AND response_status >= 400 GROUP BY t ORDER BY t",
           "meta": {
             "builderOptions": {}
-          },
-          "alias": "Errors (4xx+5xx)"
-        },
-        {
-          "datasource": {
-            "type": "grafana-clickhouse-datasource",
-            "uid": "${datasource}"
-          },
-          "refId": "B",
-          "editorType": "sql",
-          "queryType": "timeseries",
-          "format": 1,
-          "rawSql": "SELECT $__timeInterval(timestamp) AS t, count() AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote})) GROUP BY t ORDER BY t",
-          "meta": {
-            "builderOptions": {}
-          },
-          "alias": "Total Requests"
+          }
         }
       ],
       "options": {
@@ -659,7 +576,7 @@
           "editorType": "sql",
           "queryType": "table",
           "format": 0,
-          "rawSql": "SELECT response_status AS \"Status Code\", count() AS \"Requests\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote})) GROUP BY \"Status Code\" ORDER BY \"Requests\" DESC LIMIT 10",
+          "rawSql": "SELECT response_status AS \"Status Code\", count() AS \"Requests\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY \"Status Code\" ORDER BY \"Requests\" DESC LIMIT 10",
           "meta": {
             "builderOptions": {}
           }
@@ -704,7 +621,7 @@
           "editorType": "sql",
           "queryType": "table",
           "format": 0,
-          "rawSql": "SELECT identity_applicative_provider AS \"Application\", count() AS \"Requests\", quantile(0.5)(response_es_took_ms) AS \"P50 ES Latency (ms)\", quantile(0.95)(response_es_took_ms) AS \"P95 ES Latency (ms)\", quantile(0.99)(response_es_took_ms) AS \"P99 ES Latency (ms)\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote})) GROUP BY \"Application\" ORDER BY \"Requests\" DESC LIMIT 10",
+          "rawSql": "SELECT identity_applicative_provider AS \"Application\", count() AS \"Requests\", quantile(0.5)(response_es_took_ms) AS \"P50 ES Latency (ms)\", quantile(0.95)(response_es_took_ms) AS \"P95 ES Latency (ms)\", quantile(0.99)(response_es_took_ms) AS \"P99 ES Latency (ms)\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY \"Application\" ORDER BY \"Requests\" DESC LIMIT 10",
           "meta": {
             "builderOptions": {}
           }
@@ -724,7 +641,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-application=${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-application=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -774,9 +691,9 @@
           },
           "refId": "A",
           "editorType": "sql",
-          "queryType": "timeseries",
-          "format": 1,
-          "rawSql": "SELECT $__timeInterval(timestamp) AS t, request_operation AS series, sum(response_hits) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote}))   AND request_operation IN (    SELECT request_operation FROM alo.alo_raw     WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote}))     GROUP BY request_operation ORDER BY count() DESC LIMIT 8  ) GROUP BY t, series ORDER BY t",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, request_operation AS series, sum(response_hits) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)   AND request_operation IN (    SELECT request_operation FROM alo.alo_raw     WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)     GROUP BY request_operation ORDER BY count() DESC LIMIT 8  ) GROUP BY t, series ORDER BY t",
           "meta": {
             "builderOptions": {}
           }
@@ -799,11 +716,29 @@
           }
         },
         "overrides": []
-      }
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "series"
+            ],
+            "keepFields": false
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^value (.+)$",
+            "renamePattern": "$1"
+          }
+        }
+      ]
     },
     {
       "id": 15,
-      "title": "Write Volume (Docs Affected)",
+      "title": "Bulk Write Volume",
       "type": "timeseries",
       "datasource": {
         "type": "grafana-clickhouse-datasource",
@@ -815,7 +750,7 @@
         "w": 12,
         "h": 8
       },
-      "description": "Total documents written (indexed / updated / deleted), split by operation type.",
+      "description": "Total bulk documents counted from request body, split by operation type. Accurate even for interrupted requests.",
       "targets": [
         {
           "datasource": {
@@ -824,9 +759,9 @@
           },
           "refId": "A",
           "editorType": "sql",
-          "queryType": "timeseries",
-          "format": 1,
-          "rawSql": "SELECT $__timeInterval(timestamp) AS t, request_operation AS series, sum(response_docs_affected) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote}))   AND request_operation IN (    SELECT request_operation FROM alo.alo_raw     WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote}))     GROUP BY request_operation ORDER BY count() DESC LIMIT 8  ) GROUP BY t, series ORDER BY t",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, request_operation AS series, sum(request_bulk_doc_count) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)   AND request_operation IN (    SELECT request_operation FROM alo.alo_raw     WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)     GROUP BY request_operation ORDER BY count() DESC LIMIT 8  ) GROUP BY t, series ORDER BY t",
           "meta": {
             "builderOptions": {}
           }
@@ -849,7 +784,25 @@
           }
         },
         "overrides": []
-      }
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "series"
+            ],
+            "keepFields": false
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^value (.+)$",
+            "renamePattern": "$1"
+          }
+        }
+      ]
     },
     {
       "id": 16,
@@ -876,26 +829,10 @@
           "editorType": "sql",
           "queryType": "timeseries",
           "format": 1,
-          "rawSql": "SELECT $__timeInterval(timestamp) AS t, avg(request_size_bytes) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote})) GROUP BY t ORDER BY t",
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, avg(request_size_bytes) AS \"Avg Request Size\", avg(response_size_bytes) AS \"Avg Response Size\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY t ORDER BY t",
           "meta": {
             "builderOptions": {}
-          },
-          "alias": "Avg Request Size"
-        },
-        {
-          "datasource": {
-            "type": "grafana-clickhouse-datasource",
-            "uid": "${datasource}"
-          },
-          "refId": "B",
-          "editorType": "sql",
-          "queryType": "timeseries",
-          "format": 1,
-          "rawSql": "SELECT $__timeInterval(timestamp) AS t, avg(response_size_bytes) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote})) GROUP BY t ORDER BY t",
-          "meta": {
-            "builderOptions": {}
-          },
-          "alias": "Avg Response Size"
+          }
         }
       ],
       "options": {
@@ -962,7 +899,7 @@
           "editorType": "sql",
           "queryType": "table",
           "format": 0,
-          "rawSql": "SELECT identity_applicative_provider AS bucket, count() AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote})) GROUP BY bucket ORDER BY value DESC LIMIT 10",
+          "rawSql": "SELECT identity_applicative_provider AS bucket, count() AS \"Requests\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY bucket ORDER BY \"Requests\" DESC LIMIT 10",
           "meta": {
             "builderOptions": {}
           }
@@ -983,7 +920,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-application=${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-application=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -1016,7 +953,7 @@
           "editorType": "sql",
           "queryType": "table",
           "format": 0,
-          "rawSql": "SELECT request_target AS bucket, count() AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote})) GROUP BY bucket ORDER BY value DESC LIMIT 10",
+          "rawSql": "SELECT request_target AS bucket, count() AS \"Requests\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY bucket ORDER BY \"Requests\" DESC LIMIT 10",
           "meta": {
             "builderOptions": {}
           }
@@ -1037,7 +974,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-target=${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-target=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -1070,7 +1007,7 @@
           "editorType": "sql",
           "queryType": "table",
           "format": 0,
-          "rawSql": "SELECT identity_username AS bucket, count() AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND (('${cluster:csv}' = '*') OR cluster_name IN (${cluster:singlequote})) AND (('${application:csv}' = '*') OR identity_applicative_provider IN (${application:singlequote})) AND (('${target:csv}' = '*') OR request_target IN (${target:singlequote})) AND (('${operation:csv}' = '*') OR request_operation IN (${operation:singlequote})) AND (('${username:csv}' = '*') OR identity_username IN (${username:singlequote})) AND (('${cost_indicator:csv}' = '*') OR hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}])) AND (('${client_host:csv}' = '*') OR identity_client_host IN (${client_host:singlequote})) AND (('${template:csv}' = '*') OR request_template IN (${template:singlequote})) GROUP BY bucket ORDER BY value DESC LIMIT 10",
+          "rawSql": "SELECT identity_username AS bucket, count() AS \"Requests\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY bucket ORDER BY \"Requests\" DESC LIMIT 10",
           "meta": {
             "builderOptions": {}
           }
@@ -1091,7 +1028,7 @@
           "links": [
             {
               "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/alo-main?${__url_time_range}&var-username=${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-username=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -1132,13 +1069,9 @@
           "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": {
-          "refId": "var",
-          "rawSql": "SELECT DISTINCT cluster_name FROM alo.alo_raw WHERE $__timeFilter(timestamp) ORDER BY 1 LIMIT 1000",
-          "editorType": "sql"
-        },
+        "query": "SELECT DISTINCT cluster_name FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+        "definition": "SELECT DISTINCT cluster_name FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
         "includeAll": true,
-        "allValue": "*",
         "multi": true,
         "sort": 1,
         "refresh": 2,
@@ -1156,13 +1089,9 @@
           "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": {
-          "refId": "var",
-          "rawSql": "SELECT DISTINCT identity_applicative_provider FROM alo.alo_raw WHERE $__timeFilter(timestamp) ORDER BY 1 LIMIT 1000",
-          "editorType": "sql"
-        },
+        "query": "SELECT DISTINCT identity_applicative_provider FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+        "definition": "SELECT DISTINCT identity_applicative_provider FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
         "includeAll": true,
-        "allValue": "*",
         "multi": true,
         "sort": 1,
         "refresh": 2,
@@ -1180,13 +1109,9 @@
           "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": {
-          "refId": "var",
-          "rawSql": "SELECT DISTINCT request_target FROM alo.alo_raw WHERE $__timeFilter(timestamp) ORDER BY 1 LIMIT 1000",
-          "editorType": "sql"
-        },
+        "query": "SELECT DISTINCT request_target FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+        "definition": "SELECT DISTINCT request_target FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
         "includeAll": true,
-        "allValue": "*",
         "multi": true,
         "sort": 1,
         "refresh": 2,
@@ -1204,13 +1129,9 @@
           "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": {
-          "refId": "var",
-          "rawSql": "SELECT DISTINCT request_operation FROM alo.alo_raw WHERE $__timeFilter(timestamp) ORDER BY 1 LIMIT 1000",
-          "editorType": "sql"
-        },
+        "query": "SELECT DISTINCT request_operation FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+        "definition": "SELECT DISTINCT request_operation FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
         "includeAll": true,
-        "allValue": "*",
         "multi": true,
         "sort": 1,
         "refresh": 2,
@@ -1228,13 +1149,9 @@
           "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": {
-          "refId": "var",
-          "rawSql": "SELECT DISTINCT identity_username FROM alo.alo_raw WHERE $__timeFilter(timestamp) ORDER BY 1 LIMIT 1000",
-          "editorType": "sql"
-        },
+        "query": "SELECT DISTINCT identity_username FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
+        "definition": "SELECT DISTINCT identity_username FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
         "includeAll": true,
-        "allValue": "*",
         "multi": true,
         "sort": 1,
         "refresh": 2,
@@ -1252,13 +1169,9 @@
           "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": {
-          "refId": "var",
-          "rawSql": "SELECT DISTINCT arrayJoin(stress_cost_indicator_names) FROM alo.alo_raw WHERE $__timeFilter(timestamp) ORDER BY 1 LIMIT 1000",
-          "editorType": "sql"
-        },
+        "query": "SELECT DISTINCT arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names)) FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
+        "definition": "SELECT DISTINCT arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names)) FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
         "includeAll": true,
-        "allValue": "*",
         "multi": true,
         "sort": 1,
         "refresh": 2,
@@ -1276,13 +1189,9 @@
           "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": {
-          "refId": "var",
-          "rawSql": "SELECT DISTINCT identity_client_host FROM alo.alo_raw WHERE $__timeFilter(timestamp) ORDER BY 1 LIMIT 1000",
-          "editorType": "sql"
-        },
+        "query": "SELECT DISTINCT identity_client_host FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
+        "definition": "SELECT DISTINCT identity_client_host FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
         "includeAll": true,
-        "allValue": "*",
         "multi": true,
         "sort": 1,
         "refresh": 2,
@@ -1300,13 +1209,9 @@
           "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": {
-          "refId": "var",
-          "rawSql": "SELECT DISTINCT request_template FROM alo.alo_raw WHERE $__timeFilter(timestamp) ORDER BY 1 LIMIT 1000",
-          "editorType": "sql"
-        },
+        "query": "SELECT DISTINCT request_template FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+        "definition": "SELECT DISTINCT request_template FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
         "includeAll": true,
-        "allValue": "*",
         "multi": true,
         "sort": 1,
         "refresh": 2,
@@ -1318,7 +1223,8 @@
       },
       {
         "type": "adhoc",
-        "name": "Filters",
+        "name": "filters",
+        "label": "Filters",
         "datasource": {
           "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
@@ -1329,5 +1235,6 @@
   "annotations": {
     "list": []
   },
+  "links": [],
   "editable": true
 }

@@ -6,6 +6,7 @@ Panel helpers (mk_*) are imported from _dashboards.
 
 from ._dashboards import (
     CHEAT_SHEET,
+    CHEAT_SHEET_HE,
     PANEL_DESCRIPTIONS,
     SECTIONS,
     _reset_ids,
@@ -19,8 +20,10 @@ from ._dashboards import (
     mk_table,
     mk_text,
     mk_timeseries,
+    mk_timeseries_grouped,
     mk_timeseries_multi,
 )
+from ._strings import tr
 
 _FULL_W = 24
 _HALF_W = 12
@@ -31,6 +34,26 @@ _PIE_H = 10
 _BAR_H = 10
 _KPI_H = 5
 _HDR_H = 2
+
+
+_MAIN_UIDS = {"en": "alo-main", "he": "alo-main-he"}
+
+
+def _main_dashboard_links(lang: str) -> list[dict]:
+    """Top-bar link to the other-language variant of the main dashboard."""
+    target_uid = _MAIN_UIDS["he"] if lang == "en" else _MAIN_UIDS["en"]
+    title = "עברית" if lang == "en" else "English"
+    return [{
+        "type": "link",
+        "title": title,
+        "url": f"/d/{target_uid}",
+        "targetBlank": False,
+        "icon": "external link",
+        "tags": [],
+        "asDropdown": False,
+        "includeVars": True,
+        "keepTime": True,
+    }]
 
 
 def _row(title, y, collapsed=False):
@@ -69,7 +92,7 @@ def build_main_dashboard() -> dict:
                           description="Quick reference guide for examining this dashboard."))
     y += _PANEL_H
 
-    # 5 pie charts ΓÇö Cost Indicator pie uses raw (needs indicator names)
+    # 5 pie charts — Cost Indicator pie uses raw (needs indicator names)
     for i, (field, label) in enumerate(SECTIONS[:3]):
         panels.append(mk_pie(f"Stress by {label} (Selected Period)", field,
                              {"x": i * _THIRD_W, "y": y, "w": _THIRD_W, "h": _PIE_H},
@@ -104,8 +127,13 @@ def build_main_dashboard() -> dict:
                     "latency percentiles and cost-indicator averages."))
     y += _PANEL_H
 
+    _doc_id_expr = (
+        "concat(formatDateTime(timestamp, '%y%m%d%H%i%S'), '-',"
+        " request_operation, '-', substring(request_path, 1, 20))"
+    )
     panels.append(mk_raw_docs_table(
         "Top 10 Heaviest Operations", [
+            (_doc_id_expr, "Doc ID"),
             ("timestamp", "Time"),
             ("request_body", "Request Body"),
             ("request_operation", "Operation"),
@@ -121,7 +149,7 @@ def build_main_dashboard() -> dict:
                     "selected time range. Click column headers to re-sort."))
     y += _PANEL_H + 2
 
-    # Uses raw ΓÇö needs cost_indicator_names as bucket
+    # Uses raw — needs cost_indicator_names as bucket
     panels.append(mk_table(
         "Top 10 Cost Indicators by Stress Score",
         "stress_cost_indicator_names", "Cost Indicator", [
@@ -164,25 +192,49 @@ def build_main_dashboard() -> dict:
 
     panels.append(mk_timeseries(
         "Documents Matched by Queries", None,
-        {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
+        {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
         metric_field="response_hits", metric_op="sum",
         series_type="line", fill_opacity=20,
         description="Total documents matched by queries. Correlates with ES "
                     "CPU under queue saturation."))
+    panels.append(mk_timeseries(
+        "Avg Documents Matched per Query", None,
+        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
+        metric_field="response_hits", metric_op="avg",
+        series_type="line", fill_opacity=20,
+        description="Average documents matched per search query."))
     y += _PANEL_H
 
     panels.append(mk_timeseries(
-        "Write Volume (Documents)", None,
+        "Bulk Write Volume", None,
         {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        metric_field="response_docs_affected", metric_op="sum",
+        metric_field="request_bulk_doc_count", metric_op="sum",
         series_type="line", fill_opacity=20,
-        description="Total documents written (index / bulk / update)."))
+        description="Total documents written via bulk (index / create / update / "
+                    "delete actions) — counted from request body, accurate even "
+                    "for interrupted requests."))
+    panels.append(mk_timeseries(
+        "Avg Documents per Bulk", None,
+        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
+        metric_field="request_bulk_doc_count", metric_op="avg",
+        series_type="line", fill_opacity=20,
+        description="Average documents per bulk operation — batch-size signal. "
+                    "Counted from request body action lines."))
+    y += _PANEL_H
+
     panels.append(mk_timeseries(
         "Request Size", None,
-        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
+        {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
         metric_field="request_size_bytes", metric_op="sum",
         series_type="line", fill_opacity=20, unit="decbytes",
         description="Total inbound request payload size."))
+    panels.append(mk_timeseries(
+        "Avg Request Size", None,
+        {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
+        metric_field="request_size_bytes", metric_op="avg",
+        series_type="line", fill_opacity=20, unit="decbytes",
+        description="Average inbound request payload size — rising trend may "
+                    "indicate unbounded search body growth."))
     y += _PANEL_H
 
     # ΓöÇΓöÇ Response Times ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
@@ -197,15 +249,23 @@ def build_main_dashboard() -> dict:
     ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
         series_type="line", unit="ms",
         description="Elasticsearch response-time trend with Avg / P50 / P95 / "
-                    "P99 ΓÇö rising P95/P99 signals tail-latency issues."))
+                    "P99 — rising P95/P99 signals tail-latency issues."))
+    y += _PANEL_H
+
+    panels.append(mk_timeseries_grouped(
+        "Status Code by Operation", "request_operation", "response_status",
+        {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H}, size=10,
+        description="Request counts over time for the top-10 "
+                    "operation/status-code combinations (e.g. search/200, bulk/429)."))
     y += _PANEL_H
 
     return _wrap_dashboard(
         uid="alo-main",
-        title="ALO ΓÇö Stress Analysis",
+        title="ALO — Stress Analysis",
         description="Stress analysis by application, target, operation, and "
                     "template, with overall trend.",
         panels=panels,
+        links=_main_dashboard_links("en"),
     )
 
 
@@ -250,7 +310,7 @@ def build_cost_indicators_dashboard() -> dict:
             ("Bonus", "stress_components_bonus", "avg"),
         ], {"x": 0, "y": y, "w": _FULL_W, "h": _BAR_H},
         description="Stacked contribution of each base-score component (Took / "
-                    "Shards / Hits / Bonus) per template ΓÇö shows what drives the score."))
+                    "Shards / Hits / Bonus) per template — shows what drives the score."))
     y += _BAR_H
 
     # Base vs Final score + Multiplier breakdown
@@ -262,7 +322,7 @@ def build_cost_indicators_dashboard() -> dict:
             ("Avg Final Score", "stress_score", "avg"),
             ("Avg Indicators", "stress_cost_indicator_count", "avg"),
         ], {"x": 0, "y": y, "w": _HALF_W, "h": _BAR_H},
-        description="Base score vs multiplier vs final score per template ΓÇö "
+        description="Base score vs multiplier vs final score per template — "
                     "reveals whether stress is driven by the base or the multiplier."))
     panels.append(mk_table(
         "Top Templates by Cost Indicator Count",
@@ -272,7 +332,7 @@ def build_cost_indicators_dashboard() -> dict:
             ("Avg Stress", "stress_score", "avg"),
             ("Requests", None, "count"),
         ], {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _BAR_H},
-        description="Templates ranked by average cost indicator count ΓÇö "
+        description="Templates ranked by average cost indicator count — "
                     "query optimization candidates."))
     y += _BAR_H
 
@@ -343,7 +403,7 @@ def build_cost_indicators_dashboard() -> dict:
             ("Total Requests", None, "count", ""),
         ], {"x": 0, "y": y, "w": _FULL_W, "h": _PANEL_H},
         series_type="line",
-        description="Count of flagged (ΓëÑ1 cost indicator) vs total requests ΓÇö "
+        description="Count of flagged (≥1 cost indicator) vs total requests — "
                     "the ratio indicates how many queries are suboptimal."))
     y += _PANEL_H
 
@@ -475,7 +535,7 @@ def build_usage_dashboard() -> dict:
             ("Total Requests", None, "count", ""),
         ], {"x": 0, "y": y, "w": _HALF_W, "h": _PANEL_H},
         series_type="line",
-        description="Count of error responses (status ΓëÑ 400) vs total requests."))
+        description="Count of error responses (status ≥ 400) vs total requests."))
     panels.append(mk_table(
         "Requests by Status Code",
         "response_status", "Status Code", [
@@ -506,12 +566,12 @@ def build_usage_dashboard() -> dict:
         series_type="line", fill_opacity=20,
         description="Total documents matched by queries, split by operation type."))
     panels.append(mk_timeseries(
-        "Write Volume (Docs Affected)", "request_operation",
+        "Bulk Write Volume", "request_operation",
         {"x": _HALF_W, "y": y, "w": _HALF_W, "h": _PANEL_H},
-        metric_field="response_docs_affected", metric_op="sum", size=8,
+        metric_field="request_bulk_doc_count", metric_op="sum", size=8,
         series_type="line", fill_opacity=20,
-        description="Total documents written (indexed / updated / deleted), "
-                    "split by operation type."))
+        description="Total bulk documents counted from request body, split by "
+                    "operation type. Accurate even for interrupted requests."))
     y += _PANEL_H
 
     panels.append(mk_timeseries_multi(
@@ -545,8 +605,41 @@ def build_usage_dashboard() -> dict:
 
     return _wrap_dashboard(
         uid="alo-usage",
-        title="ALO ΓÇö Cluster Usage",
+        title="ALO — Cluster Usage",
         description="Request rates, latency percentiles, error tracking, "
                     "and data volume analytics.",
         panels=panels,
     )
+
+
+# ---------------------------------------------------------------------------
+# Hebrew (he) mirror of main dashboard
+# ---------------------------------------------------------------------------
+
+_TRANSLATABLE_KEYS = {"title", "description", "displayName"}
+
+
+def _translate_he(obj: object) -> object:
+    """Recursively translate title/description/displayName fields via _strings.tr."""
+    if isinstance(obj, dict):
+        return {
+            k: (tr(v, "he") if k in _TRANSLATABLE_KEYS and isinstance(v, str)
+                else _translate_he(v))
+            for k, v in obj.items()
+        }
+    if isinstance(obj, list):
+        return [_translate_he(item) for item in obj]
+    return obj
+
+
+def build_main_dashboard_he() -> dict:
+    dashboard = build_main_dashboard()
+    # Swap guide panel content for Hebrew HTML before title translation.
+    for panel in dashboard["panels"]:
+        if panel.get("type") == "text" and panel.get("title") == "Dashboard Guide":
+            panel["options"]["content"] = CHEAT_SHEET_HE
+    dashboard = _translate_he(dashboard)
+    dashboard["uid"] = "alo-main-he"
+    dashboard["title"] = "ALO — ניתוח עומסים"
+    dashboard["links"] = _main_dashboard_links("he")
+    return dashboard

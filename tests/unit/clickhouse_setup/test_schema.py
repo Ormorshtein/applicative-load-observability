@@ -13,13 +13,15 @@ class TestSingleNodeMode:
         assert "alo_raw" not in labels
         assert "alo_dead_letter" not in labels
         assert "alo_summary" not in labels
-        assert labels == [
+        # Core DDL labels (alter_alo_raw_* labels follow at the end)
+        assert labels[:5] == [
             "database",
             "alo_raw_local",
             "alo_dead_letter_local",
             "alo_summary_local",
             "alo_summary_mv",
         ]
+        assert all(l.startswith("alter_alo_raw_") for l in labels[5:])
 
     def test_raw_uses_plain_mergetree(self):
         ddl = self.by_label["alo_raw_local"]
@@ -66,6 +68,16 @@ class TestSingleNodeMode:
         assert "stress_cost_indicator_multipliers    Map(LowCardinality(String), Float64)" in ddl
         assert "stress_bonuses                       Map(LowCardinality(String), Float64)" in ddl
 
+    def test_request_body_truncated_column_present(self):
+        ddl = self.by_label["alo_raw_local"]
+        assert "request_body_truncated" in ddl
+
+    def test_request_body_truncated_alter_in_additions(self):
+        labels = [label for label, _ in self.plan]
+        assert "alter_alo_raw_request_body_truncated" in labels
+        ddl = self.by_label["alter_alo_raw_request_body_truncated"]
+        assert "ADD COLUMN IF NOT EXISTS request_body_truncated UInt8" in ddl
+
 
 class TestClusterMode:
     def setup_method(self):
@@ -75,7 +87,8 @@ class TestClusterMode:
 
     def test_plan_contains_local_and_distributed_pairs(self):
         labels = [label for label, _ in self.plan]
-        assert labels == [
+        # Core DDL labels (alter_alo_raw_* labels follow at the end)
+        assert labels[:8] == [
             "database",
             "alo_raw_local",
             "alo_raw",
@@ -85,6 +98,7 @@ class TestClusterMode:
             "alo_summary",
             "alo_summary_mv",
         ]
+        assert all(l.startswith("alter_alo_raw_") for l in labels[8:])
 
     def test_local_raw_uses_replicated_mergetree(self):
         ddl = self.by_label["alo_raw_local"]

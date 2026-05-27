@@ -36,7 +36,8 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           command:
             - python
-            - /app/setup.py
+            - -m
+            - grafana.setup
             - --mode
             - api
             {{- if not $gf.datasource }}
