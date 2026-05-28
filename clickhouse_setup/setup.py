@@ -61,6 +61,24 @@ def _build_arg_parser(cfg: ClickHouseConfig, settings: TableSettings) -> argpars
     retention.add_argument("--summary-retention-days", type=int,
                            default=settings.summary_retention_days,
                            help="TTL on alo_summary (default: %(default)s)")
+    retention.add_argument("--raw-ttl", default="",
+                           help="Full TTL clause for alo_raw + alo_dead_letter "
+                                "(overrides --raw-retention-days). Example: "
+                                "\"timestamp + INTERVAL 1 DAY TO VOLUME 'warm', "
+                                "timestamp + INTERVAL 7 DAY DELETE\"")
+    retention.add_argument("--summary-ttl", default="",
+                           help="Full TTL clause for alo_summary "
+                                "(overrides --summary-retention-days)")
+
+    tuning = parser.add_argument_group("table tuning")
+    tuning.add_argument("--raw-settings", default="",
+                        help="Extra SETTINGS for alo_raw as k=v,k=v "
+                             "(e.g. storage_policy=hot_warm_cold,index_granularity=4096). "
+                             "Merged with the default index_granularity = 8192.")
+    tuning.add_argument("--summary-settings", default="",
+                        help="Extra SETTINGS for alo_summary as k=v,k=v")
+    tuning.add_argument("--sharding-key", default=settings.sharding_key,
+                        help="Sharding key for Distributed engine (default: %(default)s)")
     return parser
 
 
@@ -72,6 +90,19 @@ def _add_bool_flag(group, name: str, default: bool, help_text: str) -> None:
                        help=f"skip: {help_text}")
 
 
+def _parse_kv_pairs(raw: str) -> dict[str, str]:
+    """Parse ``k1=v1,k2=v2`` into a dict. Empty input → empty dict."""
+    if not raw.strip():
+        return {}
+    pairs: dict[str, str] = {}
+    for chunk in raw.split(","):
+        if "=" not in chunk:
+            raise ValueError(f"expected k=v, got {chunk!r}")
+        key, _, value = chunk.partition("=")
+        pairs[key.strip()] = value.strip()
+    return pairs
+
+
 def _settings_from_args(args: argparse.Namespace) -> TableSettings:
     return TableSettings(
         database=               args.database,
@@ -79,6 +110,11 @@ def _settings_from_args(args: argparse.Namespace) -> TableSettings:
         summary_retention_days= args.summary_retention_days,
         cluster_enabled=        bool(args.cluster),
         cluster_name=           args.cluster or "alo_cluster",
+        sharding_key=           args.sharding_key,
+        raw_ttl_clause=         args.raw_ttl,
+        summary_ttl_clause=     args.summary_ttl,
+        raw_extra_settings=     _parse_kv_pairs(args.raw_settings),
+        summary_extra_settings= _parse_kv_pairs(args.summary_settings),
     )
 
 

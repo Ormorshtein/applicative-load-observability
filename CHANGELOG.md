@@ -2,7 +2,21 @@
 
 ## [Unreleased]
 
+---
+
+## 2.0.3
+
+### Features
+
+- **Tunable ClickHouse DDL** (`clickhouse_setup/_schema.py`, `clickhouse_setup/setup.py`, `helm/alo/values.yaml`, `helm/alo/templates/clickhouse/job-setup.yaml`):
+  - `TableSettings` gains `raw_ttl_clause`, `summary_ttl_clause`, `raw_extra_settings`, `summary_extra_settings`. Empty defaults preserve existing behaviour.
+  - New CLI flags: `--raw-ttl`, `--summary-ttl`, `--raw-settings k=v,k=v`, `--summary-settings k=v,k=v`, `--sharding-key`.
+  - New helm values: `tableSettings.{rawTtlClause,summaryTtlClause,rawExtraSettings,summaryExtraSettings,shardingKey}`. The job appends `--raw-ttl` / `--summary-ttl` / `--raw-settings` / `--summary-settings` / `--sharding-key` only when set.
+  - Unlocks storage-tier moves (`timestamp + INTERVAL 1 DAY TO VOLUME 'warm', timestamp + INTERVAL 7 DAY DELETE`) and arbitrary `SETTINGS` (`storage_policy`, `merge_with_ttl_timeout`, …) without code changes.
+
 ### Bug fixes
+
+- **`job-setup.yaml` `args:` block** rendered invalid YAML (`args:- --create-database` on one line) because of a left-trim on the first `{{- if }}` tag. Switched the first tag to a non-trimming `{{ if }}` so the list starts on its own line.
 
 - **Dead-letter routing** (`logstash/pipeline/observability.conf`): events routed via the http-filter plugin's own failure tag (`_httprequestfailure`) — i.e., when the analyzer is unreachable — were silently inserted into `alo_raw` instead of `alo_dead_letter`. Fixed by adding `or "_httprequestfailure" in [tags]` to the dead-letter output condition.
 - **Dead-letter `request_body` lost** (`logstash/pipeline/observability.conf`): a leftover ES-era `mutate { rename }` block was converting the flat `request_body` field to a nested `[request][body]` path, which ClickHouse's `input_format_skip_unknown_fields=1` then silently dropped. Block removed.

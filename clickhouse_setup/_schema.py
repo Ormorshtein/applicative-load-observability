@@ -48,6 +48,18 @@ class TableSettings:
     cluster_name:             str  = "alo_cluster"
     sharding_key:             str  = "cityHash64(cluster_name, request_operation)"
 
+    # Full TTL expression overrides. Empty => fall back to
+    # ``INTERVAL {retention_days} DAY DELETE``. Accept any clause CH parses,
+    # including storage-tier moves like
+    # ``timestamp + INTERVAL 1 DAY TO VOLUME 'warm', timestamp + INTERVAL 7 DAY DELETE``.
+    raw_ttl_clause:           str  = ""
+    summary_ttl_clause:       str  = ""
+
+    # Extra ``SETTINGS k = v`` pairs merged into each MergeTree-family table.
+    # Useful for ``storage_policy``, ``index_granularity``, ``merge_with_ttl_timeout``.
+    raw_extra_settings:       dict[str, str] = field(default_factory=dict)
+    summary_extra_settings:   dict[str, str] = field(default_factory=dict)
+
 
 # ── Column inventory ───────────────────────────────────────────────────────
 # Order matters: the table is created in this order, which matches the
@@ -209,6 +221,21 @@ def _format_columns(columns: Iterable[tuple[str, str]]) -> str:
     return ",\n".join(f"    {name.ljust(width)}  {type_}" for name, type_ in columns)
 
 
+def _ttl_line(ttl_clause: str, retention_days: int, ts_col: str) -> str:
+    """Render ``TTL ...`` line. Override wins; else generate basic DELETE clause."""
+    body = ttl_clause.strip() if ttl_clause else (
+        f"toDateTime({ts_col}) + INTERVAL {retention_days} DAY DELETE"
+    )
+    return f"TTL {body}"
+
+
+def _settings_line(base: dict[str, str], extra: dict[str, str]) -> str:
+    """Merge base + extra SETTINGS pairs into a single ``SETTINGS k = v, ...`` clause."""
+    merged: dict[str, str] = {**base, **extra}
+    rendered = ", ".join(f"{k} = {v}" for k, v in merged.items())
+    return f"SETTINGS {rendered}" if rendered else ""
+
+
 def _summary_state_columns(s: TableSettings) -> list[tuple[str, str]]:
     cols: list[tuple[str, str]] = []
     for name, agg, input_type in _SUMMARY_AGGS:
@@ -232,14 +259,16 @@ def raw_table_ddl(s: TableSettings) -> str:
     engine = _raw_engine(s, table)
     columns = _format_columns(_RAW_COLUMNS)
     order_by = ", ".join(_RAW_ORDER_BY)
+    ttl = _ttl_line(s.raw_ttl_clause, s.raw_retention_days, "timestamp")
+    settings = _settings_line({"index_granularity": "8192"}, s.raw_extra_settings)
     return (
         f"CREATE TABLE IF NOT EXISTS {s.database}.{table}{_on_cluster(s)}\n"
         f"(\n{columns}\n)\n"
         f"ENGINE = {engine}\n"
         f"PARTITION BY {s.raw_partition_by}\n"
         f"ORDER BY ({order_by})\n"
-        f"TTL toDateTime(timestamp) + INTERVAL {s.raw_retention_days} DAY DELETE\n"
-        f"SETTINGS index_granularity = 8192"
+        f"{ttl}\n"
+        f"{settings}"
     )
 
 
@@ -261,13 +290,14 @@ def dead_letter_table_ddl(s: TableSettings) -> str:
         ("request_method", "LowCardinality(String)"),
         ("request_body",   "String CODEC(ZSTD(3))"),
     ])
+    ttl = _ttl_line(s.raw_ttl_clause, s.raw_retention_days, "timestamp")
     return (
         f"CREATE TABLE IF NOT EXISTS {s.database}.{table}{_on_cluster(s)}\n"
         f"(\n{columns}\n)\n"
         f"ENGINE = {engine}\n"
         f"PARTITION BY toYYYYMMDD(timestamp)\n"
         f"ORDER BY (cluster_name, timestamp)\n"
-        f"TTL toDateTime(timestamp) + INTERVAL {s.raw_retention_days} DAY DELETE"
+        f"{ttl}"
     )
 
 
@@ -282,14 +312,17 @@ def summary_table_ddl(s: TableSettings) -> str:
     engine = _summary_engine(s, table)
     columns = _format_columns(_SUMMARY_DIMENSIONS + _summary_state_columns(s))
     order_by = ", ".join(name for name, _ in _SUMMARY_DIMENSIONS)
-    return (
+    ttl = _ttl_line(s.summary_ttl_clause, s.summary_retention_days, "time_bucket")
+    settings = _settings_line({}, s.summary_extra_settings)
+    body = (
         f"CREATE TABLE IF NOT EXISTS {s.database}.{table}{_on_cluster(s)}\n"
         f"(\n{columns}\n)\n"
         f"ENGINE = {engine}\n"
         f"PARTITION BY {s.summary_partition_by}\n"
         f"ORDER BY ({order_by})\n"
-        f"TTL toDateTime(time_bucket) + INTERVAL {s.summary_retention_days} DAY DELETE"
+        f"{ttl}"
     )
+    return f"{body}\n{settings}" if settings else body
 
 
 def summary_distributed_ddl(s: TableSettings) -> str | None:

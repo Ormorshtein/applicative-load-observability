@@ -14,6 +14,22 @@ tableSettings:
   summaryRetentionDays: 120
   rawPartitionBy: "toYYYYMMDD(timestamp)"
   summaryPartitionBy: "toYYYYMM(time_bucket)"
+  # Full TTL clause overrides — empty means use rawRetentionDays/summaryRetentionDays.
+  # Accept any expression CH parses, including storage-tier moves.
+  # Example:
+  #   rawTtlClause: "timestamp + INTERVAL 1 DAY TO VOLUME 'warm', timestamp + INTERVAL 7 DAY DELETE"
+  rawTtlClause: ""
+  summaryTtlClause: ""
+  # Extra SETTINGS merged into each MergeTree-family table. Use for
+  # storage_policy, merge_with_ttl_timeout, index_granularity, etc.
+  # Example:
+  #   rawExtraSettings:
+  #     storage_policy: hot_warm_cold
+  #     merge_with_ttl_timeout: "86400"
+  rawExtraSettings: {}
+  summaryExtraSettings: {}
+  # Sharding key used for the Distributed engine when cluster mode is on.
+  shardingKey: "cityHash64(cluster_name, request_operation)"
 
 # ΓöÇΓöÇ ClickHouse (analytics sink) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 # Where Logstash writes, Grafana reads, and the analyzer fetches baselines.
@@ -92,7 +108,7 @@ clickhouse:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: ch-setup-2.0.2
+      tag: ch-setup-2.0.3
       pullPolicy: IfNotPresent
     database: true
     rawTable: true
@@ -113,7 +129,7 @@ logstash:
 
   image:
     repository: oracle1012/applicative-load-observability
-    tag: logstash-2.0.2
+    tag: logstash-2.0.3
     pullPolicy: IfNotPresent
   replicas: 1
   resources:
@@ -174,7 +190,7 @@ analyzer:
   enabled: true
   image:
     repository: oracle1012/applicative-load-observability
-    tag: analyzer-2.0.2
+    tag: analyzer-2.0.3
     pullPolicy: IfNotPresent
   replicas: 2
   port: 8000
@@ -223,7 +239,7 @@ gateway:
   dnsResolver: ""
   image:
     repository: oracle1012/applicative-load-observability
-    tag: gateway-2.0.2
+    tag: gateway-2.0.3
     pullPolicy: IfNotPresent
   replicas: 2
   port: 9200
@@ -314,7 +330,7 @@ grafana:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: grafana-setup-2.0.2
+      tag: grafana-setup-2.0.3
       pullPolicy: IfNotPresent
   nodeSelector: {}
   tolerations: []

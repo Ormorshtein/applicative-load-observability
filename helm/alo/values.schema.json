@@ -20,7 +20,20 @@
         "rawRetentionDays": { "type": "integer", "minimum": 1 },
         "summaryRetentionDays": { "type": "integer", "minimum": 1 },
         "rawPartitionBy": { "type": "string" },
-        "summaryPartitionBy": { "type": "string" }
+        "summaryPartitionBy": { "type": "string" },
+        "rawTtlClause": { "type": "string", "description": "Full TTL clause override for alo_raw + alo_dead_letter. Empty = use rawRetentionDays." },
+        "summaryTtlClause": { "type": "string", "description": "Full TTL clause override for alo_summary. Empty = use summaryRetentionDays." },
+        "rawExtraSettings": {
+          "type": "object",
+          "description": "Extra SETTINGS for alo_raw (storage_policy, merge_with_ttl_timeout, etc.).",
+          "additionalProperties": { "type": ["string", "number", "boolean"] }
+        },
+        "summaryExtraSettings": {
+          "type": "object",
+          "description": "Extra SETTINGS for alo_summary.",
+          "additionalProperties": { "type": ["string", "number", "boolean"] }
+        },
+        "shardingKey": { "type": "string", "description": "Sharding key for the Distributed engine in cluster mode." }
       }
     },
     "clickhouse": {

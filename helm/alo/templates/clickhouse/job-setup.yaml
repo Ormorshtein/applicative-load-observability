@@ -29,7 +29,7 @@ spec:
           image: "{{ .Values.clickhouse.setup.image.repository }}:{{ .Values.clickhouse.setup.image.tag }}"
           imagePullPolicy: {{ .Values.clickhouse.setup.image.pullPolicy }}
           args:
-            {{- if not .Values.clickhouse.setup.database }}- --no-create-database{{- else }}- --create-database{{- end }}
+            {{ if not .Values.clickhouse.setup.database }}- --no-create-database{{ else }}- --create-database{{ end }}
             {{- if not .Values.clickhouse.setup.rawTable }}
             - --no-raw-table
             {{- end }}
@@ -44,6 +44,27 @@ spec:
             {{- end }}
             - --raw-retention-days={{ .Values.tableSettings.rawRetentionDays }}
             - --summary-retention-days={{ .Values.tableSettings.summaryRetentionDays }}
+            {{- with .Values.tableSettings.rawTtlClause }}
+            - {{ printf "--raw-ttl=%s" . | quote }}
+            {{- end }}
+            {{- with .Values.tableSettings.summaryTtlClause }}
+            - {{ printf "--summary-ttl=%s" . | quote }}
+            {{- end }}
+            {{- $rawExtra := .Values.tableSettings.rawExtraSettings | default dict }}
+            {{- if $rawExtra }}
+            {{- $pairs := list }}
+            {{- range $k, $v := $rawExtra }}{{- $pairs = append $pairs (printf "%s=%v" $k $v) }}{{- end }}
+            - {{ printf "--raw-settings=%s" (join "," $pairs) | quote }}
+            {{- end }}
+            {{- $sumExtra := .Values.tableSettings.summaryExtraSettings | default dict }}
+            {{- if $sumExtra }}
+            {{- $pairs := list }}
+            {{- range $k, $v := $sumExtra }}{{- $pairs = append $pairs (printf "%s=%v" $k $v) }}{{- end }}
+            - {{ printf "--summary-settings=%s" (join "," $pairs) | quote }}
+            {{- end }}
+            {{- with .Values.tableSettings.shardingKey }}
+            - {{ printf "--sharding-key=%s" . | quote }}
+            {{- end }}
           env:
             - name: CLICKHOUSE_URL
               value: {{ include "alo.clickhouseUrl" . | quote }}

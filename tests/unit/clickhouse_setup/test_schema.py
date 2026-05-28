@@ -160,3 +160,55 @@ class TestSummaryAggregates:
 
     def test_count_state(self):
         assert "count_state                     AggregateFunction(count)" in self.summary_ddl
+
+
+class TestTtlAndSettingsOverrides:
+    def test_raw_ttl_clause_replaces_default(self):
+        clause = "timestamp + INTERVAL 1 DAY TO VOLUME 'warm', timestamp + INTERVAL 7 DAY DELETE"
+        s = TableSettings(raw_ttl_clause=clause, raw_retention_days=99)
+        by_label = dict(all_ddl(s))
+        ddl = by_label["alo_raw_local"]
+        assert f"TTL {clause}" in ddl
+        # Override wins over retention days
+        assert "INTERVAL 99 DAY DELETE" not in ddl
+        # Dead letter follows the same raw clause
+        assert f"TTL {clause}" in by_label["alo_dead_letter_local"]
+
+    def test_summary_ttl_clause_replaces_default(self):
+        clause = "time_bucket + INTERVAL 30 DAY DELETE"
+        s = TableSettings(summary_ttl_clause=clause, summary_retention_days=999)
+        ddl = dict(all_ddl(s))["alo_summary_local"]
+        assert f"TTL {clause}" in ddl
+        assert "INTERVAL 999 DAY DELETE" not in ddl
+
+    def test_empty_ttl_clause_falls_back_to_retention_days(self):
+        s = TableSettings(raw_retention_days=14, summary_retention_days=180)
+        by_label = dict(all_ddl(s))
+        assert "INTERVAL 14 DAY DELETE" in by_label["alo_raw_local"]
+        assert "INTERVAL 14 DAY DELETE" in by_label["alo_dead_letter_local"]
+        assert "INTERVAL 180 DAY DELETE" in by_label["alo_summary_local"]
+
+    def test_raw_extra_settings_merged_with_index_granularity(self):
+        s = TableSettings(raw_extra_settings={
+            "storage_policy": "hot_warm_cold",
+            "merge_with_ttl_timeout": "86400",
+        })
+        ddl = dict(all_ddl(s))["alo_raw_local"]
+        assert "index_granularity = 8192" in ddl
+        assert "storage_policy = hot_warm_cold" in ddl
+        assert "merge_with_ttl_timeout = 86400" in ddl
+
+    def test_raw_extra_settings_override_index_granularity(self):
+        s = TableSettings(raw_extra_settings={"index_granularity": "4096"})
+        ddl = dict(all_ddl(s))["alo_raw_local"]
+        assert "index_granularity = 4096" in ddl
+        assert "index_granularity = 8192" not in ddl
+
+    def test_summary_extra_settings_appended(self):
+        s = TableSettings(summary_extra_settings={"storage_policy": "cold_only"})
+        ddl = dict(all_ddl(s))["alo_summary_local"]
+        assert "SETTINGS storage_policy = cold_only" in ddl
+
+    def test_summary_no_settings_clause_by_default(self):
+        ddl = dict(all_ddl(TableSettings()))["alo_summary_local"]
+        assert "SETTINGS" not in ddl
