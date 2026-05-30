@@ -1,6 +1,15 @@
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
+  # Stamps a `cluster` label on every scraped series so the Grafana Stack
+  # Health dashboard ($cluster variable) can scope per cluster. The value MUST
+  # match the ClickHouse `cluster_name` (CLUSTER_NAME env on the logstash
+  # pipeline) so Prometheus panels and the dead-letter-queue panels line up.
+  # In a central/federated setup (Thanos/Mimir/remote_write) attach `cluster`
+  # there instead. ${CLUSTER_NAME} is expanded by the
+  # --enable-feature=expand-external-labels flag (see docker-compose.yml).
+  external_labels:
+    cluster: ${CLUSTER_NAME}
 
 scrape_configs:
   - job_name: gateway

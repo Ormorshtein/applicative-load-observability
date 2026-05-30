@@ -417,6 +417,12 @@ serviceMonitors:
   enabled: false
   labels: {}
   interval: "15s"
+  # Stamps a `cluster` label on this release's metrics via ServiceMonitor
+  # relabeling, so the Grafana Stack Health dashboard ($cluster) can scope per
+  # cluster. Set per release/cluster; keep it equal to the ClickHouse
+  # cluster_name (logstash CLUSTER_NAME) so Prometheus and DLQ panels agree.
+  # Empty = no cluster label added.
+  clusterLabel: ""
 
 # ΓöÇΓöÇ Image pull secrets ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 imagePullSecrets: []

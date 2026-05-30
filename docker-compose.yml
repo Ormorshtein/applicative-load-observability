@@ -166,6 +166,18 @@ services:
     profiles: ["prometheus"]
     ports:
       - "9090:9090"
+    # CLUSTER_NAME stamps the `cluster` external label (expanded by
+    # --enable-feature=expand-external-labels) so the Grafana Stack Health
+    # dashboard can scope per cluster. Keep it equal to the logstash
+    # CLUSTER_NAME so Prometheus and ClickHouse panels agree.
+    environment:
+      CLUSTER_NAME: ${CLUSTER_NAME:-default}
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.console.libraries=/usr/share/prometheus/console_libraries
+      - --web.console.templates=/usr/share/prometheus/consoles
+      - --enable-feature=expand-external-labels
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus

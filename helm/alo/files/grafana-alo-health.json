@@ -1,485 +1,2446 @@
 {
   "uid": "alo-health",
-  "title": "ALO — Stack Health",
-  "description": "Operational health of the ALO pipeline: gateway, analyzer, and logstash.",
-  "tags": ["alo", "health", "prometheus"],
-  "editable": true,
-  "graphTooltip": 1,
-  "refresh": "15s",
-  "schemaVersion": 39,
-  "time": { "from": "now-30m", "to": "now" },
+  "title": "ALO \u2014 Stack Health",
+  "description": "Per-cluster operational health of the ALO pipeline: gateway, analyzer, and logstash.",
+  "tags": [
+    "alo",
+    "health",
+    "prometheus"
+  ],
   "timezone": "browser",
-  "templating": {
-    "list": [
-      {
-        "name": "gateway_instance",
-        "label": "Gateway",
-        "type": "query",
-        "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-        "definition": "label_values(nginx_up, instance)",
-        "query": "label_values(nginx_up, instance)",
-        "includeAll": true,
-        "allValue": ".*",
-        "multi": true,
-        "current": { "selected": true, "text": "All", "value": "$__all" },
-        "refresh": 2
-      },
-      {
-        "name": "analyzer_instance",
-        "label": "Analyzer",
-        "type": "query",
-        "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-        "definition": "label_values(http_requests_total{job=\"analyzer\"}, instance)",
-        "query": "label_values(http_requests_total{job=\"analyzer\"}, instance)",
-        "includeAll": true,
-        "allValue": ".*",
-        "multi": true,
-        "current": { "selected": true, "text": "All", "value": "$__all" },
-        "refresh": 2
-      },
-      {
-        "name": "logstash_instance",
-        "label": "Logstash",
-        "type": "query",
-        "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-        "definition": "label_values(logstash_info_up, instance)",
-        "query": "label_values(logstash_info_up, instance)",
-        "includeAll": true,
-        "allValue": ".*",
-        "multi": true,
-        "current": { "selected": true, "text": "All", "value": "$__all" },
-        "refresh": 2
-      }
-    ]
+  "schemaVersion": 40,
+  "version": 1,
+  "refresh": "15s",
+  "graphTooltip": 1,
+  "time": {
+    "from": "now-30m",
+    "to": "now"
   },
   "panels": [
     {
-      "type": "row",
-      "title": "Gateway (Nginx)",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
-      "collapsed": false
+      "id": 1,
+      "title": "Cluster Health",
+      "type": "text",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 2
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### Cluster Health"
+      }
     },
     {
-      "type": "timeseries",
-      "title": "Gateways UP",
-      "description": "Number of healthy gateway instances over time. A drop means instances went down.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 1 },
+      "id": 2,
+      "title": "Worker Utilization",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 2,
+        "w": 4,
+        "h": 4
+      },
+      "description": "Average Logstash worker utilization across the cluster. Near 100% = saturated.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "avg(logstash_stats_pipeline_flow_worker_utilization_current{cluster=\"$cluster\"})",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "justifyMode": "auto"
+      },
       "fieldConfig": {
         "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 70,
+                "color": "yellow"
+              },
+              {
+                "value": 90,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "title": "Max JVM Heap",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 2,
+        "w": 4,
+        "h": 4
+      },
+      "description": "Worst-case Logstash JVM heap in the cluster.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "max(logstash_stats_jvm_mem_heap_used_percent{cluster=\"$cluster\"})",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 70,
+                "color": "yellow"
+              },
+              {
+                "value": 85,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "title": "Backpressure",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 2,
+        "w": 4,
+        "h": 4
+      },
+      "description": "Worst-case queue backpressure (0 = healthy, >0 = input blocked).",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "max(logstash_stats_flow_queue_backpressure_current{cluster=\"$cluster\"})",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "yellow"
+              },
+              {
+                "value": 10,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "title": "Open FDs",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 2,
+        "w": 4,
+        "h": 4
+      },
+      "description": "Worst-case file-descriptor usage. Approaching 100% = Logstash will crash.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "max(logstash_stats_process_open_file_descriptors{cluster=\"$cluster\"} / logstash_stats_process_max_file_descriptors{cluster=\"$cluster\"}) * 100",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 70,
+                "color": "yellow"
+              },
+              {
+                "value": 90,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "title": "Analyzer Load",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 2,
+        "w": 4,
+        "h": 4
+      },
+      "description": "Total in-flight analyzer requests across the cluster.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum(http_requests_inprogress{cluster=\"$cluster\"})",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 50,
+                "color": "yellow"
+              },
+              {
+                "value": 150,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "title": "Gateways Up",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 2,
+        "w": 4,
+        "h": 4
+      },
+      "description": "Healthy gateway instances in the cluster.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "count(nginx_up{cluster=\"$cluster\"} == 1)",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 1,
+                "color": "green"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "row",
+      "title": "Logstash Pipeline Throughput",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      }
+    },
+    {
+      "id": 8,
+      "title": "Pipeline Flow Rates",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 12,
+        "h": 8
+      },
+      "description": "Events/sec at each pipeline stage, summed across the cluster. If input >> output the pipeline is bottlenecked.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum by (cluster) (logstash_stats_pipeline_flow_input_current{cluster=\"$cluster\"})",
+          "legendFormat": "Input",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum by (cluster) (logstash_stats_pipeline_flow_filter_current{cluster=\"$cluster\"})",
+          "legendFormat": "Filter",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum by (cluster) (logstash_stats_pipeline_flow_output_current{cluster=\"$cluster\"})",
+          "legendFormat": "Output",
+          "refId": "C"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "title": "Queue Depth",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 7,
+        "w": 12,
+        "h": 8
+      },
+      "description": "Events waiting in Logstash queues across the cluster. Growing = input faster than processing capacity.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum by (cluster) (logstash_stats_pipeline_queue_events_count{cluster=\"$cluster\"})",
+          "legendFormat": "Queue depth",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "title": "Plugin Time per Event",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 12,
+        "h": 8
+      },
+      "description": "Avg seconds per event by plugin \u2014 shows whether the analyzer HTTP filter or the ES output is the bottleneck.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum(rate(logstash_stats_pipeline_plugin_events_duration{cluster=\"$cluster\", plugin=\"http\"}[$__rate_interval])) / sum(rate(logstash_stats_pipeline_plugin_events_out{cluster=\"$cluster\", plugin=\"http\"}[$__rate_interval]))",
+          "legendFormat": "HTTP filter (analyzer)",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum(rate(logstash_stats_pipeline_plugin_events_duration{cluster=\"$cluster\", plugin=\"elasticsearch\"}[$__rate_interval])) / sum(rate(logstash_stats_pipeline_plugin_events_out{cluster=\"$cluster\", plugin=\"elasticsearch\"}[$__rate_interval]))",
+          "legendFormat": "ES output",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum(rate(logstash_stats_pipeline_plugin_events_duration{cluster=\"$cluster\", plugin=\"ruby\"}[$__rate_interval])) / sum(rate(logstash_stats_pipeline_plugin_events_out{cluster=\"$cluster\", plugin=\"ruby\"}[$__rate_interval]))",
+          "legendFormat": "Ruby filters",
+          "refId": "C"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "title": "Output Errors",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 15,
+        "w": 12,
+        "h": 8
+      },
+      "description": "Elasticsearch bulk errors and non-retryable document failures. Sustained growth means data loss.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum(rate(logstash_stats_pipeline_plugin_bulk_requests_errors{cluster=\"$cluster\"}[$__rate_interval]))",
+          "legendFormat": "bulk errors/s",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum(rate(logstash_stats_pipeline_plugin_documents_non_retryable_failures{cluster=\"$cluster\"}[$__rate_interval]))",
+          "legendFormat": "non-retryable/s",
+          "refId": "B"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "row",
+      "title": "Gateway (Nginx)",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 23
+      }
+    },
+    {
+      "id": 12,
+      "title": "Gateways UP",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 6,
+        "h": 8
+      },
+      "description": "Healthy vs total gateway instances over time.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "count(nginx_up{cluster=\"$cluster\"} == 1)",
+          "legendFormat": "up",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "count(nginx_up{cluster=\"$cluster\"})",
+          "legendFormat": "total",
+          "refId": "B"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 20,
+            "spanNulls": false
+          },
           "unit": "short",
-          "decimals": 0,
-          "custom": { "fillOpacity": 20, "lineWidth": 2, "spanNulls": false },
-          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }] }
+          "decimals": 0
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "total" },
-            "properties": [{ "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } }, { "id": "color", "value": { "fixedColor": "white", "mode": "fixed" } }]
+            "matcher": {
+              "id": "byName",
+              "options": "total"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "white",
+                  "mode": "fixed"
+                }
+              }
+            ]
           }
         ]
-      },
-      "targets": [
-        { "expr": "count(nginx_up{instance=~\"$gateway_instance\"} == 1)", "legendFormat": "up", "refId": "A" },
-        { "expr": "count(nginx_up{instance=~\"$gateway_instance\"})", "legendFormat": "total", "refId": "B" }
-      ]
+      }
     },
     {
-      "type": "timeseries",
+      "id": 13,
       "title": "Request Rate",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 1 },
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 24,
+        "w": 6,
+        "h": 8
+      },
+      "description": "Total gateway request rate across the cluster.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum(rate(nginx_http_requests_total{cluster=\"$cluster\"}[$__rate_interval]))",
+          "legendFormat": "total req/s",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps",
-          "custom": { "fillOpacity": 15, "lineWidth": 2, "spanNulls": false }
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          },
+          "unit": "reqps"
         },
         "overrides": []
-      },
-      "targets": [
-        { "expr": "sum(rate(nginx_http_requests_total{instance=~\"$gateway_instance\"}[$__rate_interval]))", "legendFormat": "total req/s", "refId": "A" }
-      ]
+      }
     },
     {
-      "type": "timeseries",
+      "id": 14,
       "title": "Connection States",
-      "description": "Aggregated across selected instances. High 'reading' may indicate slow clients; high 'writing' may indicate slow upstream.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 1 },
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 6,
+        "h": 8
+      },
+      "description": "Connection states summed across the cluster. High 'reading' = slow clients; high 'writing' = slow upstream.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum by (cluster) (nginx_connections_reading{cluster=\"$cluster\"})",
+          "legendFormat": "reading",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum by (cluster) (nginx_connections_writing{cluster=\"$cluster\"})",
+          "legendFormat": "writing",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum by (cluster) (nginx_connections_waiting{cluster=\"$cluster\"})",
+          "legendFormat": "waiting",
+          "refId": "C"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "custom": { "fillOpacity": 30, "lineWidth": 1, "stacking": { "mode": "normal" }, "spanNulls": false }
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 30,
+            "spanNulls": false,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
         },
         "overrides": []
-      },
-      "targets": [
-        { "expr": "sum(nginx_connections_reading{instance=~\"$gateway_instance\"})", "legendFormat": "reading", "refId": "A" },
-        { "expr": "sum(nginx_connections_writing{instance=~\"$gateway_instance\"})", "legendFormat": "writing", "refId": "B" },
-        { "expr": "sum(nginx_connections_waiting{instance=~\"$gateway_instance\"})", "legendFormat": "waiting", "refId": "C" }
-      ]
+      }
     },
     {
-      "type": "timeseries",
+      "id": 15,
       "title": "Dropped Connections",
-      "description": "Sum of (accepted - handled) across all instances. Should always be zero. Non-zero means worker_connections limit was hit on one or more instances.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 1 },
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 24,
+        "w": 6,
+        "h": 8
+      },
+      "description": "Accepted minus handled across the cluster. Should be zero; non-zero means a worker_connections limit was hit.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum(rate(nginx_connections_accepted{cluster=\"$cluster\"}[$__rate_interval])) - sum(rate(nginx_connections_handled{cluster=\"$cluster\"}[$__rate_interval]))",
+          "legendFormat": "dropped/s",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "custom": { "fillOpacity": 10, "lineWidth": 2, "spanNulls": false, "thresholdsStyle": { "mode": "line" } },
-          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }, { "value": 1, "color": "red" }] }
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "red"
+              }
+            ]
+          }
         },
         "overrides": []
-      },
-      "targets": [
-        { "expr": "sum(rate(nginx_connections_accepted{instance=~\"$gateway_instance\"}[$__rate_interval]) - rate(nginx_connections_handled{instance=~\"$gateway_instance\"}[$__rate_interval]))", "legendFormat": "dropped/s", "refId": "A" }
-      ]
+      }
     },
-
+    {
+      "id": 16,
+      "title": "Events Dropped by Reason",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "description": "Events the gateway dropped (pipeline notification failure), broken down by reason.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum by (reason) (rate(alo_gateway_events_dropped_total{cluster=\"$cluster\"}[$__rate_interval]))",
+          "legendFormat": "{{reason}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 17,
+      "title": "Event Delivery Rate",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "description": "Total events processed vs dropped per second. Healthy = dropped is zero.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum(rate(alo_gateway_events_total{cluster=\"$cluster\"}[$__rate_interval]))",
+          "legendFormat": "total events/s",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum(rate(alo_gateway_events_dropped_total{cluster=\"$cluster\"}[$__rate_interval]))",
+          "legendFormat": "dropped/s",
+          "refId": "B"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      }
+    },
     {
       "type": "row",
       "title": "Analyzer (FastAPI)",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
-      "collapsed": false
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 40
+      }
     },
     {
-      "type": "timeseries",
+      "id": 18,
       "title": "Request Rate",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 10 },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "reqps",
-          "custom": { "fillOpacity": 15, "lineWidth": 2, "spanNulls": false }
-        },
-        "overrides": []
-      },
-      "targets": [
-        { "expr": "sum(rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\"}[$__rate_interval]))", "legendFormat": "analyze req/s", "refId": "A" }
-      ]
-    },
-    {
       "type": "timeseries",
-      "title": "Error Rate",
-      "description": "Percentage of non-2xx responses on /analyze. The analyzer is designed to always return 200 — any errors here indicate a real issue.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 10 },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "min": 0,
-          "custom": { "fillOpacity": 10, "lineWidth": 2, "spanNulls": false, "thresholdsStyle": { "mode": "line" } },
-          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }, { "value": 0.01, "color": "red" }] }
-        },
-        "overrides": []
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
       },
+      "gridPos": {
+        "x": 0,
+        "y": 41,
+        "w": 8,
+        "h": 8
+      },
+      "description": "Analyzer /analyze request rate across the cluster.",
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\",status=~\"4xx\"}[$__rate_interval])) / sum(rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\"}[$__rate_interval]))",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum(rate(http_requests_total{cluster=\"$cluster\", handler=\"/analyze\"}[$__rate_interval]))",
+          "legendFormat": "analyze req/s",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 19,
+      "title": "Error Rate",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 41,
+        "w": 8,
+        "h": 8
+      },
+      "description": "Fraction of non-2xx /analyze responses. The analyzer should always return 200 \u2014 any errors signal a real issue.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum(rate(http_requests_total{cluster=\"$cluster\", handler=\"/analyze\", status=~\"4xx\"}[$__rate_interval])) / sum(rate(http_requests_total{cluster=\"$cluster\", handler=\"/analyze\"}[$__rate_interval]))",
           "legendFormat": "4xx %",
           "refId": "A"
         },
         {
-          "expr": "sum(rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\",status=~\"5xx\"}[$__rate_interval])) / sum(rate(http_requests_total{handler=\"/analyze\",instance=~\"$analyzer_instance\"}[$__rate_interval]))",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum(rate(http_requests_total{cluster=\"$cluster\", handler=\"/analyze\", status=~\"5xx\"}[$__rate_interval])) / sum(rate(http_requests_total{cluster=\"$cluster\", handler=\"/analyze\"}[$__rate_interval]))",
           "legendFormat": "5xx %",
           "refId": "B"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 0.01,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 20,
+      "title": "Latency (P50 / P95 / P99)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 41,
+        "w": 8,
+        "h": 8
+      },
+      "description": "Request-duration percentiles aggregated across the cluster.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(http_request_duration_highr_seconds_bucket{cluster=\"$cluster\"}[$__rate_interval])))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_highr_seconds_bucket{cluster=\"$cluster\"}[$__rate_interval])))",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_highr_seconds_bucket{cluster=\"$cluster\"}[$__rate_interval])))",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "spanNulls": false
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 21,
+      "title": "CPU Usage",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 49,
+        "w": 12,
+        "h": 8
+      },
+      "description": "Average analyzer process CPU across the cluster.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "avg(rate(process_cpu_seconds_total{cluster=\"$cluster\", job=\"analyzer\"}[$__rate_interval])) * 100",
+          "legendFormat": "avg cpu %",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 22,
+      "title": "Memory Usage",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 49,
+        "w": 12,
+        "h": 8
+      },
+      "description": "Total analyzer resident memory across the cluster.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum(process_resident_memory_bytes{cluster=\"$cluster\", job=\"analyzer\"})",
+          "legendFormat": "resident",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "row",
+      "title": "Logstash Resources",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 57
+      }
+    },
+    {
+      "id": 23,
+      "title": "Pipelines UP",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 58,
+        "w": 12,
+        "h": 8
+      },
+      "description": "Healthy vs total Logstash pipelines over time.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "count(logstash_stats_pipeline_up{cluster=\"$cluster\"} == 1)",
+          "legendFormat": "up",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "count(logstash_stats_pipeline_up{cluster=\"$cluster\"})",
+          "legendFormat": "total",
+          "refId": "B"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 20,
+            "spanNulls": false
+          },
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "total"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "white",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 24,
+      "title": "CPU Usage",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 58,
+        "w": 12,
+        "h": 8
+      },
+      "description": "Average Logstash process CPU across the cluster.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "avg(logstash_stats_process_cpu_percent{cluster=\"$cluster\"})",
+          "legendFormat": "avg cpu %",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 25,
+      "title": "JVM Heap",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 66,
+        "w": 12,
+        "h": 8
+      },
+      "description": "Logstash JVM heap used vs max, summed across the cluster.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum(logstash_stats_jvm_mem_heap_used_bytes{cluster=\"$cluster\"})",
+          "legendFormat": "used",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum(logstash_stats_jvm_mem_heap_max_bytes{cluster=\"$cluster\"})",
+          "legendFormat": "max",
+          "refId": "B"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 26,
+      "title": "GC Pressure",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 66,
+        "w": 12,
+        "h": 8
+      },
+      "description": "GC time rate. Sustained old-gen GC is the #1 cause of Logstash freezes.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum(rate(logstash_stats_jvm_gc_collection_time_millis_total{cluster=\"$cluster\", type=\"old\"}[$__rate_interval]))",
+          "legendFormat": "old gc ms/s",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum(rate(logstash_stats_jvm_gc_collection_time_millis_total{cluster=\"$cluster\", type=\"young\"}[$__rate_interval]))",
+          "legendFormat": "young gc ms/s",
+          "refId": "B"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 27,
+      "title": "JVM Threads",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource_prometheus}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 74,
+        "w": 24,
+        "h": 8
+      },
+      "description": "Logstash JVM thread count summed across the cluster.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum(logstash_stats_jvm_threads_count{cluster=\"$cluster\"})",
+          "legendFormat": "current",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "expr": "sum(logstash_stats_jvm_threads_peak_count{cluster=\"$cluster\"})",
+          "legendFormat": "peak",
+          "refId": "B"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "row",
+      "title": "Dead Letter Queue",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 82
+      }
+    },
+    {
+      "id": 28,
+      "title": "DLQ Document Count",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 83,
+        "w": 24,
+        "h": 8
+      },
+      "description": "Documents in the dead-letter table for this cluster. Growth means the analyzer produced unindexable records.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "${datasource}"
+          },
+          "refId": "A",
+          "editorType": "sql",
+          "queryType": "timeseries",
+          "format": 1,
+          "rawSql": "SELECT toStartOfInterval(timestamp, INTERVAL $__interval_s second) AS time, count() AS \"DLQ docs\" FROM alo.alo_dead_letter WHERE $__timeFilter(timestamp) AND cluster_name = '${cluster}' GROUP BY time ORDER BY time",
+          "meta": {
+            "builderOptions": {}
+          }
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 29,
+      "title": "DLQ Documents (Recent)",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 91,
+        "w": 24,
+        "h": 10
+      },
+      "description": "Recent dead-letter documents for this cluster \u2014 what was rejected and why.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "${datasource}"
+          },
+          "refId": "A",
+          "editorType": "sql",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT timestamp AS Time, error AS Error, request_path AS Path, request_method AS Method FROM alo.alo_dead_letter WHERE $__timeFilter(timestamp) AND cluster_name = '${cluster}' ORDER BY timestamp DESC LIMIT 20",
+          "meta": {
+            "builderOptions": {}
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Time",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Error"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 500
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 160
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Path"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Method"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "row",
+      "title": "Elasticsearch (optional \u2014 requires elasticsearch-exporter)",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 101
+      },
+      "panels": [
+        {
+          "id": 30,
+          "title": "ES CPU",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 102,
+            "w": 12,
+            "h": 8
+          },
+          "description": "Average Elasticsearch process CPU across the cluster.",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource_prometheus}"
+              },
+              "expr": "avg(elasticsearch_process_cpu_percent{cluster=\"$cluster\"})",
+              "legendFormat": "avg cpu %",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "spanNulls": false
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          }
+        },
+        {
+          "id": 31,
+          "title": "ES JVM Heap",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 102,
+            "w": 12,
+            "h": 8
+          },
+          "description": "Elasticsearch JVM heap used vs max across the cluster.",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource_prometheus}"
+              },
+              "expr": "sum(elasticsearch_jvm_memory_used_bytes{cluster=\"$cluster\"})",
+              "legendFormat": "used",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource_prometheus}"
+              },
+              "expr": "sum(elasticsearch_jvm_memory_max_bytes{cluster=\"$cluster\"})",
+              "legendFormat": "max",
+              "refId": "B"
+            }
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "spanNulls": false
+              },
+              "unit": "bytes"
+            },
+            "overrides": []
+          }
+        },
+        {
+          "id": 32,
+          "title": "ES GC Rate",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 110,
+            "w": 12,
+            "h": 8
+          },
+          "description": "Elasticsearch garbage-collection rate by collector.",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource_prometheus}"
+              },
+              "expr": "sum by (gc) (rate(elasticsearch_jvm_gc_collection_seconds_count{cluster=\"$cluster\"}[$__rate_interval]))",
+              "legendFormat": "{{gc}}",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "spanNulls": false
+              }
+            },
+            "overrides": []
+          }
+        },
+        {
+          "id": 33,
+          "title": "ES Thread Pool Queues",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 110,
+            "w": 12,
+            "h": 8
+          },
+          "description": "Queued search/write operations. Growing queues = ES is the bottleneck.",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource_prometheus}"
+              },
+              "expr": "sum by (type) (elasticsearch_thread_pool_queue_count{cluster=\"$cluster\", type=~\"search|write\"})",
+              "legendFormat": "{{type}}",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "spanNulls": false
+              }
+            },
+            "overrides": []
+          }
+        },
+        {
+          "id": 34,
+          "title": "ES Rejected Operations",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 118,
+            "w": 24,
+            "h": 8
+          },
+          "description": "Rejected thread-pool tasks per second. Non-zero = ES is overloaded and dropping work.",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource_prometheus}"
+              },
+              "expr": "sum by (type) (rate(elasticsearch_thread_pool_rejected_count{cluster=\"$cluster\", type=~\"search|write\"}[$__rate_interval]))",
+              "legendFormat": "{{type}} rejected/s",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "spanNulls": false,
+                "thresholdsStyle": {
+                  "mode": "line"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "value": null,
+                    "color": "green"
+                  },
+                  {
+                    "value": 1,
+                    "color": "red"
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          }
         }
       ]
     },
     {
-      "type": "timeseries",
-      "title": "Latency (P50 / P95 / P99)",
-      "description": "Request duration percentiles aggregated across selected instances.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 10 },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "custom": { "fillOpacity": 0, "lineWidth": 2, "spanNulls": false }
-        },
-        "overrides": []
-      },
-      "targets": [
-        { "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_highr_seconds_bucket{instance=~\"$analyzer_instance\"}[$__rate_interval])) by (le))", "legendFormat": "p50", "refId": "A" },
-        { "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_highr_seconds_bucket{instance=~\"$analyzer_instance\"}[$__rate_interval])) by (le))", "legendFormat": "p95", "refId": "B" },
-        { "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_highr_seconds_bucket{instance=~\"$analyzer_instance\"}[$__rate_interval])) by (le))", "legendFormat": "p99", "refId": "C" }
-      ]
-    },
-    {
-      "type": "timeseries",
-      "title": "Process Resources",
-      "description": "Aggregated analyzer memory (RSS) and average CPU usage across selected instances.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 10 },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": [
-          {
-            "matcher": { "id": "byName", "options": "memory" },
-            "properties": [{ "id": "unit", "value": "bytes" }, { "id": "custom.axisPlacement", "value": "left" }]
-          },
-          {
-            "matcher": { "id": "byName", "options": "avg cpu %" },
-            "properties": [{ "id": "unit", "value": "percent" }, { "id": "custom.axisPlacement", "value": "right" }]
-          }
-        ]
-      },
-      "targets": [
-        { "expr": "sum(process_resident_memory_bytes{job=\"analyzer\",instance=~\"$analyzer_instance\"})", "legendFormat": "memory", "refId": "A" },
-        { "expr": "avg(rate(process_cpu_seconds_total{job=\"analyzer\",instance=~\"$analyzer_instance\"}[$__rate_interval]) * 100)", "legendFormat": "avg cpu %", "refId": "B" }
-      ]
-    },
-
-    {
       "type": "row",
-      "title": "Logstash Pipeline",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
-      "collapsed": false
-    },
-    {
-      "type": "timeseries",
-      "title": "Events In / Out Rate",
-      "description": "Aggregated throughput. Output should track input; a growing gap means events are backing up.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 19 },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": { "fillOpacity": 15, "lineWidth": 2, "spanNulls": false }
-        },
-        "overrides": []
-      },
-      "targets": [
-        { "expr": "sum(logstash_stats_flow_input_current{instance=~\"$logstash_instance\"})", "legendFormat": "events in/s", "refId": "A" },
-        { "expr": "sum(logstash_stats_flow_output_current{instance=~\"$logstash_instance\"})", "legendFormat": "events out/s", "refId": "B" }
-      ]
-    },
-    {
-      "type": "gauge",
-      "title": "Avg Worker Utilization",
-      "description": "Average worker utilization across selected instances. Near 100% = saturated.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 4, "x": 8, "y": 19 },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "min": 0,
-          "max": 100,
-          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }, { "value": 70, "color": "yellow" }, { "value": 90, "color": "red" }] }
-        },
-        "overrides": []
-      },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
-      "targets": [
-        { "expr": "avg(logstash_stats_pipeline_flow_worker_utilization_current{instance=~\"$logstash_instance\"})", "legendFormat": "", "refId": "A" }
-      ]
-    },
-    {
-      "type": "gauge",
-      "title": "Max JVM Heap Used",
-      "description": "Worst-case JVM heap across selected instances. Alert at >85%.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 4, "x": 12, "y": 19 },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "min": 0,
-          "max": 100,
-          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }, { "value": 70, "color": "yellow" }, { "value": 85, "color": "red" }] }
-        },
-        "overrides": []
-      },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
-      "targets": [
-        { "expr": "max(logstash_stats_jvm_mem_heap_used_percent{instance=~\"$logstash_instance\"})", "legendFormat": "", "refId": "A" }
-      ]
-    },
-    {
-      "type": "timeseries",
-      "title": "CPU & Queue Backpressure",
-      "description": "Average CPU and sum of queue backpressure across selected instances.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 19 },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": [
-          {
-            "matcher": { "id": "byName", "options": "avg cpu %" },
-            "properties": [{ "id": "unit", "value": "percent" }, { "id": "custom.axisPlacement", "value": "left" }]
-          },
-          {
-            "matcher": { "id": "byName", "options": "backpressure" },
-            "properties": [{ "id": "unit", "value": "short" }, { "id": "custom.axisPlacement", "value": "right" }, { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } }]
-          }
-        ]
-      },
-      "targets": [
-        { "expr": "avg(logstash_stats_process_cpu_percent{instance=~\"$logstash_instance\"})", "legendFormat": "avg cpu %", "refId": "A" },
-        { "expr": "sum(logstash_stats_flow_queue_backpressure_current{instance=~\"$logstash_instance\"})", "legendFormat": "backpressure", "refId": "B" }
-      ]
-    },
-    {
-      "type": "timeseries",
-      "title": "GC Pressure",
-      "description": "Old-gen GC time rate — the #1 cause of Logstash freezes. If old GC runs >5% of wall time, the pipeline is in trouble.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 7, "w": 6, "x": 0, "y": 27 },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "ms",
-          "custom": { "fillOpacity": 15, "lineWidth": 2, "spanNulls": false }
-        },
-        "overrides": []
-      },
-      "targets": [
-        { "expr": "sum(rate(logstash_stats_jvm_gc_collection_time_millis_total{type=\"old\",instance=~\"$logstash_instance\"}[$__rate_interval]))", "legendFormat": "old gc ms/s", "refId": "A" },
-        { "expr": "sum(rate(logstash_stats_jvm_gc_collection_time_millis_total{type=\"young\",instance=~\"$logstash_instance\"}[$__rate_interval]))", "legendFormat": "young gc ms/s", "refId": "B" }
-      ]
-    },
-    {
-      "type": "timeseries",
-      "title": "Pipelines UP",
-      "description": "Number of healthy pipeline instances over time.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 7, "w": 6, "x": 6, "y": 27 },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "custom": { "fillOpacity": 20, "lineWidth": 2, "spanNulls": false }
-        },
-        "overrides": [
-          {
-            "matcher": { "id": "byName", "options": "total" },
-            "properties": [{ "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } }, { "id": "color", "value": { "fixedColor": "white", "mode": "fixed" } }]
-          }
-        ]
-      },
-      "targets": [
-        { "expr": "count(logstash_stats_pipeline_up{instance=~\"$logstash_instance\"} == 1)", "legendFormat": "up", "refId": "A" },
-        { "expr": "count(logstash_stats_pipeline_up{instance=~\"$logstash_instance\"})", "legendFormat": "total", "refId": "B" }
-      ]
-    },
-    {
-      "type": "timeseries",
-      "title": "Output Errors",
-      "description": "Elasticsearch bulk request errors and non-retryable document failures. Any sustained growth means data loss.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 7, "w": 6, "x": 12, "y": 27 },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": { "fillOpacity": 10, "lineWidth": 2, "spanNulls": false, "thresholdsStyle": { "mode": "line" } },
-          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }, { "value": 1, "color": "red" }] }
-        },
-        "overrides": []
-      },
-      "targets": [
-        { "expr": "sum(rate(logstash_stats_pipeline_plugin_bulk_requests_errors{instance=~\"$logstash_instance\"}[$__rate_interval]))", "legendFormat": "bulk errors/s", "refId": "A" },
-        { "expr": "sum(rate(logstash_stats_pipeline_plugin_documents_non_retryable_failures{instance=~\"$logstash_instance\"}[$__rate_interval]))", "legendFormat": "non-retryable/s", "refId": "B" }
-      ]
-    },
-    {
-      "type": "gauge",
-      "title": "Open FDs",
-      "description": "Worst-case file descriptor usage across instances. Approaching max = Logstash will crash.",
-      "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-      "gridPos": { "h": 7, "w": 6, "x": 18, "y": 27 },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "min": 0,
-          "max": 1,
-          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }, { "value": 0.7, "color": "yellow" }, { "value": 0.9, "color": "red" }] }
-        },
-        "overrides": []
-      },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
-      "targets": [
-        { "expr": "max(logstash_stats_process_open_file_descriptors{instance=~\"$logstash_instance\"} / logstash_stats_process_max_file_descriptors{instance=~\"$logstash_instance\"})", "legendFormat": "", "refId": "A" }
-      ]
-    },
-    {
-      "type": "row",
-      "title": "Elasticsearch (optional)",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
+      "title": "Per-Instance Drilldown",
       "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 102
+      },
       "panels": [
         {
-          "type": "stat",
-          "title": "Cluster Health",
-          "description": "Green = all shards assigned. Yellow = replicas missing. Red = primary shards missing.",
-          "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-          "gridPos": { "h": 4, "w": 4, "x": 0, "y": 35 },
+          "id": 35,
+          "title": "Logstash Worker Utilization (per instance)",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 103,
+            "w": 12,
+            "h": 8
+          },
+          "description": "Top 10 Logstash instances by worker utilization.",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource_prometheus}"
+              },
+              "expr": "topk(10, logstash_stats_pipeline_flow_worker_utilization_current{cluster=\"$cluster\", instance=~\"$logstash_instance\"})",
+              "legendFormat": "{{instance}}",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
           "fieldConfig": {
             "defaults": {
-              "mappings": [
-                { "type": "value", "options": { "1": { "text": "GREEN", "color": "green" }, "2": { "text": "YELLOW", "color": "yellow" }, "3": { "text": "RED", "color": "red" } } }
-              ],
-              "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }, { "value": 2, "color": "yellow" }, { "value": 3, "color": "red" }] }
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "spanNulls": false
+              },
+              "unit": "percent"
             },
             "overrides": []
+          }
+        },
+        {
+          "id": 36,
+          "title": "Logstash JVM Heap (per instance)",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
           },
-          "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "gridPos": {
+            "x": 12,
+            "y": 103,
+            "w": 12,
+            "h": 8
+          },
+          "description": "Top 10 Logstash instances by JVM heap usage.",
           "targets": [
-            { "expr": "elasticsearch_cluster_health_status{color=\"green\"} * 1 + elasticsearch_cluster_health_status{color=\"yellow\"} * 2 + elasticsearch_cluster_health_status{color=\"red\"} * 3", "legendFormat": "", "refId": "A", "instant": true }
-          ]
-        },
-        {
-          "type": "stat",
-          "title": "Nodes",
-          "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-          "gridPos": { "h": 4, "w": 2, "x": 4, "y": 35 },
-          "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }] } }, "overrides": [] },
-          "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
-          "targets": [
-            { "expr": "elasticsearch_cluster_health_number_of_nodes", "legendFormat": "", "refId": "A" }
-          ]
-        },
-        {
-          "type": "timeseries",
-          "title": "Search & Index Rate",
-          "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-          "gridPos": { "h": 8, "w": 6, "x": 6, "y": 35 },
-          "fieldConfig": { "defaults": { "unit": "ops", "custom": { "fillOpacity": 15, "lineWidth": 2, "spanNulls": false } }, "overrides": [] },
-          "targets": [
-            { "expr": "sum(rate(elasticsearch_indices_search_query_total[$__rate_interval]))", "legendFormat": "search/s", "refId": "A" },
-            { "expr": "sum(rate(elasticsearch_indices_indexing_index_total[$__rate_interval]))", "legendFormat": "index/s", "refId": "B" }
-          ]
-        },
-        {
-          "type": "timeseries",
-          "title": "JVM Heap Used",
-          "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-          "gridPos": { "h": 8, "w": 6, "x": 12, "y": 35 },
-          "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "fillOpacity": 15, "lineWidth": 2, "spanNulls": false } }, "overrides": [] },
-          "targets": [
-            { "expr": "sum(elasticsearch_jvm_memory_used_bytes{area=\"heap\"})", "legendFormat": "used", "refId": "A" },
-            { "expr": "sum(elasticsearch_jvm_memory_max_bytes{area=\"heap\"})", "legendFormat": "max", "refId": "B" }
-          ]
-        },
-        {
-          "type": "timeseries",
-          "title": "Disk & Shards",
-          "datasource": { "uid": "alo-prometheus", "type": "prometheus" },
-          "gridPos": { "h": 8, "w": 6, "x": 18, "y": 35 },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource_prometheus}"
+              },
+              "expr": "topk(10, logstash_stats_jvm_mem_heap_used_percent{cluster=\"$cluster\", instance=~\"$logstash_instance\"})",
+              "legendFormat": "{{instance}}",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
           "fieldConfig": {
-            "defaults": {},
-            "overrides": [
-              { "matcher": { "id": "byName", "options": "disk used" }, "properties": [{ "id": "unit", "value": "bytes" }, { "id": "custom.axisPlacement", "value": "left" }] },
-              { "matcher": { "id": "byName", "options": "unassigned shards" }, "properties": [{ "id": "unit", "value": "short" }, { "id": "custom.axisPlacement", "value": "right" }, { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] }
-            ]
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "spanNulls": false
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          }
+        },
+        {
+          "id": 37,
+          "title": "Analyzer In-Progress (per instance)",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
           },
+          "gridPos": {
+            "x": 0,
+            "y": 111,
+            "w": 12,
+            "h": 8
+          },
+          "description": "Top 10 analyzer instances by in-flight requests.",
           "targets": [
-            { "expr": "sum(elasticsearch_filesystem_data_size_bytes - elasticsearch_filesystem_data_free_bytes)", "legendFormat": "disk used", "refId": "A" },
-            { "expr": "elasticsearch_cluster_health_unassigned_shards", "legendFormat": "unassigned shards", "refId": "B" }
-          ]
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource_prometheus}"
+              },
+              "expr": "topk(10, http_requests_inprogress{cluster=\"$cluster\", instance=~\"$analyzer_instance\"})",
+              "legendFormat": "{{instance}}",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "spanNulls": false
+              }
+            },
+            "overrides": []
+          }
+        },
+        {
+          "id": 38,
+          "title": "Gateway Request Rate (per instance)",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource_prometheus}"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 111,
+            "w": 12,
+            "h": 8
+          },
+          "description": "Top 10 gateway instances by request rate.",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource_prometheus}"
+              },
+              "expr": "topk(10, sum by (instance) (rate(nginx_http_requests_total{cluster=\"$cluster\", instance=~\"$gateway_instance\"}[$__rate_interval])))",
+              "legendFormat": "{{instance}}",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "spanNulls": false
+              },
+              "unit": "reqps"
+            },
+            "overrides": []
+          }
         }
       ]
     }
   ],
-  "annotations": { "list": [] },
-  "links": []
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "datasource_prometheus",
+        "label": "Prometheus",
+        "query": "prometheus",
+        "regex": "",
+        "current": {
+          "text": "Prometheus (ALO)",
+          "value": "alo-prometheus"
+        }
+      },
+      {
+        "type": "datasource",
+        "name": "datasource",
+        "label": "ClickHouse",
+        "query": "grafana-clickhouse-datasource",
+        "regex": "",
+        "current": {
+          "text": "ClickHouse (ALO)",
+          "value": "alo-clickhouse"
+        }
+      },
+      {
+        "type": "query",
+        "name": "cluster",
+        "label": "Cluster",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource_prometheus}"
+        },
+        "query": "label_values(up, cluster)",
+        "definition": "label_values(up, cluster)",
+        "includeAll": false,
+        "multi": false,
+        "sort": 1,
+        "refresh": 2
+      },
+      {
+        "type": "query",
+        "name": "gateway_instance",
+        "label": "Gateway",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource_prometheus}"
+        },
+        "query": "label_values(nginx_up{cluster=\"$cluster\"}, instance)",
+        "definition": "label_values(nginx_up{cluster=\"$cluster\"}, instance)",
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "sort": 1,
+        "refresh": 2
+      },
+      {
+        "type": "query",
+        "name": "analyzer_instance",
+        "label": "Analyzer",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource_prometheus}"
+        },
+        "query": "label_values(http_requests_total{cluster=\"$cluster\",job=\"analyzer\"}, instance)",
+        "definition": "label_values(http_requests_total{cluster=\"$cluster\",job=\"analyzer\"}, instance)",
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "sort": 1,
+        "refresh": 2
+      },
+      {
+        "type": "query",
+        "name": "logstash_instance",
+        "label": "Logstash",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource_prometheus}"
+        },
+        "query": "label_values(logstash_info_up{cluster=\"$cluster\"}, instance)",
+        "definition": "label_values(logstash_info_up{cluster=\"$cluster\"}, instance)",
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "sort": 1,
+        "refresh": 2
+      },
+      {
+        "type": "query",
+        "name": "es_instance",
+        "label": "ES Instance",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource_prometheus}"
+        },
+        "query": "label_values(elasticsearch_process_cpu_percent{cluster=\"$cluster\"}, instance)",
+        "definition": "label_values(elasticsearch_process_cpu_percent{cluster=\"$cluster\"}, instance)",
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "sort": 1,
+        "refresh": 2
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Stress Analysis",
+      "url": "/d/alo-main",
+      "icon": "dashboard",
+      "tooltip": "Jump to ALO Stress Analysis dashboard",
+      "type": "link"
+    }
+  ],
+  "editable": true
 }

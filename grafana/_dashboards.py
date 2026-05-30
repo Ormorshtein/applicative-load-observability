@@ -792,6 +792,13 @@ def _wrap_dashboard(uid: str, title: str, description: str,
     }
 
 
+# Helm bakes dashboards into a ConfigMap from these files (see
+# helm/alo/templates/grafana/configmap-dashboards.yaml). Generate them from the
+# same builders so the chart never drifts from the provisioning directory.
+HELM_FILES_DIR = os.path.normpath(
+    os.path.join(SCRIPT_DIR, "..", "helm", "alo", "files"))
+
+
 def export_dashboards():
     from ._dashboard_builders import (
         build_cost_indicators_dashboard,
@@ -799,20 +806,29 @@ def export_dashboards():
         build_main_dashboard_he,
         build_usage_dashboard,
     )
+    from ._health_dashboard import build_health_dashboard
 
     os.makedirs(PROVISION_DIR, exist_ok=True)
+    helm_ok = os.path.isdir(HELM_FILES_DIR)
 
     for builder, filename in [
         (build_main_dashboard, "alo-main.json"),
         (build_main_dashboard_he, "alo-main-he.json"),
         (build_cost_indicators_dashboard, "alo-cost-indicators.json"),
         (build_usage_dashboard, "alo-usage.json"),
+        (build_health_dashboard, "alo-health.json"),
     ]:
         dashboard = builder()
+        payload = json.dumps(dashboard, indent=2)
         path = os.path.join(PROVISION_DIR, filename)
         with open(path, "w", encoding="utf-8") as f:
-            json.dump(dashboard, f, indent=2)
+            f.write(payload)
         print(f"  Exported: {path}")
+        if helm_ok:
+            helm_path = os.path.join(HELM_FILES_DIR, f"grafana-{filename}")
+            with open(helm_path, "w", encoding="utf-8") as f:
+                f.write(payload)
+            print(f"  Exported: {helm_path}")
 
     return PROVISION_DIR
 

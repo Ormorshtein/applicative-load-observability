@@ -1,13 +1,13 @@
 {
   "uid": "alo-main-he",
-  "title": "ALO — ניתוח עומסים",
-  "description": "ניתוח עומסים לפי אפליקציה, יעד, פעולה ותבנית, כולל מגמה כוללת.",
+  "title": "ALO \u2014 \u05e0\u05d9\u05ea\u05d5\u05d7 \u05e2\u05d5\u05de\u05e1\u05d9\u05dd",
+  "description": "\u05e0\u05d9\u05ea\u05d5\u05d7 \u05e2\u05d5\u05de\u05e1\u05d9\u05dd \u05dc\u05e4\u05d9 \u05d0\u05e4\u05dc\u05d9\u05e7\u05e6\u05d9\u05d4, \u05d9\u05e2\u05d3, \u05e4\u05e2\u05d5\u05dc\u05d4 \u05d5\u05ea\u05d1\u05e0\u05d9\u05ea, \u05db\u05d5\u05dc\u05dc \u05de\u05d2\u05de\u05d4 \u05db\u05d5\u05dc\u05dc\u05ea.",
   "tags": [
     "alo",
     "observability"
   ],
   "timezone": "browser",
-  "schemaVersion": 39,
+  "schemaVersion": 40,
   "version": 1,
   "refresh": "30s",
   "time": {
@@ -17,8 +17,8 @@
   "panels": [
     {
       "id": 1,
-      "title": "ניצול CPU של Elasticsearch",
-      "description": "אחוז CPU של תהליך Elasticsearch. דורש את פרופיל ה-prometheus.",
+      "title": "\u05e0\u05d9\u05e6\u05d5\u05dc CPU \u05e9\u05dc Elasticsearch",
+      "description": "\u05d0\u05d7\u05d5\u05d6 CPU \u05e9\u05dc \u05ea\u05d4\u05dc\u05d9\u05da Elasticsearch. \u05d3\u05d5\u05e8\u05e9 \u05d0\u05ea \u05e4\u05e8\u05d5\u05e4\u05d9\u05dc \u05d4-prometheus.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -36,8 +36,8 @@
             "type": "prometheus",
             "uid": "${datasource_prometheus}"
           },
-          "expr": "elasticsearch_process_cpu_percent{instance=~\"$instance\"}",
-          "legendFormat": "{{instance}}",
+          "expr": "elasticsearch_process_cpu_percent{cluster=~\"$cluster\"}",
+          "legendFormat": "{{cluster}}",
           "refId": "A"
         }
       ],
@@ -57,23 +57,17 @@
             "fillOpacity": 20
           },
           "unit": "percent",
-          "noValue": "Enable prometheus profile",
-          "links": [
-            {
-              "title": "Open ES Health Dashboard",
-              "url": "/d/alo-health?orgId=1&${__url_time_range}"
-            }
-          ]
+          "noValue": "Enable prometheus profile"
         },
         "overrides": []
       }
     },
     {
       "id": 2,
-      "title": "סך ציוני העומס",
+      "title": "\u05e1\u05da \u05e6\u05d9\u05d5\u05e0\u05d9 \u05d4\u05e2\u05d5\u05de\u05e1",
       "type": "stat",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -82,40 +76,29 @@
         "w": 6,
         "h": 6
       },
-      "description": "סך כל ציוני העומס בטווח הזמן שנבחר.",
+      "description": "\u05e1\u05da \u05db\u05dc \u05e6\u05d9\u05d5\u05e0\u05d9 \u05d4\u05e2\u05d5\u05de\u05e1 \u05d1\u05d8\u05d5\u05d5\u05d7 \u05d4\u05d6\u05de\u05df \u05e9\u05e0\u05d1\u05d7\u05e8.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "sum",
-              "id": "1",
-              "field": "stress.score"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ]
+          "editorType": "sql",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT sum(stress_score) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)",
+          "meta": {
+            "builderOptions": {}
+          }
         }
       ],
       "options": {
         "reduceOptions": {
           "calcs": [
-            "sum"
+            "lastNotNull"
           ],
-          "fields": "",
+          "fields": "/^value$/",
           "values": false
         },
         "colorMode": "value",
@@ -129,7 +112,7 @@
     },
     {
       "id": 3,
-      "title": "מדריך לדשבורד",
+      "title": "\u05de\u05d3\u05e8\u05d9\u05da \u05dc\u05d3\u05e9\u05d1\u05d5\u05e8\u05d3",
       "type": "text",
       "gridPos": {
         "x": 0,
@@ -137,22 +120,22 @@
         "w": 24,
         "h": 8
       },
-      "description": "מדריך מהיר לקריאת הדשבורד.",
+      "description": "\u05de\u05d3\u05e8\u05d9\u05da \u05de\u05d4\u05d9\u05e8 \u05dc\u05e7\u05e8\u05d9\u05d0\u05ea \u05d4\u05d3\u05e9\u05d1\u05d5\u05e8\u05d3.",
       "fieldConfig": {
         "defaults": {},
         "overrides": []
       },
       "options": {
-        "mode": "html",
-        "content": "<div style=\"text-align: right; margin: 0.15em 0\">\n<h2 style=\"text-align: right; margin: 0.15em 0\">‫מדריך מהיר לדשבורד‬</h2>\n\n<p style=\"text-align: right; margin: 0.15em 0\"><b>‫איך לקרוא את הדשבורד:‬</b></p>\n\n<p style=\"text-align: right; margin: 0.15em 0\">‫1. <b>התחילו במבט-על</b> — תרשימי העוגה מראים אילו אפליקציה, יעד, פעולה או תבנית מייצרים את עיקר העומס.‬</p>\n<p style=\"text-align: right; margin: 0.15em 0\">‫2. <b>בדקו את טבלת עשר התבניות המובילות</b> — התמקדו בתבניות עם סך העומס הגבוה ביותר ובמחווני העלות הרבים ביותר.‬</p>\n<p style=\"text-align: right; margin: 0.15em 0\">‫3. <b>עברו על המגמות</b> — תרשימי העומס לאורך הזמן חושפים קפיצות ודפוסים. השוו אל מול דפלויים או שינויים בתעבורה.‬</p>\n<p style=\"text-align: right; margin: 0.15em 0\">‫4. <b>עיינו בנפח ובתפוקה</b> — נפח הבקשות, סך ההתאמות, מסמכים שנכתבו וגודל הבקשה מציגים את העומס התפעולי. סך ההתאמות נמצא במתאם ל-CPU.‬</p>\n<p style=\"text-align: right; margin: 0.15em 0\">‫5. <b>בדקו את זמני התגובה</b> — השהיה גבוהה ב-ES או בגייטוויי לצד עומס גבוה עשויה להעיד על הזדמנויות לאופטימיזציה של שאילתות.‬</p>\n<p style=\"text-align: right; margin: 0.15em 0\">‫6. <b>בדיקות שפיות</b> — ודאו שהתבניות השכיחות ביותר הן גם הכבדות ביותר; תבניות עם מחווני עלות רבים דורשות תשומת לב.‬</p>\n\n<p style=\"text-align: right; margin: 0.15em 0\"><b>‫על מה להתמקד:‬</b></p>\n\n<p style=\"text-align: right; margin: 0.15em 0\">‫• <b>פלחים עם עומס גבוה</b> בתרשימי העוגה — לחיצה תסנן את הדשבורד‬</p>\n<p style=\"text-align: right; margin: 0.15em 0\">‫• <b>מגמות עולות</b> בסדרות הזמן — עומס גובר או הידרדרות בדפוסים‬</p>\n<p style=\"text-align: right; margin: 0.15em 0\">‫• <b>תבניות עם מחווני עלות רבים</b> — מועמדות לאופטימיזציה של שאילתות‬</p>\n<p style=\"text-align: right; margin: 0.15em 0\">‫• <b>קפיצות השהיה</b> התואמות לפעולות או לתבניות מסוימות‬</p>\n\n<p style=\"text-align: right; margin: 0.15em 0\"><b>‫סינון לפי תוויות מותאמות:‬</b></p>\n<p style=\"text-align: right; margin: 0.15em 0\">‫אם הבקשות כוללות כותרות <code>x-alo-*</code> (למשל <code>x-alo-team: payments</code>), סננו לפיהן בסרגל <b>Filters</b> שבראש הדשבורד: לחצו <code>+</code>, הקלידו <code>identity.labels.team</code> וקבעו <code>= payments</code>.‬</p>\n</div>\n"
+        "mode": "markdown",
+        "content": "<div style=\"text-align: right; margin: 0.15em 0\">\n<h2 style=\"text-align: right; margin: 0.15em 0\">\u202b\u05de\u05d3\u05e8\u05d9\u05da \u05de\u05d4\u05d9\u05e8 \u05dc\u05d3\u05e9\u05d1\u05d5\u05e8\u05d3\u202c</h2>\n\n<p style=\"text-align: right; margin: 0.15em 0\"><b>\u202b\u05d0\u05d9\u05da \u05dc\u05e7\u05e8\u05d5\u05d0 \u05d0\u05ea \u05d4\u05d3\u05e9\u05d1\u05d5\u05e8\u05d3:\u202c</b></p>\n\n<p style=\"text-align: right; margin: 0.15em 0\">\u202b1. <b>\u05d4\u05ea\u05d7\u05d9\u05dc\u05d5 \u05d1\u05de\u05d1\u05d8-\u05e2\u05dc</b> \u2014 \u05ea\u05e8\u05e9\u05d9\u05de\u05d9 \u05d4\u05e2\u05d5\u05d2\u05d4 \u05de\u05e8\u05d0\u05d9\u05dd \u05d0\u05d9\u05dc\u05d5 \u05d0\u05e4\u05dc\u05d9\u05e7\u05e6\u05d9\u05d4, \u05d9\u05e2\u05d3, \u05e4\u05e2\u05d5\u05dc\u05d4 \u05d0\u05d5 \u05ea\u05d1\u05e0\u05d9\u05ea \u05de\u05d9\u05d9\u05e6\u05e8\u05d9\u05dd \u05d0\u05ea \u05e2\u05d9\u05e7\u05e8 \u05d4\u05e2\u05d5\u05de\u05e1.\u202c</p>\n<p style=\"text-align: right; margin: 0.15em 0\">\u202b2. <b>\u05d1\u05d3\u05e7\u05d5 \u05d0\u05ea \u05d8\u05d1\u05dc\u05ea \u05e2\u05e9\u05e8 \u05d4\u05ea\u05d1\u05e0\u05d9\u05d5\u05ea \u05d4\u05de\u05d5\u05d1\u05d9\u05dc\u05d5\u05ea</b> \u2014 \u05d4\u05ea\u05de\u05e7\u05d3\u05d5 \u05d1\u05ea\u05d1\u05e0\u05d9\u05d5\u05ea \u05e2\u05dd \u05e1\u05da \u05d4\u05e2\u05d5\u05de\u05e1 \u05d4\u05d2\u05d1\u05d5\u05d4 \u05d1\u05d9\u05d5\u05ea\u05e8 \u05d5\u05d1\u05de\u05d7\u05d5\u05d5\u05e0\u05d9 \u05d4\u05e2\u05dc\u05d5\u05ea \u05d4\u05e8\u05d1\u05d9\u05dd \u05d1\u05d9\u05d5\u05ea\u05e8.\u202c</p>\n<p style=\"text-align: right; margin: 0.15em 0\">\u202b3. <b>\u05e2\u05d1\u05e8\u05d5 \u05e2\u05dc \u05d4\u05de\u05d2\u05de\u05d5\u05ea</b> \u2014 \u05ea\u05e8\u05e9\u05d9\u05de\u05d9 \u05d4\u05e2\u05d5\u05de\u05e1 \u05dc\u05d0\u05d5\u05e8\u05da \u05d4\u05d6\u05de\u05df \u05d7\u05d5\u05e9\u05e4\u05d9\u05dd \u05e7\u05e4\u05d9\u05e6\u05d5\u05ea \u05d5\u05d3\u05e4\u05d5\u05e1\u05d9\u05dd. \u05d4\u05e9\u05d5\u05d5 \u05d0\u05dc \u05de\u05d5\u05dc \u05d3\u05e4\u05dc\u05d5\u05d9\u05d9\u05dd \u05d0\u05d5 \u05e9\u05d9\u05e0\u05d5\u05d9\u05d9\u05dd \u05d1\u05ea\u05e2\u05d1\u05d5\u05e8\u05d4.\u202c</p>\n<p style=\"text-align: right; margin: 0.15em 0\">\u202b4. <b>\u05e2\u05d9\u05d9\u05e0\u05d5 \u05d1\u05e0\u05e4\u05d7 \u05d5\u05d1\u05ea\u05e4\u05d5\u05e7\u05d4</b> \u2014 \u05e0\u05e4\u05d7 \u05d4\u05d1\u05e7\u05e9\u05d5\u05ea, \u05e1\u05da \u05d4\u05d4\u05ea\u05d0\u05de\u05d5\u05ea, \u05de\u05e1\u05de\u05db\u05d9\u05dd \u05e9\u05e0\u05db\u05ea\u05d1\u05d5 \u05d5\u05d2\u05d5\u05d3\u05dc \u05d4\u05d1\u05e7\u05e9\u05d4 \u05de\u05e6\u05d9\u05d2\u05d9\u05dd \u05d0\u05ea \u05d4\u05e2\u05d5\u05de\u05e1 \u05d4\u05ea\u05e4\u05e2\u05d5\u05dc\u05d9. \u05e1\u05da \u05d4\u05d4\u05ea\u05d0\u05de\u05d5\u05ea \u05e0\u05de\u05e6\u05d0 \u05d1\u05de\u05ea\u05d0\u05dd \u05dc-CPU.\u202c</p>\n<p style=\"text-align: right; margin: 0.15em 0\">\u202b5. <b>\u05d1\u05d3\u05e7\u05d5 \u05d0\u05ea \u05d6\u05de\u05e0\u05d9 \u05d4\u05ea\u05d2\u05d5\u05d1\u05d4</b> \u2014 \u05d4\u05e9\u05d4\u05d9\u05d4 \u05d2\u05d1\u05d5\u05d4\u05d4 \u05d1-ES \u05d0\u05d5 \u05d1\u05d2\u05d9\u05d9\u05d8\u05d5\u05d5\u05d9\u05d9 \u05dc\u05e6\u05d3 \u05e2\u05d5\u05de\u05e1 \u05d2\u05d1\u05d5\u05d4 \u05e2\u05e9\u05d5\u05d9\u05d4 \u05dc\u05d4\u05e2\u05d9\u05d3 \u05e2\u05dc \u05d4\u05d6\u05d3\u05de\u05e0\u05d5\u05d9\u05d5\u05ea \u05dc\u05d0\u05d5\u05e4\u05d8\u05d9\u05de\u05d9\u05d6\u05e6\u05d9\u05d4 \u05e9\u05dc \u05e9\u05d0\u05d9\u05dc\u05ea\u05d5\u05ea.\u202c</p>\n<p style=\"text-align: right; margin: 0.15em 0\">\u202b6. <b>\u05d1\u05d3\u05d9\u05e7\u05d5\u05ea \u05e9\u05e4\u05d9\u05d5\u05ea</b> \u2014 \u05d5\u05d3\u05d0\u05d5 \u05e9\u05d4\u05ea\u05d1\u05e0\u05d9\u05d5\u05ea \u05d4\u05e9\u05db\u05d9\u05d7\u05d5\u05ea \u05d1\u05d9\u05d5\u05ea\u05e8 \u05d4\u05df \u05d2\u05dd \u05d4\u05db\u05d1\u05d3\u05d5\u05ea \u05d1\u05d9\u05d5\u05ea\u05e8; \u05ea\u05d1\u05e0\u05d9\u05d5\u05ea \u05e2\u05dd \u05de\u05d7\u05d5\u05d5\u05e0\u05d9 \u05e2\u05dc\u05d5\u05ea \u05e8\u05d1\u05d9\u05dd \u05d3\u05d5\u05e8\u05e9\u05d5\u05ea \u05ea\u05e9\u05d5\u05de\u05ea \u05dc\u05d1.\u202c</p>\n\n<p style=\"text-align: right; margin: 0.15em 0\"><b>\u202b\u05e2\u05dc \u05de\u05d4 \u05dc\u05d4\u05ea\u05de\u05e7\u05d3:\u202c</b></p>\n\n<p style=\"text-align: right; margin: 0.15em 0\">\u202b\u2022 <b>\u05e4\u05dc\u05d7\u05d9\u05dd \u05e2\u05dd \u05e2\u05d5\u05de\u05e1 \u05d2\u05d1\u05d5\u05d4</b> \u05d1\u05ea\u05e8\u05e9\u05d9\u05de\u05d9 \u05d4\u05e2\u05d5\u05d2\u05d4 \u2014 \u05dc\u05d7\u05d9\u05e6\u05d4 \u05ea\u05e1\u05e0\u05df \u05d0\u05ea \u05d4\u05d3\u05e9\u05d1\u05d5\u05e8\u05d3\u202c</p>\n<p style=\"text-align: right; margin: 0.15em 0\">\u202b\u2022 <b>\u05de\u05d2\u05de\u05d5\u05ea \u05e2\u05d5\u05dc\u05d5\u05ea</b> \u05d1\u05e1\u05d3\u05e8\u05d5\u05ea \u05d4\u05d6\u05de\u05df \u2014 \u05e2\u05d5\u05de\u05e1 \u05d2\u05d5\u05d1\u05e8 \u05d0\u05d5 \u05d4\u05d9\u05d3\u05e8\u05d3\u05e8\u05d5\u05ea \u05d1\u05d3\u05e4\u05d5\u05e1\u05d9\u05dd\u202c</p>\n<p style=\"text-align: right; margin: 0.15em 0\">\u202b\u2022 <b>\u05ea\u05d1\u05e0\u05d9\u05d5\u05ea \u05e2\u05dd \u05de\u05d7\u05d5\u05d5\u05e0\u05d9 \u05e2\u05dc\u05d5\u05ea \u05e8\u05d1\u05d9\u05dd</b> \u2014 \u05de\u05d5\u05e2\u05de\u05d3\u05d5\u05ea \u05dc\u05d0\u05d5\u05e4\u05d8\u05d9\u05de\u05d9\u05d6\u05e6\u05d9\u05d4 \u05e9\u05dc \u05e9\u05d0\u05d9\u05dc\u05ea\u05d5\u05ea\u202c</p>\n<p style=\"text-align: right; margin: 0.15em 0\">\u202b\u2022 <b>\u05e7\u05e4\u05d9\u05e6\u05d5\u05ea \u05d4\u05e9\u05d4\u05d9\u05d4</b> \u05d4\u05ea\u05d5\u05d0\u05de\u05d5\u05ea \u05dc\u05e4\u05e2\u05d5\u05dc\u05d5\u05ea \u05d0\u05d5 \u05dc\u05ea\u05d1\u05e0\u05d9\u05d5\u05ea \u05de\u05e1\u05d5\u05d9\u05de\u05d5\u05ea\u202c</p>\n\n<p style=\"text-align: right; margin: 0.15em 0\"><b>\u202b\u05e1\u05d9\u05e0\u05d5\u05df \u05dc\u05e4\u05d9 \u05ea\u05d5\u05d5\u05d9\u05d5\u05ea \u05de\u05d5\u05ea\u05d0\u05de\u05d5\u05ea:\u202c</b></p>\n<p style=\"text-align: right; margin: 0.15em 0\">\u202b\u05d0\u05dd \u05d4\u05d1\u05e7\u05e9\u05d5\u05ea \u05db\u05d5\u05dc\u05dc\u05d5\u05ea \u05db\u05d5\u05ea\u05e8\u05d5\u05ea <code>x-alo-*</code> (\u05dc\u05de\u05e9\u05dc <code>x-alo-team: payments</code>), \u05e1\u05e0\u05e0\u05d5 \u05dc\u05e4\u05d9\u05d4\u05df \u05d1\u05e1\u05e8\u05d2\u05dc <b>Filters</b> \u05e9\u05d1\u05e8\u05d0\u05e9 \u05d4\u05d3\u05e9\u05d1\u05d5\u05e8\u05d3: \u05dc\u05d7\u05e6\u05d5 <code>+</code>, \u05d4\u05e7\u05dc\u05d9\u05d3\u05d5 <code>identity.labels.team</code> \u05d5\u05e7\u05d1\u05e2\u05d5 <code>= payments</code>.\u202c</p>\n</div>\n"
       }
     },
     {
       "id": 4,
-      "title": "עומס לפי אפליקציה — בטווח שנבחר",
+      "title": "Stress by Application (Selected Period)",
       "type": "piechart",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -161,49 +144,39 @@
         "w": 8,
         "h": 10
       },
-      "description": "התפלגות העומס בין ספקי האפליקציה. לחיצה על פלח תסנן את הדשבורד.",
+      "description": "Stress distribution across applicative providers. Click a slice to filter the dashboard.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "sum",
-              "id": "1",
-              "field": "stress.score"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "identity.applicative_provider",
-              "id": "2",
-              "settings": {
-                "size": "8",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            }
-          ]
+          "editorType": "sql",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT COALESCE(nullIf(toString(identity_applicative_provider), ''), '(unknown)') AS label, sum(stress_score) AS __val FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY label ORDER BY __val DESC LIMIT 8",
+          "meta": {
+            "builderOptions": {}
+          }
         }
       ],
       "options": {
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "sum"
           ],
           "fields": "",
-          "values": true
+          "values": false
         },
         "pieType": "pie",
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "values": [
+            "value",
+            "percent"
+          ]
         },
         "tooltip": {
           "mode": "multi"
@@ -213,21 +186,39 @@
         "defaults": {
           "links": [
             {
-              "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-application=${__data.fields[0]}",
+              "title": "Filter by ${__field.name}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-application=${__field.name}",
               "targetBlank": false
             }
           ]
         },
         "overrides": []
-      }
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "label"
+            ],
+            "keepFields": false
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^__val (.+)$",
+            "renamePattern": "$1"
+          }
+        }
+      ]
     },
     {
       "id": 5,
-      "title": "עומס לפי יעד — בטווח שנבחר",
+      "title": "Stress by Target (Selected Period)",
       "type": "piechart",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -236,49 +227,39 @@
         "w": 8,
         "h": 10
       },
-      "description": "התפלגות העומס בין אינדקסים ובסיסי נתונים. לחיצה על פלח תסנן את הדשבורד.",
+      "description": "Stress distribution across target indices. Click a slice to filter the dashboard.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "sum",
-              "id": "1",
-              "field": "stress.score"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "request.target",
-              "id": "2",
-              "settings": {
-                "size": "8",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            }
-          ]
+          "editorType": "sql",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT COALESCE(nullIf(toString(request_target), ''), '(unknown)') AS label, sum(stress_score) AS __val FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY label ORDER BY __val DESC LIMIT 8",
+          "meta": {
+            "builderOptions": {}
+          }
         }
       ],
       "options": {
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "sum"
           ],
           "fields": "",
-          "values": true
+          "values": false
         },
         "pieType": "pie",
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "values": [
+            "value",
+            "percent"
+          ]
         },
         "tooltip": {
           "mode": "multi"
@@ -288,21 +269,39 @@
         "defaults": {
           "links": [
             {
-              "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-target=${__data.fields[0]}",
+              "title": "Filter by ${__field.name}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-target=${__field.name}",
               "targetBlank": false
             }
           ]
         },
         "overrides": []
-      }
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "label"
+            ],
+            "keepFields": false
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^__val (.+)$",
+            "renamePattern": "$1"
+          }
+        }
+      ]
     },
     {
       "id": 6,
-      "title": "עומס לפי פעולה — בטווח שנבחר",
+      "title": "Stress by Operation (Selected Period)",
       "type": "piechart",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -311,49 +310,39 @@
         "w": 8,
         "h": 10
       },
-      "description": "התפלגות העומס לפי סוגי פעולות (search, index, bulk וכד'). לחיצה על פלח תסנן.",
+      "description": "Stress distribution across operation types (search, index, bulk, etc.). Click a slice to filter.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "sum",
-              "id": "1",
-              "field": "stress.score"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "request.operation",
-              "id": "2",
-              "settings": {
-                "size": "8",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            }
-          ]
+          "editorType": "sql",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT COALESCE(nullIf(toString(request_operation), ''), '(unknown)') AS label, sum(stress_score) AS __val FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY label ORDER BY __val DESC LIMIT 8",
+          "meta": {
+            "builderOptions": {}
+          }
         }
       ],
       "options": {
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "sum"
           ],
           "fields": "",
-          "values": true
+          "values": false
         },
         "pieType": "pie",
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "values": [
+            "value",
+            "percent"
+          ]
         },
         "tooltip": {
           "mode": "multi"
@@ -363,21 +352,39 @@
         "defaults": {
           "links": [
             {
-              "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-operation=${__data.fields[0]}",
+              "title": "Filter by ${__field.name}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-operation=${__field.name}",
               "targetBlank": false
             }
           ]
         },
         "overrides": []
-      }
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "label"
+            ],
+            "keepFields": false
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^__val (.+)$",
+            "renamePattern": "$1"
+          }
+        }
+      ]
     },
     {
       "id": 7,
-      "title": "עומס לפי מחוון עלות — בטווח שנבחר",
+      "title": "Stress by Cost Indicator (Selected Period)",
       "type": "piechart",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -386,49 +393,39 @@
         "w": 12,
         "h": 10
       },
-      "description": "התפלגות העומס לפי סוגי מחווני עלות. 'unflagged' = בקשות ללא מחוונים.",
+      "description": "\u05d4\u05ea\u05e4\u05dc\u05d2\u05d5\u05ea \u05d4\u05e2\u05d5\u05de\u05e1 \u05dc\u05e4\u05d9 \u05e1\u05d5\u05d2\u05d9 \u05de\u05d7\u05d5\u05d5\u05e0\u05d9 \u05e2\u05dc\u05d5\u05ea. 'unflagged' = \u05d1\u05e7\u05e9\u05d5\u05ea \u05dc\u05dc\u05d0 \u05de\u05d7\u05d5\u05d5\u05e0\u05d9\u05dd.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "sum",
-              "id": "1",
-              "field": "stress.score"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "stress.cost_indicator_names",
-              "id": "2",
-              "settings": {
-                "size": "10",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            }
-          ]
+          "editorType": "sql",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT COALESCE(nullIf(toString(arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names))), ''), '(unknown)') AS label, sum(stress_score) AS __val FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY label ORDER BY __val DESC LIMIT 10",
+          "meta": {
+            "builderOptions": {}
+          }
         }
       ],
       "options": {
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "sum"
           ],
           "fields": "",
-          "values": true
+          "values": false
         },
         "pieType": "pie",
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "values": [
+            "value",
+            "percent"
+          ]
         },
         "tooltip": {
           "mode": "multi"
@@ -438,21 +435,39 @@
         "defaults": {
           "links": [
             {
-              "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-cost_indicator=${__data.fields[0]}",
+              "title": "Filter by ${__field.name}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-cost_indicator=${__field.name}",
               "targetBlank": false
             }
           ]
         },
         "overrides": []
-      }
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "label"
+            ],
+            "keepFields": false
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^__val (.+)$",
+            "renamePattern": "$1"
+          }
+        }
+      ]
     },
     {
       "id": 8,
-      "title": "עומס לפי תבנית — בטווח שנבחר",
+      "title": "Stress by Template (Selected Period)",
       "type": "piechart",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -461,49 +476,39 @@
         "w": 12,
         "h": 10
       },
-      "description": "התפלגות העומס לפי תבניות הבקשה. לחיצה על פלח תסנן את הדשבורד.",
+      "description": "Stress distribution across request templates. Click a slice to filter the dashboard.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "sum",
-              "id": "1",
-              "field": "stress.score"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "request.template",
-              "id": "2",
-              "settings": {
-                "size": "10",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            }
-          ]
+          "editorType": "sql",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT COALESCE(nullIf(LEFT(toString(request_template), 60), ''), '(no template)') AS label, sum(stress_score) AS __val FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY label ORDER BY __val DESC LIMIT 10",
+          "meta": {
+            "builderOptions": {}
+          }
         }
       ],
       "options": {
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "sum"
           ],
           "fields": "",
-          "values": true
+          "values": false
         },
         "pieType": "pie",
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "values": [
+            "value",
+            "percent"
+          ]
         },
         "tooltip": {
           "mode": "multi"
@@ -513,18 +518,36 @@
         "defaults": {
           "links": [
             {
-              "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-template=${__data.fields[0]}",
+              "title": "Filter by ${__field.name}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-template=${__field.name}",
               "targetBlank": false
             }
           ]
         },
         "overrides": []
-      }
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "label"
+            ],
+            "keepFields": false
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^__val (.+)$",
+            "renamePattern": "$1"
+          }
+        }
+      ]
     },
     {
       "type": "row",
-      "title": "ההשפעה הגדולה ביותר",
+      "title": "\u05d4\u05d4\u05e9\u05e4\u05e2\u05d4 \u05d4\u05d2\u05d3\u05d5\u05dc\u05d4 \u05d1\u05d9\u05d5\u05ea\u05e8",
       "collapsed": false,
       "gridPos": {
         "h": 1,
@@ -535,10 +558,10 @@
     },
     {
       "id": 9,
-      "title": "עשר התבניות המובילות לפי ציון העומס",
+      "title": "\u05e2\u05e9\u05e8 \u05d4\u05ea\u05d1\u05e0\u05d9\u05d5\u05ea \u05d4\u05de\u05d5\u05d1\u05d9\u05dc\u05d5\u05ea \u05dc\u05e4\u05d9 \u05e6\u05d9\u05d5\u05df \u05d4\u05e2\u05d5\u05de\u05e1",
       "type": "table",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -547,86 +570,28 @@
         "w": 24,
         "h": 8
       },
-      "description": "עשר תבניות הבקשה המובילות לפי סך ציוני העומס, כולל אחוזוני השהיה וממוצעי מחווני עלות.",
+      "description": "\u05e2\u05e9\u05e8 \u05ea\u05d1\u05e0\u05d9\u05d5\u05ea \u05d4\u05d1\u05e7\u05e9\u05d4 \u05d4\u05de\u05d5\u05d1\u05d9\u05dc\u05d5\u05ea \u05dc\u05e4\u05d9 \u05e1\u05da \u05e6\u05d9\u05d5\u05e0\u05d9 \u05d4\u05e2\u05d5\u05de\u05e1, \u05db\u05d5\u05dc\u05dc \u05d0\u05d7\u05d5\u05d6\u05d5\u05e0\u05d9 \u05d4\u05e9\u05d4\u05d9\u05d4 \u05d5\u05de\u05de\u05d5\u05e6\u05e2\u05d9 \u05de\u05d7\u05d5\u05d5\u05e0\u05d9 \u05e2\u05dc\u05d5\u05ea.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "sum",
-              "id": "1",
-              "field": "stress.score"
-            },
-            {
-              "type": "avg",
-              "id": "2",
-              "field": "stress.score"
-            },
-            {
-              "type": "percentiles",
-              "field": "response.es_took_ms",
-              "id": "3",
-              "settings": {
-                "percents": [
-                  50
-                ]
-              }
-            },
-            {
-              "type": "percentiles",
-              "field": "response.es_took_ms",
-              "id": "4",
-              "settings": {
-                "percents": [
-                  95
-                ]
-              }
-            },
-            {
-              "type": "percentiles",
-              "field": "response.es_took_ms",
-              "id": "5",
-              "settings": {
-                "percents": [
-                  99
-                ]
-              }
-            },
-            {
-              "type": "avg",
-              "id": "6",
-              "field": "stress.cost_indicator_count"
-            },
-            {
-              "type": "count",
-              "id": "7"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "request.template",
-              "id": "99",
-              "settings": {
-                "size": "10",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            }
-          ]
+          "editorType": "sql",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT request_template AS \"Template\", sum(stress_score) AS \"Sum Stress Score\", avg(stress_score) AS \"Avg Stress Score\", quantile(0.5)(response_es_took_ms) AS \"P50 ES Latency (ms)\", quantile(0.95)(response_es_took_ms) AS \"P95 ES Latency (ms)\", quantile(0.99)(response_es_took_ms) AS \"P99 ES Latency (ms)\", avg(stress_cost_indicator_count) AS \"Avg Cost Indicators\", count() AS \"Requests\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY \"Template\" ORDER BY \"Sum Stress Score\" DESC LIMIT 10",
+          "meta": {
+            "builderOptions": {}
+          }
         }
       ],
       "options": {
         "showHeader": true,
         "sortBy": [
           {
-            "displayName": "סך ציון העומס",
+            "displayName": "\u05e1\u05da \u05e6\u05d9\u05d5\u05df \u05d4\u05e2\u05d5\u05de\u05e1",
             "desc": true
           }
         ]
@@ -641,100 +606,15 @@
             }
           ]
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Sum stress.score"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "סך ציון העומס"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Average stress.score"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "ציון עומס ממוצע"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "p50 response.es_took_ms"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "השהיית ES, P50 (ms)"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "p95 response.es_took_ms"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "השהיית ES, P95 (ms)"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "p99 response.es_took_ms"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "השהיית ES, P99 (ms)"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Average stress.cost_indicator_count"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "ממוצע מחווני עלות"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Count"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "מספר בקשות"
-              }
-            ]
-          }
-        ]
+        "overrides": []
       }
     },
     {
       "id": 10,
-      "title": "עשר הפעולות הכבדות ביותר",
+      "title": "\u05e2\u05e9\u05e8 \u05d4\u05e4\u05e2\u05d5\u05dc\u05d5\u05ea \u05d4\u05db\u05d1\u05d3\u05d5\u05ea \u05d1\u05d9\u05d5\u05ea\u05e8",
       "type": "table",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -743,32 +623,28 @@
         "w": 24,
         "h": 10
       },
-      "description": "הבקשות עם ציוני העומס הגבוהים ביותר בטווח הזמן שנבחר. לחיצה על כותרת עמודה ממיינת מחדש.",
+      "description": "\u05d4\u05d1\u05e7\u05e9\u05d5\u05ea \u05e2\u05dd \u05e6\u05d9\u05d5\u05e0\u05d9 \u05d4\u05e2\u05d5\u05de\u05e1 \u05d4\u05d2\u05d1\u05d5\u05d4\u05d9\u05dd \u05d1\u05d9\u05d5\u05ea\u05e8 \u05d1\u05d8\u05d5\u05d5\u05d7 \u05d4\u05d6\u05de\u05df \u05e9\u05e0\u05d1\u05d7\u05e8. \u05dc\u05d7\u05d9\u05e6\u05d4 \u05e2\u05dc \u05db\u05d5\u05ea\u05e8\u05ea \u05e2\u05de\u05d5\u05d3\u05d4 \u05de\u05de\u05d9\u05d9\u05e0\u05ea \u05de\u05d7\u05d3\u05e9.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "raw_data",
-              "id": "1",
-              "settings": {
-                "size": "50"
-              }
-            }
-          ],
-          "bucketAggs": []
+          "editorType": "sql",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT concat(formatDateTime(timestamp, '%y%m%d%H%i%S'), '-', request_operation, '-', substring(request_path, 1, 20)) AS \"Doc ID\", formatDateTime(timestamp, '%Y-%m-%d %H:%M:%S') AS \"Time\", request_body AS \"Request Body\", request_operation AS \"Operation\", request_target AS \"Target\", request_path AS \"Path\", stress_score AS \"Stress\", response_es_took_ms AS \"ES Latency (ms)\", arrayStringConcat(stress_cost_indicator_names, ', ') AS \"Cost Indicators\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) ORDER BY stress_score DESC LIMIT 50",
+          "meta": {
+            "builderOptions": {}
+          }
         }
       ],
       "options": {
         "showHeader": true,
         "sortBy": [
           {
-            "displayName": "עומס",
+            "displayName": "\u05e2\u05d5\u05de\u05e1",
             "desc": true
           }
         ]
@@ -779,14 +655,14 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "פעולה"
+              "options": "Operation"
             },
             "properties": [
               {
                 "id": "links",
                 "value": [
                   {
-                    "title": "Filter by פעולה",
+                    "title": "Filter by Operation",
                     "url": "/d/${__dashboard.uid}?${__url_time_range}&var-operation=${__value.raw}",
                     "targetBlank": false
                   }
@@ -797,14 +673,14 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "יעד"
+              "options": "Target"
             },
             "properties": [
               {
                 "id": "links",
                 "value": [
                   {
-                    "title": "Filter by יעד",
+                    "title": "Filter by Target",
                     "url": "/d/${__dashboard.uid}?${__url_time_range}&var-target=${__value.raw}",
                     "targetBlank": false
                   }
@@ -815,14 +691,14 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "מחווני עלות"
+              "options": "Cost Indicators"
             },
             "properties": [
               {
                 "id": "links",
                 "value": [
                   {
-                    "title": "Filter by מחווני עלות",
+                    "title": "Filter by Cost Indicators",
                     "url": "/d/${__dashboard.uid}?${__url_time_range}&var-cost_indicator=${__value.raw}",
                     "targetBlank": false
                   }
@@ -831,55 +707,14 @@
             ]
           }
         ]
-      },
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {},
-            "includeByName": {
-              "@timestamp": true,
-              "_id": true,
-              "request.body": true,
-              "request.operation": true,
-              "request.target": true,
-              "request.path": true,
-              "stress.score": true,
-              "response.es_took_ms": true,
-              "stress.cost_indicator_names": true
-            },
-            "indexByName": {
-              "@timestamp": 0,
-              "_id": 1,
-              "request.body": 2,
-              "request.operation": 3,
-              "request.target": 4,
-              "request.path": 5,
-              "stress.score": 6,
-              "response.es_took_ms": 7,
-              "stress.cost_indicator_names": 8
-            },
-            "renameByName": {
-              "@timestamp": "זמן",
-              "_id": "מזהה מסמך",
-              "request.body": "גוף הבקשה",
-              "request.operation": "פעולה",
-              "request.target": "יעד",
-              "request.path": "נתיב",
-              "stress.score": "עומס",
-              "response.es_took_ms": "השהיית ES (ms)",
-              "stress.cost_indicator_names": "מחווני עלות"
-            }
-          }
-        }
-      ]
+      }
     },
     {
       "id": 11,
-      "title": "עשרת מחווני העלות המובילים לפי ציון העומס",
+      "title": "\u05e2\u05e9\u05e8\u05ea \u05de\u05d7\u05d5\u05d5\u05e0\u05d9 \u05d4\u05e2\u05dc\u05d5\u05ea \u05d4\u05de\u05d5\u05d1\u05d9\u05dc\u05d9\u05dd \u05dc\u05e4\u05d9 \u05e6\u05d9\u05d5\u05df \u05d4\u05e2\u05d5\u05de\u05e1",
       "type": "table",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -888,81 +723,28 @@
         "w": 24,
         "h": 8
       },
-      "description": "סוגי מחווני עלות מדורגים לפי תרומת העומס הכוללת, כולל אחוזוני השהיה.",
+      "description": "\u05e1\u05d5\u05d2\u05d9 \u05de\u05d7\u05d5\u05d5\u05e0\u05d9 \u05e2\u05dc\u05d5\u05ea \u05de\u05d3\u05d5\u05e8\u05d2\u05d9\u05dd \u05dc\u05e4\u05d9 \u05ea\u05e8\u05d5\u05de\u05ea \u05d4\u05e2\u05d5\u05de\u05e1 \u05d4\u05db\u05d5\u05dc\u05dc\u05ea, \u05db\u05d5\u05dc\u05dc \u05d0\u05d7\u05d5\u05d6\u05d5\u05e0\u05d9 \u05d4\u05e9\u05d4\u05d9\u05d4.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "sum",
-              "id": "1",
-              "field": "stress.score"
-            },
-            {
-              "type": "avg",
-              "id": "2",
-              "field": "stress.score"
-            },
-            {
-              "type": "percentiles",
-              "field": "response.es_took_ms",
-              "id": "3",
-              "settings": {
-                "percents": [
-                  50
-                ]
-              }
-            },
-            {
-              "type": "percentiles",
-              "field": "response.es_took_ms",
-              "id": "4",
-              "settings": {
-                "percents": [
-                  95
-                ]
-              }
-            },
-            {
-              "type": "percentiles",
-              "field": "response.es_took_ms",
-              "id": "5",
-              "settings": {
-                "percents": [
-                  99
-                ]
-              }
-            },
-            {
-              "type": "count",
-              "id": "6"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "stress.cost_indicator_names",
-              "id": "99",
-              "settings": {
-                "size": "10",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            }
-          ]
+          "editorType": "sql",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names)) AS \"Cost Indicator\", sum(stress_score) AS \"Sum Stress\", avg(stress_score) AS \"Avg Stress\", quantile(0.5)(response_es_took_ms) AS \"P50 ES Latency (ms)\", quantile(0.95)(response_es_took_ms) AS \"P95 ES Latency (ms)\", quantile(0.99)(response_es_took_ms) AS \"P99 ES Latency (ms)\", count() AS \"Requests\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY \"Cost Indicator\" ORDER BY \"Sum Stress\" DESC LIMIT 10",
+          "meta": {
+            "builderOptions": {}
+          }
         }
       ],
       "options": {
         "showHeader": true,
         "sortBy": [
           {
-            "displayName": "סך עומס",
+            "displayName": "\u05e1\u05da \u05e2\u05d5\u05de\u05e1",
             "desc": true
           }
         ]
@@ -977,85 +759,12 @@
             }
           ]
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Sum stress.score"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "סך עומס"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Average stress.score"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "עומס ממוצע"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "p50 response.es_took_ms"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "השהיית ES, P50 (ms)"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "p95 response.es_took_ms"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "השהיית ES, P95 (ms)"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "p99 response.es_took_ms"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "השהיית ES, P99 (ms)"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Count"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "מספר בקשות"
-              }
-            ]
-          }
-        ]
+        "overrides": []
       }
     },
     {
       "type": "row",
-      "title": "מגמות העומס",
+      "title": "\u05de\u05d2\u05de\u05d5\u05ea \u05d4\u05e2\u05d5\u05de\u05e1",
       "collapsed": false,
       "gridPos": {
         "h": 1,
@@ -1066,10 +775,10 @@
     },
     {
       "id": 12,
-      "title": "עומס לפי אפליקציה",
+      "title": "Stress by Application",
       "type": "timeseries",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -1078,43 +787,21 @@
         "w": 24,
         "h": 8
       },
-      "description": "ציון עומס ממוצע לאורך הזמן, לפי ספק האפליקציה.",
+      "description": "\u05e6\u05d9\u05d5\u05df \u05e2\u05d5\u05de\u05e1 \u05de\u05de\u05d5\u05e6\u05e2 \u05dc\u05d0\u05d5\u05e8\u05da \u05d4\u05d6\u05de\u05df, \u05dc\u05e4\u05d9 \u05e1\u05e4\u05e7 \u05d4\u05d0\u05e4\u05dc\u05d9\u05e7\u05e6\u05d9\u05d4.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "avg",
-              "id": "1",
-              "field": "stress.score"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "identity.applicative_provider",
-              "id": "2",
-              "settings": {
-                "size": "5",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            },
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "3",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ]
+          "editorType": "sql",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, identity_applicative_provider AS series, avg(stress_score) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)   AND identity_applicative_provider IN (    SELECT identity_applicative_provider FROM alo.alo_raw     WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)     GROUP BY identity_applicative_provider ORDER BY count() DESC LIMIT 5  ) GROUP BY t, series ORDER BY t",
+          "meta": {
+            "builderOptions": {}
+          }
         }
       ],
       "options": {
@@ -1134,14 +821,32 @@
           }
         },
         "overrides": []
-      }
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "series"
+            ],
+            "keepFields": false
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^value (.+)$",
+            "renamePattern": "$1"
+          }
+        }
+      ]
     },
     {
       "id": 13,
-      "title": "עומס לפי יעד",
+      "title": "Stress by Target",
       "type": "timeseries",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -1150,43 +855,21 @@
         "w": 24,
         "h": 8
       },
-      "description": "ציון עומס ממוצע לאורך הזמן, לפי אינדקס או בסיס נתונים.",
+      "description": "Average stress score over time, broken down by target index.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "avg",
-              "id": "1",
-              "field": "stress.score"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "request.target",
-              "id": "2",
-              "settings": {
-                "size": "5",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            },
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "3",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ]
+          "editorType": "sql",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, request_target AS series, avg(stress_score) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)   AND request_target IN (    SELECT request_target FROM alo.alo_raw     WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)     GROUP BY request_target ORDER BY count() DESC LIMIT 5  ) GROUP BY t, series ORDER BY t",
+          "meta": {
+            "builderOptions": {}
+          }
         }
       ],
       "options": {
@@ -1206,14 +889,32 @@
           }
         },
         "overrides": []
-      }
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "series"
+            ],
+            "keepFields": false
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^value (.+)$",
+            "renamePattern": "$1"
+          }
+        }
+      ]
     },
     {
       "id": 14,
-      "title": "עומס לפי פעולה",
+      "title": "Stress by Operation",
       "type": "timeseries",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -1222,43 +923,21 @@
         "w": 24,
         "h": 8
       },
-      "description": "ציון עומס ממוצע לאורך הזמן, לפי סוג הפעולה.",
+      "description": "\u05e6\u05d9\u05d5\u05df \u05e2\u05d5\u05de\u05e1 \u05de\u05de\u05d5\u05e6\u05e2 \u05dc\u05d0\u05d5\u05e8\u05da \u05d4\u05d6\u05de\u05df, \u05dc\u05e4\u05d9 \u05e1\u05d5\u05d2 \u05d4\u05e4\u05e2\u05d5\u05dc\u05d4.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "avg",
-              "id": "1",
-              "field": "stress.score"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "request.operation",
-              "id": "2",
-              "settings": {
-                "size": "5",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            },
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "3",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ]
+          "editorType": "sql",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, request_operation AS series, avg(stress_score) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)   AND request_operation IN (    SELECT request_operation FROM alo.alo_raw     WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)     GROUP BY request_operation ORDER BY count() DESC LIMIT 5  ) GROUP BY t, series ORDER BY t",
+          "meta": {
+            "builderOptions": {}
+          }
         }
       ],
       "options": {
@@ -1278,14 +957,32 @@
           }
         },
         "overrides": []
-      }
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "series"
+            ],
+            "keepFields": false
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^value (.+)$",
+            "renamePattern": "$1"
+          }
+        }
+      ]
     },
     {
       "id": 15,
-      "title": "עומס לפי מחוון עלות",
+      "title": "Stress by Cost Indicator",
       "type": "timeseries",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -1294,43 +991,21 @@
         "w": 24,
         "h": 8
       },
-      "description": "ציון עומס ממוצע לאורך הזמן, לפי מחוון העלות.",
+      "description": "\u05e6\u05d9\u05d5\u05df \u05e2\u05d5\u05de\u05e1 \u05de\u05de\u05d5\u05e6\u05e2 \u05dc\u05d0\u05d5\u05e8\u05da \u05d4\u05d6\u05de\u05df, \u05dc\u05e4\u05d9 \u05de\u05d7\u05d5\u05d5\u05df \u05d4\u05e2\u05dc\u05d5\u05ea.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "avg",
-              "id": "1",
-              "field": "stress.score"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "stress.cost_indicator_names",
-              "id": "2",
-              "settings": {
-                "size": "5",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            },
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "3",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ]
+          "editorType": "sql",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names)) AS series, avg(stress_score) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)   AND arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names)) IN (    SELECT arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names)) FROM alo.alo_raw     WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)     GROUP BY arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names)) ORDER BY count() DESC LIMIT 5  ) GROUP BY t, series ORDER BY t",
+          "meta": {
+            "builderOptions": {}
+          }
         }
       ],
       "options": {
@@ -1350,14 +1025,32 @@
           }
         },
         "overrides": []
-      }
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "series"
+            ],
+            "keepFields": false
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^value (.+)$",
+            "renamePattern": "$1"
+          }
+        }
+      ]
     },
     {
       "id": 16,
-      "title": "עומס לפי תבנית",
+      "title": "Stress by Template",
       "type": "timeseries",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -1366,43 +1059,21 @@
         "w": 24,
         "h": 8
       },
-      "description": "ציון עומס ממוצע לאורך הזמן, לפי תבנית הבקשה.",
+      "description": "\u05e6\u05d9\u05d5\u05df \u05e2\u05d5\u05de\u05e1 \u05de\u05de\u05d5\u05e6\u05e2 \u05dc\u05d0\u05d5\u05e8\u05da \u05d4\u05d6\u05de\u05df, \u05dc\u05e4\u05d9 \u05ea\u05d1\u05e0\u05d9\u05ea \u05d4\u05d1\u05e7\u05e9\u05d4.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "avg",
-              "id": "1",
-              "field": "stress.score"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "terms",
-              "field": "request.template",
-              "id": "2",
-              "settings": {
-                "size": "10",
-                "order": "desc",
-                "orderBy": "1",
-                "min_doc_count": "1"
-              }
-            },
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "3",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ]
+          "editorType": "sql",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, request_template AS series, avg(stress_score) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)   AND request_template IN (    SELECT request_template FROM alo.alo_raw     WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)     GROUP BY request_template ORDER BY count() DESC LIMIT 10  ) GROUP BY t, series ORDER BY t",
+          "meta": {
+            "builderOptions": {}
+          }
         }
       ],
       "options": {
@@ -1422,11 +1093,29 @@
           }
         },
         "overrides": []
-      }
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "series"
+            ],
+            "keepFields": false
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^value (.+)$",
+            "renamePattern": "$1"
+          }
+        }
+      ]
     },
     {
       "type": "row",
-      "title": "נפח ותפוקה",
+      "title": "\u05e0\u05e4\u05d7 \u05d5\u05ea\u05e4\u05d5\u05e7\u05d4",
       "collapsed": false,
       "gridPos": {
         "h": 1,
@@ -1437,10 +1126,10 @@
     },
     {
       "id": 17,
-      "title": "נפח בקשות",
+      "title": "\u05e0\u05e4\u05d7 \u05d1\u05e7\u05e9\u05d5\u05ea",
       "type": "timeseries",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -1449,56 +1138,37 @@
         "w": 24,
         "h": 8
       },
-      "description": "סך הבקשות לאורך הזמן. הקו המקווקו הוא נתון גיבוי מאינדקס הסיכום השעתי, לאחר שהנתונים הגולמיים פוגו ב-ILM.",
+      "description": "\u05e1\u05da \u05d4\u05d1\u05e7\u05e9\u05d5\u05ea \u05dc\u05d0\u05d5\u05e8\u05da \u05d4\u05d6\u05de\u05df. \u05d4\u05e7\u05d5 \u05d4\u05de\u05e7\u05d5\u05d5\u05e7\u05d5 \u05d4\u05d5\u05d0 \u05e0\u05ea\u05d5\u05df \u05d2\u05d9\u05d1\u05d5\u05d9 \u05de\u05d0\u05d9\u05e0\u05d3\u05e7\u05e1 \u05d4\u05e1\u05d9\u05db\u05d5\u05dd \u05d4\u05e9\u05e2\u05ea\u05d9, \u05dc\u05d0\u05d7\u05e8 \u05e9\u05d4\u05e0\u05ea\u05d5\u05e0\u05d9\u05dd \u05d4\u05d2\u05d5\u05dc\u05de\u05d9\u05d9\u05dd \u05e4\u05d5\u05d2\u05d5 \u05d1-ILM.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "count",
-              "id": "1"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "3",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ]
+          "editorType": "sql",
+          "queryType": "timeseries",
+          "format": 1,
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, count() AS \"count\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY t ORDER BY t",
+          "meta": {
+            "builderOptions": {}
+          },
+          "legendFormat": "count"
         },
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "B",
-          "metrics": [
-            {
-              "type": "sum",
-              "id": "1",
-              "field": "count"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "3",
-              "settings": {
-                "interval": "1h"
-              }
-            }
-          ]
+          "editorType": "sql",
+          "queryType": "timeseries",
+          "format": 1,
+          "rawSql": "SELECT toStartOfHour(time_bucket) AS t, countMerge(count_state) AS \"count_summary\" FROM alo.alo_summary WHERE $__timeFilter(time_bucket) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY t ORDER BY t",
+          "meta": {
+            "builderOptions": {}
+          },
+          "legendFormat": "count_summary"
         }
       ],
       "options": {
@@ -1520,8 +1190,20 @@
         "overrides": [
           {
             "matcher": {
-              "id": "byFrameRefID",
-              "options": "B"
+              "id": "byName",
+              "options": "count"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "count"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "count_summary"
             },
             "properties": [
               {
@@ -1537,6 +1219,10 @@
               {
                 "id": "custom.lineWidth",
                 "value": 1
+              },
+              {
+                "id": "displayName",
+                "value": "count (summary)"
               }
             ]
           }
@@ -1545,10 +1231,10 @@
     },
     {
       "id": 18,
-      "title": "מסמכים שהוחזרו משאילתות",
+      "title": "\u05de\u05e1\u05de\u05db\u05d9\u05dd \u05e9\u05d4\u05d5\u05d7\u05d6\u05e8\u05d5 \u05de\u05e9\u05d0\u05d9\u05dc\u05ea\u05d5\u05ea",
       "type": "timeseries",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -1557,32 +1243,22 @@
         "w": 12,
         "h": 8
       },
-      "description": "סך המסמכים שהוחזרו משאילתות. במתאם ל-CPU של ES כאשר התור רווי.",
+      "description": "\u05e1\u05da \u05d4\u05de\u05e1\u05de\u05db\u05d9\u05dd \u05e9\u05d4\u05d5\u05d7\u05d6\u05e8\u05d5 \u05de\u05e9\u05d0\u05d9\u05dc\u05ea\u05d5\u05ea. \u05d1\u05de\u05ea\u05d0\u05dd \u05dc-CPU \u05e9\u05dc ES \u05db\u05d0\u05e9\u05e8 \u05d4\u05ea\u05d5\u05e8 \u05e8\u05d5\u05d5\u05d9.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "sum",
-              "id": "1",
-              "field": "response.hits"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "3",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ]
+          "editorType": "sql",
+          "queryType": "timeseries",
+          "format": 1,
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, sum(response_hits) AS \"sum_response_hits\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY t ORDER BY t",
+          "meta": {
+            "builderOptions": {}
+          },
+          "legendFormat": "sum_response_hits"
         }
       ],
       "options": {
@@ -1606,10 +1282,10 @@
     },
     {
       "id": 19,
-      "title": "ממוצע מסמכים לשאילתה",
+      "title": "\u05de\u05de\u05d5\u05e6\u05e2 \u05de\u05e1\u05de\u05db\u05d9\u05dd \u05e9\u05d4\u05d5\u05d7\u05d6\u05e8\u05d5 \u05dc\u05e9\u05d0\u05d9\u05dc\u05ea\u05d4",
       "type": "timeseries",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -1618,32 +1294,22 @@
         "w": 12,
         "h": 8
       },
-      "description": "ממוצע מסמכים שהוחזרו לשאילתה — אינדיקציה לסלקטיביות השאילתה.",
+      "description": "\u05de\u05de\u05d5\u05e6\u05e2 \u05de\u05e1\u05de\u05db\u05d9\u05dd \u05e9\u05d4\u05d5\u05d7\u05d6\u05e8\u05d5 \u05dc\u05e9\u05d0\u05d9\u05dc\u05ea\u05ea \u05d7\u05d9\u05e4\u05d5\u05e9.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "avg",
-              "id": "1",
-              "field": "response.hits"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "3",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ]
+          "editorType": "sql",
+          "queryType": "timeseries",
+          "format": 1,
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, avg(response_hits) AS \"avg_response_hits\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY t ORDER BY t",
+          "meta": {
+            "builderOptions": {}
+          },
+          "legendFormat": "avg_response_hits"
         }
       ],
       "options": {
@@ -1667,10 +1333,10 @@
     },
     {
       "id": 20,
-      "title": "נפח כתיבה (מסמכים)",
+      "title": "\u05e0\u05e4\u05d7 \u05db\u05ea\u05d9\u05d1\u05ea Bulk",
       "type": "timeseries",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -1679,32 +1345,22 @@
         "w": 12,
         "h": 8
       },
-      "description": "סך המסמכים שנכתבו (index / bulk / update).",
+      "description": "\u05e1\u05da \u05d4\u05de\u05e1\u05de\u05db\u05d9\u05dd \u05e9\u05e0\u05db\u05ea\u05d1\u05d5 \u05d3\u05e8\u05da Bulk \u2014 \u05e0\u05e1\u05e4\u05e8\u05d9\u05dd \u05de\u05d2\u05d5\u05e3 \u05d4\u05d1\u05e7\u05e9\u05d4, \u05de\u05d3\u05d5\u05d9\u05e7 \u05d2\u05dd \u05e2\u05d1\u05d5\u05e8 \u05d1\u05e7\u05e9\u05d5\u05ea \u05e9\u05e0\u05e7\u05d8\u05e2\u05d5.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "sum",
-              "id": "1",
-              "field": "response.docs_affected"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "3",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ]
+          "editorType": "sql",
+          "queryType": "timeseries",
+          "format": 1,
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, sum(request_bulk_doc_count) AS \"sum_request_bulk_doc_count\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY t ORDER BY t",
+          "meta": {
+            "builderOptions": {}
+          },
+          "legendFormat": "sum_request_bulk_doc_count"
         }
       ],
       "options": {
@@ -1728,10 +1384,10 @@
     },
     {
       "id": 21,
-      "title": "ממוצע מסמכים לפעולת כתיבה",
+      "title": "\u05de\u05de\u05d5\u05e6\u05e2 \u05de\u05e1\u05de\u05db\u05d9\u05dd \u05dc\u05e4\u05e2\u05d5\u05dc\u05ea Bulk",
       "type": "timeseries",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -1740,32 +1396,22 @@
         "w": 12,
         "h": 8
       },
-      "description": "ממוצע מסמכים שנכתבו לפעולה — אינדיקציה לגודל ה-batch.",
+      "description": "\u05de\u05de\u05d5\u05e6\u05e2 \u05de\u05e1\u05de\u05db\u05d9\u05dd \u05dc\u05e4\u05e2\u05d5\u05dc\u05ea Bulk \u2014 \u05d0\u05d9\u05e0\u05d3\u05d9\u05e7\u05e6\u05d9\u05d4 \u05dc\u05d2\u05d5\u05d3\u05dc \u05d4-batch. \u05e0\u05e1\u05e4\u05e8\u05d9\u05dd \u05de\u05e9\u05d5\u05e8\u05d5\u05ea \u05d4\u05e4\u05e2\u05d5\u05dc\u05d4 \u05d1\u05d2\u05d5\u05e3 \u05d4\u05d1\u05e7\u05e9\u05d4.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "avg",
-              "id": "1",
-              "field": "response.docs_affected"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "3",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ]
+          "editorType": "sql",
+          "queryType": "timeseries",
+          "format": 1,
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, avg(request_bulk_doc_count) AS \"avg_request_bulk_doc_count\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY t ORDER BY t",
+          "meta": {
+            "builderOptions": {}
+          },
+          "legendFormat": "avg_request_bulk_doc_count"
         }
       ],
       "options": {
@@ -1789,10 +1435,10 @@
     },
     {
       "id": 22,
-      "title": "גודל בקשות",
+      "title": "\u05d2\u05d5\u05d3\u05dc \u05d1\u05e7\u05e9\u05d5\u05ea",
       "type": "timeseries",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -1801,32 +1447,22 @@
         "w": 12,
         "h": 8
       },
-      "description": "סך גודל הבקשות הנכנסות.",
+      "description": "\u05e1\u05da \u05d2\u05d5\u05d3\u05dc \u05d4\u05d1\u05e7\u05e9\u05d5\u05ea \u05d4\u05e0\u05db\u05e0\u05e1\u05d5\u05ea.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "sum",
-              "id": "1",
-              "field": "request.size_bytes"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "3",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ]
+          "editorType": "sql",
+          "queryType": "timeseries",
+          "format": 1,
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, sum(request_size_bytes) AS \"sum_request_size_bytes\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY t ORDER BY t",
+          "meta": {
+            "builderOptions": {}
+          },
+          "legendFormat": "sum_request_size_bytes"
         }
       ],
       "options": {
@@ -1851,10 +1487,10 @@
     },
     {
       "id": 23,
-      "title": "גודל בקשה ממוצע",
+      "title": "\u05d2\u05d5\u05d3\u05dc \u05d1\u05e7\u05e9\u05d4 \u05de\u05de\u05d5\u05e6\u05e2",
       "type": "timeseries",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -1863,32 +1499,22 @@
         "w": 12,
         "h": 8
       },
-      "description": "גודל ממוצע של מטען הבקשה — צורת הבקשה הבודדת.",
+      "description": "Average inbound request payload size \u2014 rising trend may indicate unbounded search body growth.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "avg",
-              "id": "1",
-              "field": "request.size_bytes"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "3",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ]
+          "editorType": "sql",
+          "queryType": "timeseries",
+          "format": 1,
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, avg(request_size_bytes) AS \"avg_request_size_bytes\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY t ORDER BY t",
+          "meta": {
+            "builderOptions": {}
+          },
+          "legendFormat": "avg_request_size_bytes"
         }
       ],
       "options": {
@@ -1913,7 +1539,7 @@
     },
     {
       "type": "row",
-      "title": "זמני תגובה",
+      "title": "\u05d6\u05de\u05e0\u05d9 \u05ea\u05d2\u05d5\u05d1\u05d4",
       "collapsed": false,
       "gridPos": {
         "h": 1,
@@ -1924,10 +1550,10 @@
     },
     {
       "id": 24,
-      "title": "השהיית Elasticsearch",
+      "title": "\u05d4\u05e9\u05d4\u05d9\u05d9\u05ea Elasticsearch",
       "type": "timeseries",
       "datasource": {
-        "type": "elasticsearch",
+        "type": "grafana-clickhouse-datasource",
         "uid": "${datasource}"
       },
       "gridPos": {
@@ -1936,126 +1562,21 @@
         "w": 24,
         "h": 8
       },
-      "description": "מגמת זמן התגובה של Elasticsearch — ממוצע / P50 / P95 / P99. עלייה ב-P95/P99 מסמנת בעיות בקצה ההתפלגות.",
+      "description": "\u05de\u05d2\u05de\u05ea \u05d6\u05de\u05df \u05d4\u05ea\u05d2\u05d5\u05d1\u05d4 \u05e9\u05dc Elasticsearch \u2014 \u05de\u05de\u05d5\u05e6\u05e2 / P50 / P95 / P99. \u05e2\u05dc\u05d9\u05d9\u05d4 \u05d1-P95/P99 \u05de\u05e1\u05de\u05e0\u05ea \u05d1\u05e2\u05d9\u05d5\u05ea \u05d1\u05e7\u05e6\u05d4 \u05d4\u05d4\u05ea\u05e4\u05dc\u05d2\u05d5\u05ea.",
       "targets": [
         {
           "datasource": {
-            "type": "elasticsearch",
+            "type": "grafana-clickhouse-datasource",
             "uid": "${datasource}"
           },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
           "refId": "A",
-          "metrics": [
-            {
-              "type": "avg",
-              "id": "1",
-              "field": "response.es_took_ms"
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ],
-          "alias": "ממוצע"
-        },
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "${datasource}"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "B",
-          "metrics": [
-            {
-              "type": "percentiles",
-              "field": "response.es_took_ms",
-              "id": "1",
-              "settings": {
-                "percents": [
-                  50
-                ]
-              }
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ],
-          "alias": "P50"
-        },
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "${datasource}"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "C",
-          "metrics": [
-            {
-              "type": "percentiles",
-              "field": "response.es_took_ms",
-              "id": "1",
-              "settings": {
-                "percents": [
-                  95
-                ]
-              }
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ],
-          "alias": "P95"
-        },
-        {
-          "datasource": {
-            "type": "elasticsearch",
-            "uid": "${datasource}"
-          },
-          "query": "cluster_name:(${cluster:lucene}) AND identity.applicative_provider:(${application:lucene}) AND request.target:(${target:lucene}) AND request.operation:(${operation:lucene}) AND identity.username:(${username:lucene}) AND stress.cost_indicator_names:(${cost_indicator:lucene}) AND identity.client_host:(${client_host:lucene}) AND request.template:(${template:lucene})",
-          "refId": "D",
-          "metrics": [
-            {
-              "type": "percentiles",
-              "field": "response.es_took_ms",
-              "id": "1",
-              "settings": {
-                "percents": [
-                  99
-                ]
-              }
-            }
-          ],
-          "bucketAggs": [
-            {
-              "type": "date_histogram",
-              "field": "@timestamp",
-              "id": "2",
-              "settings": {
-                "interval": "auto"
-              }
-            }
-          ],
-          "alias": "P99"
+          "editorType": "sql",
+          "queryType": "timeseries",
+          "format": 1,
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, avg(response_es_took_ms) AS \"Avg\", quantile(0.5)(response_es_took_ms) AS \"P50\", quantile(0.95)(response_es_took_ms) AS \"P95\", quantile(0.99)(response_es_took_ms) AS \"P99\" FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY t ORDER BY t",
+          "meta": {
+            "builderOptions": {}
+          }
         }
       ],
       "options": {
@@ -2077,6 +1598,74 @@
         },
         "overrides": []
       }
+    },
+    {
+      "id": 25,
+      "title": "\u05e7\u05d5\u05d3 \u05e1\u05d8\u05d8\u05d5\u05e1 \u05dc\u05e4\u05d9 \u05e4\u05e2\u05d5\u05dc\u05d4",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 144,
+        "w": 24,
+        "h": 8
+      },
+      "description": "Request counts over time for the top-10 operation/status-code combinations (e.g. search/200, bulk/429).",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "${datasource}"
+          },
+          "refId": "A",
+          "editorType": "sql",
+          "queryType": "table",
+          "format": 0,
+          "rawSql": "SELECT $__timeInterval(timestamp) AS t, concat(request_operation, '/', toString(response_status)) AS series, count() AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)   AND concat(request_operation, '/', toString(response_status)) IN (    SELECT concat(request_operation, '/', toString(response_status)) FROM alo.alo_raw     WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template)     GROUP BY concat(request_operation, '/', toString(response_status)) ORDER BY count() DESC LIMIT 10  ) GROUP BY t, series ORDER BY t",
+          "meta": {
+            "builderOptions": {}
+          }
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20
+          }
+        },
+        "overrides": []
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "series"
+            ],
+            "keepFields": false
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^value (.+)$",
+            "renamePattern": "$1"
+          }
+        }
+      ]
     }
   ],
   "templating": {
@@ -2084,11 +1673,11 @@
       {
         "type": "datasource",
         "name": "datasource",
-        "label": "Elasticsearch",
-        "query": "elasticsearch",
+        "label": "ClickHouse",
+        "query": "grafana-clickhouse-datasource",
         "current": {
-          "text": "Elasticsearch (ALO)",
-          "value": "alo-elasticsearch"
+          "text": "ClickHouse (ALO)",
+          "value": "alo-clickhouse"
         },
         "regex": ""
       },
@@ -2106,14 +1695,14 @@
       {
         "type": "query",
         "name": "cluster",
-        "label": "אשכול",
+        "label": "Cluster",
         "datasource": {
-          "type": "elasticsearch",
+          "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": "{\"find\": \"terms\", \"field\": \"cluster_name\"}",
+        "query": "SELECT DISTINCT cluster_name FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+        "definition": "SELECT DISTINCT cluster_name FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
         "includeAll": true,
-        "allValue": "*",
         "multi": true,
         "sort": 1,
         "refresh": 2,
@@ -2126,14 +1715,14 @@
       {
         "type": "query",
         "name": "application",
-        "label": "אפליקציה",
+        "label": "Application",
         "datasource": {
-          "type": "elasticsearch",
+          "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": "{\"find\": \"terms\", \"field\": \"identity.applicative_provider\"}",
+        "query": "SELECT DISTINCT identity_applicative_provider FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+        "definition": "SELECT DISTINCT identity_applicative_provider FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
         "includeAll": true,
-        "allValue": "*",
         "multi": true,
         "sort": 1,
         "refresh": 2,
@@ -2146,14 +1735,14 @@
       {
         "type": "query",
         "name": "target",
-        "label": "יעד",
+        "label": "Target",
         "datasource": {
-          "type": "elasticsearch",
+          "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": "{\"find\": \"terms\", \"field\": \"request.target\"}",
+        "query": "SELECT DISTINCT request_target FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+        "definition": "SELECT DISTINCT request_target FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
         "includeAll": true,
-        "allValue": "*",
         "multi": true,
         "sort": 1,
         "refresh": 2,
@@ -2166,14 +1755,14 @@
       {
         "type": "query",
         "name": "operation",
-        "label": "פעולה",
+        "label": "Operation",
         "datasource": {
-          "type": "elasticsearch",
+          "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": "{\"find\": \"terms\", \"field\": \"request.operation\"}",
+        "query": "SELECT DISTINCT request_operation FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+        "definition": "SELECT DISTINCT request_operation FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
         "includeAll": true,
-        "allValue": "*",
         "multi": true,
         "sort": 1,
         "refresh": 2,
@@ -2186,14 +1775,14 @@
       {
         "type": "query",
         "name": "username",
-        "label": "שם משתמש",
+        "label": "Username",
         "datasource": {
-          "type": "elasticsearch",
+          "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": "{\"find\": \"terms\", \"field\": \"identity.username\"}",
+        "query": "SELECT DISTINCT identity_username FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
+        "definition": "SELECT DISTINCT identity_username FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
         "includeAll": true,
-        "allValue": "*",
         "multi": true,
         "sort": 1,
         "refresh": 2,
@@ -2206,14 +1795,14 @@
       {
         "type": "query",
         "name": "cost_indicator",
-        "label": "מחוון עלות",
+        "label": "Cost Indicator",
         "datasource": {
-          "type": "elasticsearch",
+          "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": "{\"find\": \"terms\", \"field\": \"stress.cost_indicator_names\"}",
+        "query": "SELECT DISTINCT arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names)) FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
+        "definition": "SELECT DISTINCT arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names)) FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
         "includeAll": true,
-        "allValue": "*",
         "multi": true,
         "sort": 1,
         "refresh": 2,
@@ -2226,14 +1815,14 @@
       {
         "type": "query",
         "name": "client_host",
-        "label": "מארח לקוח",
+        "label": "Client Host",
         "datasource": {
-          "type": "elasticsearch",
+          "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": "{\"find\": \"terms\", \"field\": \"identity.client_host\"}",
+        "query": "SELECT DISTINCT identity_client_host FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
+        "definition": "SELECT DISTINCT identity_client_host FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
         "includeAll": true,
-        "allValue": "*",
         "multi": true,
         "sort": 1,
         "refresh": 2,
@@ -2246,14 +1835,14 @@
       {
         "type": "query",
         "name": "template",
-        "label": "תבנית",
+        "label": "Template",
         "datasource": {
-          "type": "elasticsearch",
+          "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": "{\"find\": \"terms\", \"field\": \"request.template\"}",
+        "query": "SELECT DISTINCT request_template FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+        "definition": "SELECT DISTINCT request_template FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
         "includeAll": true,
-        "allValue": "*",
         "multi": true,
         "sort": 1,
         "refresh": 2,
@@ -2265,9 +1854,10 @@
       },
       {
         "type": "adhoc",
-        "name": "Filters",
+        "name": "filters",
+        "label": "Filters",
         "datasource": {
-          "type": "elasticsearch",
+          "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         }
       }
@@ -2276,7 +1866,6 @@
   "annotations": {
     "list": []
   },
-  "editable": true,
   "links": [
     {
       "type": "link",
@@ -2289,5 +1878,6 @@
       "includeVars": true,
       "keepTime": true
     }
-  ]
+  ],
+  "editable": true
 }

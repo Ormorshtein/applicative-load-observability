@@ -272,7 +272,8 @@
       "properties": {
         "enabled":  { "type": "boolean" },
         "labels":   { "$ref": "#/$defs/annotations" },
-        "interval": { "type": "string" }
+        "interval": { "type": "string" },
+        "clusterLabel": { "type": "string" }
       }
     },
     "imagePullSecrets": {

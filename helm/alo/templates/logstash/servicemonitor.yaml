@@ -16,4 +16,9 @@ spec:
   endpoints:
     - port: metrics
       interval: {{ .Values.serviceMonitors.interval }}
+      {{- with .Values.serviceMonitors.clusterLabel }}
+      relabelings:
+        - targetLabel: cluster
+          replacement: {{ . | quote }}
+      {{- end }}
 {{- end }}

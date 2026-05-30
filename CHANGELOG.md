@@ -4,6 +4,25 @@
 
 ---
 
+## 2.1.0
+
+### Features
+
+- **Multi-cluster Stack Health dashboard** (`grafana/_health_dashboard.py`, `grafana/_health_panels.py`, `grafana/_dashboards.py`): the `ALO — Stack Health` dashboard is now generated from Python like the other dashboards instead of hand-maintained JSON, and was redesigned for multi-cluster / multi-instance topology:
+  - New single-select **`$cluster`** variable (`label_values(up, cluster)`); every panel is scoped to one cluster and aggregates across its instances (`sum`/`avg`/`max by (cluster)`), so a cluster with 50 instances renders a bounded number of series instead of one line per instance.
+  - The per-instance **gauges** (Worker Util, Backpressure, Analyzer Load, …) — which duplicated once per instance/cluster — are replaced by aggregated **stat KPI tiles**.
+  - Per-component instance variables (`$gateway_instance`, `$analyzer_instance`, `$logstash_instance`, `$es_instance`) are now scoped to `$cluster` and drive a collapsed **Per-Instance Drilldown** row (`topk(10, …)`), keeping instance detail available without cluttering the default view.
+- **`cluster` Prometheus label** (`prometheus/prometheus.yml`, `docker-compose.yml`, `helm/alo/templates/*/servicemonitor.yaml`, `helm/alo/values.yaml`, `helm/alo/values.schema.json`):
+  - docker-compose Prometheus stamps `cluster` via `external_labels` (`${CLUSTER_NAME}`, expanded with `--enable-feature=expand-external-labels`; defaults to `default`).
+  - Helm ServiceMonitors stamp `cluster` via relabeling driven by the new `serviceMonitors.clusterLabel` value. The label value must equal the ClickHouse `cluster_name` (logstash `CLUSTER_NAME`) so Prometheus and dead-letter-queue panels agree.
+
+### Bug fixes
+
+- **Stale Helm dashboards** (`helm/alo/files/grafana-*.json`): the chart shipped pre-ClickHouse (Elasticsearch/Lucene) dashboard JSON that had drifted from `grafana/provisioning/`. `export_dashboards()` now writes both the provisioning directory and the Helm `files/` copies from the same builders, so they can no longer diverge.
+- **Stack Health query bugs** (carried over from the hand-written `alo-health.json`): Logstash CPU / Process Memory and ES CPU panels filtered by `$analyzer_instance`; gateway "Events Dropped" / "Event Delivery Rate" used an empty `instance=~""` matcher. All panels are now correctly cluster-scoped.
+
+---
+
 ## 2.0.3
 
 ### Features

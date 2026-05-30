@@ -18,9 +18,19 @@ spec:
     - port: lua-metrics
       path: /metrics
       interval: {{ .Values.serviceMonitors.interval }}
+      {{- with .Values.serviceMonitors.clusterLabel }}
+      relabelings:
+        - targetLabel: cluster
+          replacement: {{ . | quote }}
+      {{- end }}
     {{- if .Values.gateway.exporter.enabled }}
     - port: metrics
       interval: {{ .Values.serviceMonitors.interval }}
+      {{- with .Values.serviceMonitors.clusterLabel }}
+      relabelings:
+        - targetLabel: cluster
+          replacement: {{ . | quote }}
+      {{- end }}
     {{- end }}
 {{- end }}
 {{- end }}
