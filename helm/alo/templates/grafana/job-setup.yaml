@@ -46,6 +46,13 @@ spec:
             {{- if not $gf.dashboards }}
             - --no-dashboards
             {{- end }}
+            {{- if and $gf.dashboards (not (or .Values.gateway.exporter.enabled .Values.logstash.exporter.enabled)) }}
+            - --no-health-dashboard
+            {{- end }}
+            {{- with .Values.grafana.prometheusUrl }}
+            - --prometheus-url
+            - {{ . | quote }}
+            {{- end }}
           env:
             - name: GRAFANA_URL
               value: {{ include "alo.grafanaUrl" . | quote }}

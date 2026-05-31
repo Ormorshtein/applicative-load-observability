@@ -4,6 +4,25 @@
 
 ---
 
+## 2.1.6
+
+### Bug fixes
+
+- **`grafana/setup.py` `--mode api` drifted from `--mode provision`** (`grafana/setup.py`, `helm/alo/templates/grafana/job-setup.yaml`):
+  - **Stack Health dashboard was never imported via the API path.** `do_api_setup()` hard-coded a 4-builder loop and silently omitted `build_health_dashboard`, while `do_provision()` / `export_dashboards()` already included it. External-Grafana users (the `--mode api` path the helm `grafana-setup` Job runs) never received Stack Health, even when an exporter was enabled. `build_health_dashboard` is now imported and appended to the loop.
+  - **Prometheus datasource was not creatable via the API path.** `do_provision()` calls `generate_prometheus_datasource_yaml()` when `--prometheus-url` is set; `do_api_setup()` did not. Added `create_prometheus_datasource()` and wired it into `do_api_setup()` — gated on `--prometheus-url` being non-empty, so the default no-Prometheus deployment is unchanged.
+  - **New CLI flag `--health-dashboard` / `--no-health-dashboard`** (default enabled in `--mode api`). The helm `grafana-setup` Job now passes `--no-health-dashboard` when neither `gateway.exporter.enabled` nor `logstash.exporter.enabled` is set, matching the existing conditional logic in `configmap-dashboards.yaml`. When either exporter is on, the Stack Health dashboard is imported automatically.
+  - The helm Job also now passes `--prometheus-url` from `grafana.prometheusUrl` (empty by default, so the Prom datasource is only created when the user explicitly sets the value).
+
+### Images
+
+- All five release images rebuilt at `-2.1.6`. Functional changes are limited to `grafana-setup`; the other four images are tag-aligned only.
+
+### Chart
+- Helm chart `version` + `appVersion` → **2.1.6**.
+
+---
+
 ## 2.1.5
 
 ### Bug fixes

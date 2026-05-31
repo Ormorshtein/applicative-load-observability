@@ -32,6 +32,7 @@ from ._dashboard_builders import (
     build_main_dashboard_he,
     build_usage_dashboard,
 )
+from ._health_dashboard import build_health_dashboard
 from ._dashboards import export_dashboards
 from ._datasource import (
     _parse_host,
@@ -127,6 +128,36 @@ def create_datasource(grafana_url, clickhouse_url, username, password,
     return ok
 
 
+PROMETHEUS_DATASOURCE_UID = "alo-prometheus"
+
+
+def create_prometheus_datasource(grafana_url, prometheus_url, username, password):
+    if not prometheus_url:
+        return True
+    body = {
+        "name": "Prometheus (ALO)",
+        "type": "prometheus",
+        "uid": PROMETHEUS_DATASOURCE_UID,
+        "access": "proxy",
+        "url": prometheus_url,
+        "isDefault": False,
+        "jsonData": {"httpMethod": "POST", "timeInterval": "15s"},
+    }
+    status, _ = _grafana_request(
+        grafana_url, "PUT", f"/api/datasources/uid/{PROMETHEUS_DATASOURCE_UID}",
+        body=body, username=username, password=password)
+    if status in (200, 201):
+        print("  OK: Prometheus datasource (updated)")
+        return True
+    status, _ = _grafana_request(
+        grafana_url, "POST", "/api/datasources",
+        body=body, username=username, password=password)
+    ok = status in (200, 201)
+    label = "created" if ok else f"FAIL ({status})"
+    print(f"  {'OK' if ok else 'FAIL'}: Prometheus datasource ({label})")
+    return ok
+
+
 def import_dashboard(grafana_url, dashboard, username, password):
     body = {"dashboard": dashboard, "overwrite": True, "folderId": 0}
     body["dashboard"].pop("id", None)
@@ -143,7 +174,8 @@ def import_dashboard(grafana_url, dashboard, username, password):
 def do_api_setup(grafana_url, clickhouse_url, username, password,
                  ch_user="default", ch_password="", ch_database="alo",
                  ch_native_port=9000, ch_insecure=False, ch_ca_cert="",
-                 datasource=True, dashboards=True):
+                 datasource=True, dashboards=True, health_dashboard=True,
+                 prometheus_url=""):
     if not wait_grafana(grafana_url, username, password):
         return False
 
@@ -155,16 +187,25 @@ def do_api_setup(grafana_url, clickhouse_url, username, password,
                                    ch_database=ch_database,
                                    ch_native_port=ch_native_port,
                                    ch_insecure=ch_insecure)
+        if prometheus_url:
+            all_ok &= create_prometheus_datasource(
+                grafana_url, prometheus_url, username, password)
 
     if dashboards:
-        for builder in (build_main_dashboard, build_main_dashboard_he,
-                        build_cost_indicators_dashboard, build_usage_dashboard):
+        builders = [build_main_dashboard, build_main_dashboard_he,
+                    build_cost_indicators_dashboard, build_usage_dashboard]
+        if health_dashboard:
+            builders.append(build_health_dashboard)
+        for builder in builders:
             all_ok &= import_dashboard(grafana_url, builder(), username, password)
 
     print(f"\n  Main dashboard:            {grafana_url}/d/alo-main")
     print(f"  Main dashboard (Hebrew):   {grafana_url}/d/alo-main-he")
     print(f"  Cost indicators dashboard: {grafana_url}/d/alo-cost-indicators")
-    print(f"  Usage dashboard:           {grafana_url}/d/alo-usage\n")
+    print(f"  Usage dashboard:           {grafana_url}/d/alo-usage")
+    if dashboards and health_dashboard:
+        print(f"  Stack Health dashboard:    {grafana_url}/d/alo-health")
+    print()
     return all_ok
 
 
@@ -250,6 +291,10 @@ def main():
     setup_sections.add_argument(
         "--dashboards", action=argparse.BooleanOptionalAction, default=True,
         help="Import/update dashboards (default: enabled)")
+    setup_sections.add_argument(
+        "--health-dashboard", action=argparse.BooleanOptionalAction, default=True,
+        help="Include the Stack Health dashboard in the import (default: enabled). "
+             "Set --no-health-dashboard when no exporter is on the cluster.")
 
     args = parser.parse_args()
 
@@ -266,7 +311,9 @@ def main():
                           ch_insecure=args.insecure,
                           ch_ca_cert=args.ch_ca_cert,
                           datasource=args.datasource,
-                          dashboards=args.dashboards)
+                          dashboards=args.dashboards,
+                          health_dashboard=args.health_dashboard,
+                          prometheus_url=args.prometheus_url)
     else:
         ok = do_provision(args.clickhouse_url, args.grafana,
                           args.prometheus_url,
