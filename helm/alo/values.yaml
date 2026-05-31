@@ -277,6 +277,10 @@ gateway:
   errorLogLevel: warn
   workerProcesses: 2
   workerConnections: 4096
+  # In-memory buffer for incoming request bodies. Bodies larger than this spool
+  # to disk (client_body_temp_path). Bump only if disk I/O on huge bulks becomes
+  # a bottleneck.
+  clientBodyBufferSize: "64m"
   proxyReadTimeout: 60s
   proxyConnectTimeout: 10s
   pipelineTimeout: 1000

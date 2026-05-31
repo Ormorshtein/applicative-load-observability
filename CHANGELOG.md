@@ -4,6 +4,18 @@
 
 ---
 
+## 2.1.2
+
+### Bug fixes
+
+- **Gateway nginx `client_body_buffer_size` parse error** (`helm/alo/values.yaml`): the `gateway.clientBodyBufferSize` default was dropped from `values.yaml` during the v2.0.0 ClickHouse migration but the gateway configmap template (`templates/gateway/configmap.yaml:43`) still references it. The directive rendered as `client_body_buffer_size ;` and openresty refused to start with `invalid number of arguments in "client_body_buffer_size" directive in /usr/local/openresty/nginx/conf/nginx.conf:24`. Default `"64m"` restored.
+- **Gateway ES auth Secret never created** (`helm/alo/templates/gateway/secret-gateway-es-auth.yaml`): the secret-create gate read `gateway.elasticsearch.auth.enabled` (a key that does not exist in `values.yaml` / schema), while the deployment mount gate (`alo.gatewayEsAuthEnabled`) reads `auth.injectAuth`. Result: setting `injectAuth: true` without supplying an `existingSecret` caused the gateway pod to fail with `MountVolume.SetUp failed for volume "...": secret "<release>-gateway-es-auth" not found`. Gate now reads `auth.injectAuth`, matching the helper.
+
+### Chart
+- Helm chart `version` + `appVersion` → **2.1.2**. No image rebuild required.
+
+---
+
 ## 2.1.1
 
 ### Bug fixes
