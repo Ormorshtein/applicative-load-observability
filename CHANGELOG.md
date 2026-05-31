@@ -4,6 +4,25 @@
 
 ---
 
+## 2.1.4
+
+### Bug fixes
+
+- **`ch-setup` failed against ClickHouse ≥ 22** with:
+  ```
+  Code: 516. DB::Exception: Invalid authentication: it is not allowed to use X-ClickHouse HTTP headers and Authorization HTTP header simultaneously
+  ```
+  `clickhouse_setup/_client.py` sent both `X-ClickHouse-User` / `X-ClickHouse-Key` **and** a `Authorization: Basic …` header on every request. Modern CH (22.x+) rejects the combination. The legacy `_build_legacy_auth` helper has been removed; only the native `X-ClickHouse-*` headers are sent now. Verified against CH 26.3.7.
+
+### Images
+
+- All five release images bumped: `gateway-2.1.4`, `analyzer-2.1.4`, `logstash-2.1.4`, `ch-setup-2.1.4`, `grafana-setup-2.1.4`. Image tags are now aligned with the chart version.
+
+### Chart
+- Helm chart `version` + `appVersion` → **2.1.4**.
+
+---
+
 ## 2.1.3
 
 ### Bug fixes

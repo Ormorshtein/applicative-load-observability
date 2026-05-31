@@ -108,7 +108,7 @@ clickhouse:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: ch-setup-2.0.3
+      tag: ch-setup-2.1.4
       pullPolicy: IfNotPresent
     database: true
     rawTable: true
@@ -129,7 +129,7 @@ logstash:
 
   image:
     repository: oracle1012/applicative-load-observability
-    tag: logstash-2.0.3
+    tag: logstash-2.1.4
     pullPolicy: IfNotPresent
   replicas: 1
   resources:
@@ -200,7 +200,7 @@ analyzer:
   enabled: true
   image:
     repository: oracle1012/applicative-load-observability
-    tag: analyzer-2.0.3
+    tag: analyzer-2.1.4
     pullPolicy: IfNotPresent
   replicas: 2
   port: 8000
@@ -256,7 +256,7 @@ gateway:
   dnsResolver: ""
   image:
     repository: oracle1012/applicative-load-observability
-    tag: gateway-2.0.3
+    tag: gateway-2.1.4
     pullPolicy: IfNotPresent
   replicas: 2
   port: 9200
@@ -351,7 +351,7 @@ grafana:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: grafana-setup-2.0.3
+      tag: grafana-setup-2.1.4
       pullPolicy: IfNotPresent
   nodeSelector: {}
   tolerations: []

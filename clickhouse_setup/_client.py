@@ -5,7 +5,6 @@ Uses ``urllib`` only — same approach as ``analyzer/_baselines.py`` so the
 small number of DDL statements; a heavyweight driver would be overkill.
 """
 
-import base64
 import os
 import ssl
 import sys
@@ -53,6 +52,10 @@ def _build_ssl_context(cfg: ClickHouseConfig) -> ssl.SSLContext | None:
 
 
 def _build_headers(cfg: ClickHouseConfig) -> dict[str, str]:
+    # CH >= 22 rejects mixing X-ClickHouse-* and Authorization headers
+    # ("It is not allowed to use X-ClickHouse HTTP headers and Authorization
+    #  HTTP header simultaneously"). Use X-ClickHouse-* only — native and
+    # required for any modern CH.
     headers: dict[str, str] = {"Content-Type": "text/plain; charset=utf-8"}
     if cfg.user:
         headers["X-ClickHouse-User"] = cfg.user
@@ -61,20 +64,9 @@ def _build_headers(cfg: ClickHouseConfig) -> dict[str, str]:
     return headers
 
 
-def _build_legacy_auth(cfg: ClickHouseConfig) -> str | None:
-    """Some CH builds prefer Basic auth; emit both for compatibility."""
-    if cfg.user and cfg.password:
-        token = base64.b64encode(f"{cfg.user}:{cfg.password}".encode()).decode()
-        return f"Basic {token}"
-    return None
-
-
 def ping(cfg: ClickHouseConfig) -> bool:
     url = f"{cfg.url.rstrip('/')}/ping"
     req = Request(url, method="GET")
-    auth = _build_legacy_auth(cfg)
-    if auth:
-        req.add_header("Authorization", auth)
     try:
         with urlopen(req, timeout=_HTTP_TIMEOUT,
                      context=_build_ssl_context(cfg)) as resp:
@@ -106,9 +98,6 @@ def execute(cfg: ClickHouseConfig, sql: str,
     query_string = f"?database={cfg.database}" if use_database else ""
     url = f"{base}/{query_string}"
     headers = _build_headers(cfg)
-    auth = _build_legacy_auth(cfg)
-    if auth:
-        headers["Authorization"] = auth
 
     data = sql.encode("utf-8")
     req = Request(url, data=data, headers=headers, method="POST")
