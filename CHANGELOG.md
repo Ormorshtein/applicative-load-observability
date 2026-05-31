@@ -4,6 +4,28 @@
 
 ---
 
+## 2.1.7
+
+### Bug fixes (compose-side parity with the helm chart)
+
+The helm chart had drifted ahead of the Docker-Compose sources on three artifacts. Compose users were running stale configs that the chart had already fixed.
+
+- **`prometheus/prometheus.yml`**: removed the stale `elasticsearch-exporter:9114` scrape job (the service was deleted in v2.0.0 but the scrape config was not). Prometheus stopped logging scrape errors every 15 s. Added a commented-out `clickhouse:9363` job as the documented opt-in for CH's built-in `/metrics` endpoint.
+- **`grafana/provisioning/datasources/prometheus.yml`**: file existed locally but was untracked, so fresh compose checkouts came up without a Prometheus datasource. Now tracked. Helm flow was unaffected (the chart renders its own Prometheus datasource from `grafana.prometheusUrl`).
+- **`gateway/nginx.conf.template`**: ported the byte-safe HTTP compression handling already shipped in the helm `gateway/configmap.yaml` template:
+  - **Response gzip detection now uses the `Content-Encoding` response header**, set in a new `header_filter_by_lua_block`, instead of the magic-byte (`\x1f\x8b`) sniff. Eliminates false positives on binary payloads that happen to start with those two bytes, and lets us drop the helper function.
+  - **Request body now checks `Content-Encoding` for both `gzip` and `deflate`**. APM-server clients send their bulks with `Content-Encoding: deflate`; the old magic-byte sniff missed them entirely and the analyzer received corrupted payloads.
+  - `ngx.ctx.resp_body = nil` after read to release the chunk-buffer reference earlier.
+
+### Images
+
+- All five release images rebuilt at `-2.1.7`. The gateway image bakes `nginx.conf.template` at build time, so the rebuild is the path by which the compose fix actually lands in production. Compose's volume-mount of the template (`./gateway/nginx.conf.template:/etc/nginx/nginx.conf.template:ro`) also picks it up without an image pull.
+
+### Chart
+- Helm chart `version` + `appVersion` → **2.1.7**. No template changes — the chart already had all three fixes.
+
+---
+
 ## 2.1.6
 
 ### Bug fixes

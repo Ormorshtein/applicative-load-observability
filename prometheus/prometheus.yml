@@ -29,6 +29,9 @@ scrape_configs:
     static_configs:
       - targets: ["logstash-exporter:9198"]
 
-  - job_name: elasticsearch
-    static_configs:
-      - targets: ["elasticsearch-exporter:9114"]
+  # ClickHouse exposes a built-in /metrics endpoint on port 9363 (configurable
+  # via prometheus.port in clickhouse-server config). Enabled by uncommenting
+  # the metrics port in the clickhouse service.
+  # - job_name: clickhouse
+  #   static_configs:
+  #     - targets: ["clickhouse:9363"]

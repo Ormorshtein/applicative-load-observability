@@ -2,8 +2,8 @@ apiVersion: v2
 name: alo
 description: Applicative Load Observability — transparent ES proxy with stress-score pipeline
 type: application
-version: 2.1.6
-appVersion: "2.1.6"
+version: 2.1.7
+appVersion: "2.1.7"
 keywords:
   - elasticsearch
   - clickhouse
