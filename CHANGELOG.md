@@ -4,6 +4,24 @@
 
 ---
 
+## 2.1.3
+
+### Bug fixes
+
+- **`ch-setup` Job crashloop on K8s** (`helm/alo/templates/clickhouse/job-setup.yaml`, `clickhouse_setup/Dockerfile`): the image used `CMD ["python", "-m", "clickhouse_setup.setup"]`. When the Job sets `args:`, K8s replaces `CMD` entirely (because there is no `ENTRYPOINT`), so the first flag (`--create-database`) was interpreted as the executable and the container died with `unable to start container process: exec: "--create-database": executable file not found in $PATH`.
+  - **Chart-side fix (no rebuild required)**: added `command: ["python", "-m", "clickhouse_setup.setup"]` to the Job spec. `args` now stay as args.
+  - **Image-side fix (lands on next image rebuild)**: `Dockerfile` switched from `CMD` to `ENTRYPOINT`. Once the new `ch-setup-*` image ships, the chart's `command:` override becomes redundant but harmless.
+- **Logstash configmap drifted from `logstash/pipeline/observability.conf`** (`helm/alo/templates/logstash/configmap.yaml`): the chart shipped pre-2.0 ES-era code that the Compose pipeline had already moved past. Three regressions fixed in this release:
+  - **`invalid timestamp string format`** crash in the analyzer-response ruby filter: `event.set("@timestamp", LogStash::Timestamp.new(ts_str))` was called against the ClickHouse-format string (`"YYYY-MM-DD HH:MM:SS.mmm"`), but `LogStash::Timestamp.new` only accepts ISO-8601. Both `@timestamp` re-assignments removed (analyzer-response + msearch sub-record blocks), matching `observability.conf`.
+  - **Stale `mutate { rename => "request_body" => "[request][body]" }` block** under `_httprequestfailure` — same ES-era artifact already removed from `observability.conf` in commit `706bbb1` but never propagated to the Helm chart. The nested path was silently dropped by ClickHouse's `input_format_skip_unknown_fields=1`, losing `request_body` on dead-lettered events. Block replaced with the correct `add_field => { "[@metadata][dead_letter]" => "true" }`.
+  - **Output condition** now routes `_httprequestfailure`-tagged events to `alo_dead_letter` (`if [@metadata][dead_letter] or "_httprequestfailure" in [tags]`), matching `observability.conf`. Previously these events went to `alo_raw`.
+  - Added the missing input-validation `drop {}` guard (`if "_jsonparsefailure" in [tags] or !([method]) or !([path])`), matching `observability.conf`.
+
+### Chart
+- Helm chart `version` + `appVersion` → **2.1.3**. No image rebuild required for any chart-side fix above; the `Dockerfile` `ENTRYPOINT` change ships with the next `ch-setup-*` image.
+
+---
+
 ## 2.1.2
 
 ### Bug fixes

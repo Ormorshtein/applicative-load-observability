@@ -28,6 +28,7 @@ spec:
         - name: ch-setup
           image: "{{ .Values.clickhouse.setup.image.repository }}:{{ .Values.clickhouse.setup.image.tag }}"
           imagePullPolicy: {{ .Values.clickhouse.setup.image.pullPolicy }}
+          command: ["python", "-m", "clickhouse_setup.setup"]
           args:
             {{ if not .Values.clickhouse.setup.database }}- --no-create-database{{ else }}- --create-database{{ end }}
             {{- if not .Values.clickhouse.setup.rawTable }}

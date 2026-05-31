@@ -50,6 +50,10 @@ data:
         remove_field => ["message"]
       }
 
+      if "_jsonparsefailure" in [tags] or !([method]) or !([path]) {
+        drop {}
+      }
+
       ruby {
         code => '
           require "json"
@@ -84,12 +88,9 @@ data:
 
             elsif resp.is_a?(Hash)
               op = (resp["request_operation"] || "unknown").to_s
-              ts_str = resp["timestamp"]
 
               event.to_hash.keys.each { |k| event.remove(k) }
               resp.each { |k, v| event.set(k, v) }
-
-              event.set("@timestamp", LogStash::Timestamp.new(ts_str)) if ts_str
 
               if op == "unknown" || resp.key?("error")
                 event.set("[@metadata][dead_letter]", "true")
@@ -107,19 +108,16 @@ data:
           code => '
             record = event.get("[_msearch_records]")
             if record.is_a?(Hash)
-              ts_str = record["timestamp"]
               event.remove("[_msearch_records]")
               record.each { |k, v| event.set(k, v) }
-              event.set("@timestamp", LogStash::Timestamp.new(ts_str)) if ts_str
             end
           '
         }
       }
 
-      # Remap flat gateway field to nested path for dead-letter consistency.
       if "_httprequestfailure" in [tags] {
         mutate {
-          rename => { "request_body" => "[request][body]" }
+          add_field => { "[@metadata][dead_letter]" => "true" }
         }
       }
 
@@ -130,7 +128,7 @@ data:
 
     output {
       {{- $out := .Values.logstash.clickhouseOutput }}
-      if [@metadata][dead_letter] {
+      if [@metadata][dead_letter] or "_httprequestfailure" in [tags] {
         clickhouse {
           http_hosts        => ["{{ include "alo.clickhouseUrl" . }}"]
           table             => "{{ .Values.clickhouse.database }}.alo_dead_letter"
