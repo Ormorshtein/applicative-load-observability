@@ -180,6 +180,8 @@
             "maxBytes": { "type": "string" }
           }
         },
+        "javaOpts": { "type": "string", "description": "LS_JAVA_OPTS env passed to the logstash container (heap sizing etc.)." },
+        "extraEnv": { "type": "array", "description": "Extra env entries appended to the logstash container." },
         "clickhouseOutput": {
           "type": "object",
           "additionalProperties": false,
@@ -233,6 +235,14 @@
         "affinity":     { "$ref": "#/$defs/affinity" },
         "podAnnotations": { "$ref": "#/$defs/annotations" },
         "extraEnv": { "type": "array" },
+        "requestBody": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Request-body capture tunables (env ALO_REQUEST_BODY_STORE_MAX_BYTES).",
+          "properties": {
+            "storeMaxBytes": { "type": "integer", "minimum": 1, "description": "Max bytes of request_body persisted (raw + dead-letter). Default 32768 in code." }
+          }
+        },
         "pdb": { "$ref": "#/$defs/pdb" }
       }
     },

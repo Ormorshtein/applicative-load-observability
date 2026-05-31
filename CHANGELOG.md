@@ -4,6 +4,21 @@
 
 ---
 
+## 2.1.1
+
+### Bug fixes
+
+- **`values.schema.json` drift** (`helm/alo/values.schema.json`, `helm/alo/values.yaml`): the schema declared `analyzer` and `logstash` with `additionalProperties: false` but omitted three keys the templates already read, so any override of them was rejected by `helm install/upgrade` with `additional property X is not allowed`:
+  - `analyzer.requestBody.storeMaxBytes` — read by `analyzer/deployment.yaml` (sets env `ALO_REQUEST_BODY_STORE_MAX_BYTES`, default 32 KB in code).
+  - `logstash.javaOpts` — read by `logstash/deployment.yaml` (sets `LS_JAVA_OPTS`).
+  - `logstash.extraEnv` — read by `logstash/deployment.yaml` (appended container env list).
+  All three are now declared in the schema and surfaced with empty defaults + usage examples in `values.yaml`.
+
+### Chart
+- Helm chart `version` + `appVersion` → **2.1.1**. No image rebuild required (image tags remain at their previous values; this is a pure chart-side fix).
+
+---
+
 ## 2.1.0
 
 ### Features

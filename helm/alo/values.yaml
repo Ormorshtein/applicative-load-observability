@@ -150,6 +150,16 @@ logstash:
     type: memory
     maxBytes: 256mb
 
+  # LS_JAVA_OPTS env passed to the logstash container. Empty = use logstash defaults.
+  # Example: "-Xms1g -Xmx1g"
+  javaOpts: ""
+  # Extra env entries appended to the logstash container.
+  # Example:
+  #   extraEnv:
+  #     - name: PIPELINE_ECS_COMPATIBILITY
+  #       value: disabled
+  extraEnv: []
+
   # Tunables for logstash-output-clickhouse. Two outputs share most knobs
   # but use different flush sizes (raw is high-throughput; dead-letter is rare).
   clickhouseOutput:
@@ -214,6 +224,13 @@ analyzer:
   affinity: {}
   podAnnotations: {}
   extraEnv: []
+  # Request-body capture tunables. Sets env ALO_REQUEST_BODY_STORE_MAX_BYTES on the
+  # analyzer container — caps bytes of request_body persisted to alo_raw + alo_dead_letter.
+  # Omit storeMaxBytes (or the whole block) to use the code default of 32768.
+  # Example:
+  #   requestBody:
+  #     storeMaxBytes: 65536
+  requestBody: {}
   pdb:
     enabled: false
 
