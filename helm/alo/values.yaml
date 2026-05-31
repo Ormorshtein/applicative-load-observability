@@ -1,4 +1,4 @@
-# ΓöÇΓöÇ Global ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# -- Global ------------------------------------------------------------------
 global:
   # Name of the monitored Elasticsearch cluster (used as the cluster_name
   # column in ClickHouse, the source of multi-tenant separation).
@@ -7,14 +7,14 @@ global:
   # ES data stream routing).
   observabilityIndex: alo
 
-# ΓöÇΓöÇ Table settings (ClickHouse retention / partitioning) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# -- Table settings (ClickHouse retention / partitioning) --------------------
 # Passed to the ch-setup job. The DDL builder uses these to issue TTL clauses.
 tableSettings:
   rawRetentionDays: 3
   summaryRetentionDays: 120
   rawPartitionBy: "toYYYYMMDD(timestamp)"
   summaryPartitionBy: "toYYYYMM(time_bucket)"
-  # Full TTL clause overrides — empty means use rawRetentionDays/summaryRetentionDays.
+  # Full TTL clause overrides -- empty means use rawRetentionDays/summaryRetentionDays.
   # Accept any expression CH parses, including storage-tier moves.
   # Example:
   #   rawTtlClause: "timestamp + INTERVAL 1 DAY TO VOLUME 'warm', timestamp + INTERVAL 7 DAY DELETE"
@@ -31,9 +31,9 @@ tableSettings:
   # Sharding key used for the Distributed engine when cluster mode is on.
   shardingKey: "cityHash64(cluster_name, request_operation)"
 
-# ΓöÇΓöÇ ClickHouse (analytics sink) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# -- ClickHouse (analytics sink) --------------------------------------------
 # Where Logstash writes, Grafana reads, and the analyzer fetches baselines.
-# This is NOT the customer's ES that the gateway proxies ΓÇö see gateway.elasticsearch.
+# This is NOT the customer's ES that the gateway proxies -- see gateway.elasticsearch.
 clickhouse:
   enabled: true
   database: alo
@@ -58,7 +58,7 @@ clickhouse:
       create: false
       insecureSkipVerify: false
 
-  # ΓöÇΓöÇ Internal deployment (ignored when external.enabled=true) ΓöÇΓöÇ
+  # -- Internal deployment (ignored when external.enabled=true) --
   image:
     repository: clickhouse/clickhouse-server
     tag: "24.8"
@@ -100,15 +100,15 @@ clickhouse:
     keeper:
       # External keeper/zookeeper hosts, comma-separated (e.g. "zk1:2181,zk2:2181").
       # Empty when running single-node. The chart does NOT yet deploy embedded
-      # ClickHouse Keeper ΓÇö supply your own when cluster.enabled=true.
+      # ClickHouse Keeper -- supply your own when cluster.enabled=true.
       external: ""
 
-  # ch-setup job ΓÇö runs the schema DDL after install/upgrade.
+  # ch-setup job -- runs the schema DDL after install/upgrade.
   setup:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: ch-setup-2.1.7
+      tag: ch-setup-2.1.8
       pullPolicy: IfNotPresent
     database: true
     rawTable: true
@@ -121,7 +121,7 @@ clickhouse:
   affinity: {}
   podAnnotations: {}
 
-# ΓöÇΓöÇ Logstash ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# -- Logstash ----------------------------------------------------------------
 logstash:
   external:
     enabled: false
@@ -129,7 +129,7 @@ logstash:
 
   image:
     repository: oracle1012/applicative-load-observability
-    tag: logstash-2.1.7
+    tag: logstash-2.1.8
     pullPolicy: IfNotPresent
   replicas: 1
   resources:
@@ -195,12 +195,12 @@ logstash:
   pdb:
     enabled: false
 
-# ΓöÇΓöÇ Analyzer ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# -- Analyzer ----------------------------------------------------------------
 analyzer:
   enabled: true
   image:
     repository: oracle1012/applicative-load-observability
-    tag: analyzer-2.1.7
+    tag: analyzer-2.1.8
     pullPolicy: IfNotPresent
   replicas: 2
   port: 8000
@@ -225,7 +225,7 @@ analyzer:
   podAnnotations: {}
   extraEnv: []
   # Request-body capture tunables. Sets env ALO_REQUEST_BODY_STORE_MAX_BYTES on the
-  # analyzer container — caps bytes of request_body persisted to alo_raw + alo_dead_letter.
+  # analyzer container -- caps bytes of request_body persisted to alo_raw + alo_dead_letter.
   # Omit storeMaxBytes (or the whole block) to use the code default of 32768.
   # Example:
   #   requestBody:
@@ -234,7 +234,7 @@ analyzer:
   pdb:
     enabled: false
 
-# ΓöÇΓöÇ Gateway ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# -- Gateway -----------------------------------------------------------------
 gateway:
   enabled: true
   # The Elasticsearch cluster the gateway proxies (the *customer's* ES being
@@ -256,7 +256,7 @@ gateway:
   dnsResolver: ""
   image:
     repository: oracle1012/applicative-load-observability
-    tag: gateway-2.1.7
+    tag: gateway-2.1.8
     pullPolicy: IfNotPresent
   replicas: 2
   port: 9200
@@ -318,7 +318,7 @@ gateway:
   pdb:
     enabled: false
 
-# ΓöÇΓöÇ Grafana ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# -- Grafana ----------------------------------------------------------------
 grafana:
   enabled: true
   external:
@@ -351,7 +351,7 @@ grafana:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: grafana-setup-2.1.7
+      tag: grafana-setup-2.1.8
       pullPolicy: IfNotPresent
     # Create/update the ClickHouse datasource via the Grafana API.
     datasource: true
@@ -362,7 +362,7 @@ grafana:
   affinity: {}
   podAnnotations: {}
 
-# ΓöÇΓöÇ Ingress (Kubernetes) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# -- Ingress (Kubernetes) ----------------------------------------------------
 ingress:
   enabled: false
   className: ""
@@ -384,7 +384,7 @@ ingress:
     path: /
   tls: []
 
-# ΓöÇΓöÇ Route (OpenShift) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# -- Route (OpenShift) ------------------------------------------------------
 route:
   enabled: false
   annotations: {}
@@ -422,22 +422,22 @@ route:
     tls: {}
     annotations: {}
 
-# ΓöÇΓöÇ Service accounts ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# -- Service accounts -------------------------------------------------------
 serviceAccount:
   create: false
   name: ""
   annotations: {}
 
-# ΓöÇΓöÇ Pod security defaults ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# -- Pod security defaults --------------------------------------------------
 podSecurityContext: {}
 securityContext: {}
 
-# ΓöÇΓöÇ Helm test pods ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# -- Helm test pods --------------------------------------------------------
 testImage:
   repository: busybox
   tag: "1.36"
 
-# ΓöÇΓöÇ Prometheus ServiceMonitors ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# -- Prometheus ServiceMonitors --------------------------------------------
 serviceMonitors:
   enabled: false
   labels: {}
@@ -449,5 +449,5 @@ serviceMonitors:
   # Empty = no cluster label added.
   clusterLabel: ""
 
-# ΓöÇΓöÇ Image pull secrets ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# -- Image pull secrets ------------------------------------------------------
 imagePullSecrets: []

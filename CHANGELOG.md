@@ -4,6 +4,21 @@
 
 ---
 
+## 2.1.8
+
+### Cleanup
+
+- **`helm/alo/values.yaml`**: stripped doubly-encoded box-drawing / em-dash mojibake from section-divider and inline comments. Every `# ── Section ──` divider rendered as `# ΓöÇΓöÇ Section ΓöÇΓöÇ` (UTF-8-of-CP850-of-UTF-8); replaced with plain ASCII `# -- ... --`. The earlier d5b9064 BOM-strip commit fixed the file header but not the inline bytes. Functionally a no-op (helm doesn't read comments) — purely a readability fix.
+
+### Images
+
+- All five release images retagged at `-2.1.8`. No code changes vs 2.1.7; rebuilt for tag consistency so `values.yaml` / `docker-compose.yml` references resolve.
+
+### Chart
+- Helm chart `version` + `appVersion` → **2.1.8**. Values-file comment normalization only; no template changes.
+
+---
+
 ## 2.1.7
 
 ### Bug fixes (compose-side parity with the helm chart)
