@@ -4,6 +4,25 @@
 
 ---
 
+## 2.1.5
+
+### Bug fixes
+
+- **Analyzer baselines bombarded ClickHouse with auth errors** (`analyzer/_baselines.py`): same `Authorization` + `X-ClickHouse-*` header collision fixed in `ch-setup` (2.1.4) was also present in the analyzer's dynamic-baseline path. Every `BASELINE_CACHE_TTL` (default 60s) per analyzer pod, the percentile query hit CH with both header families and was rejected by CH 22.x+ with:
+  ```
+  Code: 516. DB::Exception: Invalid authentication: it is not allowed to use X-ClickHouse HTTP headers and Authorization HTTP header simultaneously
+  ```
+  Result: CH server log flooded with auth-failed entries on every baseline refresh, and analyzers silently fell back to static defaults instead of recomputing baselines from real traffic. Legacy `Authorization: Basic …` header removed; only the native `X-ClickHouse-*` headers are sent now.
+
+### Images
+
+- All five release images rebuilt at `-2.1.5`: `gateway-2.1.5`, `analyzer-2.1.5`, `logstash-2.1.5`, `ch-setup-2.1.5`, `grafana-setup-2.1.5`.
+
+### Chart
+- Helm chart `version` + `appVersion` → **2.1.5**.
+
+---
+
 ## 2.1.4
 
 ### Bug fixes

@@ -11,7 +11,6 @@ Connection env vars match the rest of the stack:
 ``CLICKHOUSE_DATABASE``, ``CLICKHOUSE_CA_CERT``, ``CLICKHOUSE_INSECURE``.
 """
 
-import base64
 import json
 import logging
 import math
@@ -60,13 +59,13 @@ def _build_ssl_context() -> ssl.SSLContext | None:
 
 
 def _build_headers() -> dict[str, str]:
+    # CH >= 22 rejects mixing X-ClickHouse-* and Authorization headers.
+    # Use X-ClickHouse-* only — native and required for any modern CH.
     headers: dict[str, str] = {"Content-Type": "text/plain; charset=utf-8"}
     if _CH_USER:
         headers["X-ClickHouse-User"] = _CH_USER
     if _CH_PASSWORD:
         headers["X-ClickHouse-Key"] = _CH_PASSWORD
-        token = base64.b64encode(f"{_CH_USER}:{_CH_PASSWORD}".encode()).decode()
-        headers["Authorization"] = f"Basic {token}"
     return headers
 
 
