@@ -304,7 +304,9 @@ def dead_letter_table_ddl(s: TableSettings) -> str:
 def dead_letter_distributed_ddl(s: TableSettings) -> str | None:
     if not s.cluster_enabled:
         return None
-    return _distributed_ddl(s, "alo_dead_letter")
+    # Dead-letter lacks request_operation; cannot reuse raw's sharding key.
+    return _distributed_ddl(s, "alo_dead_letter",
+                            sharding_key="cityHash64(cluster_name)")
 
 
 def summary_table_ddl(s: TableSettings) -> str:
@@ -386,12 +388,14 @@ def _summary_engine(s: TableSettings, table: str) -> str:
     return f"ReplicatedAggregatingMergeTree({path}, '{{replica}}')"
 
 
-def _distributed_ddl(s: TableSettings, base: str) -> str:
+def _distributed_ddl(s: TableSettings, base: str,
+                     sharding_key: str | None = None) -> str:
+    key = sharding_key if sharding_key is not None else s.sharding_key
     return (
         f"CREATE TABLE IF NOT EXISTS {s.database}.{base}{_on_cluster(s)}\n"
         f"AS {s.database}.{base}_local\n"
         f"ENGINE = Distributed("
-        f"'{s.cluster_name}', '{s.database}', '{base}_local', {s.sharding_key})"
+        f"'{s.cluster_name}', '{s.database}', '{base}_local', {key})"
     )
 
 

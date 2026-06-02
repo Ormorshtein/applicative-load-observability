@@ -4,6 +4,21 @@
 
 ---
 
+## 2.1.9
+
+### Bug fixes
+
+- **`clickhouse_setup/_schema.py`**: `alo_dead_letter` Distributed front failed to create in cluster mode with `Missing columns: 'request_operation'`. Root cause: `_distributed_ddl` reused the default sharding key `cityHash64(cluster_name, request_operation)` for every Distributed table, but `alo_dead_letter` has no `request_operation` column. Dead-letter now uses its own sharding key `cityHash64(cluster_name)`. `_distributed_ddl` gained an optional `sharding_key` override; raw + summary still use the configurable `s.sharding_key`. Unit test `test_distributed_dead_letter_uses_own_sharding_key` locks the behavior.
+
+### Images
+
+- All five release images rebuilt at `-2.1.9` per project policy. Only the `ch-setup` image actually changed; the others are tag-consistent rebuilds.
+
+### Chart
+- Helm chart `version` + `appVersion` → **2.1.9**. Values-file image tag bumps only; no template changes.
+
+---
+
 ## 2.1.8
 
 ### Cleanup

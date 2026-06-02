@@ -123,6 +123,15 @@ class TestClusterMode:
         ddl = self.by_label["alo_summary"]
         assert "Distributed('alo_cluster', 'alo', 'alo_summary_local'" in ddl
 
+    def test_distributed_dead_letter_uses_own_sharding_key(self):
+        # alo_dead_letter has no request_operation column, so it cannot
+        # reuse the default sharding key.
+        ddl = self.by_label["alo_dead_letter"]
+        assert (
+            "ENGINE = Distributed('alo_cluster', 'alo', 'alo_dead_letter_local', "
+            "cityHash64(cluster_name))" in ddl
+        )
+
     def test_mv_reads_local_writes_local(self):
         ddl = self.by_label["alo_summary_mv"]
         assert "FROM alo.alo_raw_local" in ddl
