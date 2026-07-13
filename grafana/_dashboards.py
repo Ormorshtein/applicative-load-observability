@@ -278,19 +278,6 @@ def _add_filter_link(panel, field, dashboard_uid="alo-main"):
     }]
 
 
-def _add_pie_filter_link(panel, field, dashboard_uid="alo-main"):
-    """Datalink for pie charts after rowsToFields: slice label = ${__field.name}."""
-    var_name = _FIELD_TO_VAR.get(field)
-    if not var_name:
-        return
-    panel["fieldConfig"]["defaults"]["links"] = [{
-        "title": "Filter by ${__field.name}",
-        "url": f"/d/${{__dashboard.uid}}?${{__url_time_range}}"
-               f"&var-{var_name}=${{__field.name}}",
-        "targetBlank": False,
-    }]
-
-
 def _bucket_expression(field: str) -> str:
     """SQL expression that produces one row per dimension value.
 
@@ -312,10 +299,10 @@ def mk_pie(title, field, gridpos, size=8, dashboard_uid="alo-main",
     else:
         label_expr = f"COALESCE(nullIf(toString({bucket}), ''), '(unknown)')"
     sql = (
-        f"SELECT {label_expr} AS label, sum(stress_score) AS __val "
+        f"SELECT {label_expr} AS label, sum(stress_score) AS value "
         f"FROM {TABLE_RAW} "
         f"WHERE {_build_where()} "
-        f"GROUP BY label ORDER BY __val DESC LIMIT {size}"
+        f"GROUP BY label ORDER BY value DESC LIMIT {size}"
     )
     panel = _base_panel(title, "piechart", gridpos,
                        targets=[_ch_target(sql, format_as="table")],
@@ -331,12 +318,10 @@ def mk_pie(title, field, gridpos, size=8, dashboard_uid="alo-main",
                        },
                        transformations=[
                            {"id": "partitionByValues",
-                            "options": {"fields": ["label"], "keepFields": False}},
-                           {"id": "renameByRegex",
-                            "options": {"regex": "^__val (.+)$", "renamePattern": "$1"}},
+                            "options": {"fields": ["label"], "keepFields": True}},
                        ],
                        description=description)
-    _add_pie_filter_link(panel, field, dashboard_uid)
+    _add_filter_link(panel, field, dashboard_uid)
     return panel
 
 

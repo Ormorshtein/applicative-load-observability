@@ -155,7 +155,7 @@
           "editorType": "sql",
           "queryType": "table",
           "format": 0,
-          "rawSql": "SELECT COALESCE(nullIf(toString(identity_applicative_provider), ''), '(unknown)') AS label, sum(stress_score) AS __val FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY label ORDER BY __val DESC LIMIT 8",
+          "rawSql": "SELECT COALESCE(nullIf(toString(identity_applicative_provider), ''), '(unknown)') AS label, sum(stress_score) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY label ORDER BY value DESC LIMIT 8",
           "meta": {
             "builderOptions": {}
           }
@@ -186,8 +186,8 @@
         "defaults": {
           "links": [
             {
-              "title": "Filter by ${__field.name}",
-              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-application=${__field.name}",
+              "title": "Filter by ${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-application=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -201,14 +201,7 @@
             "fields": [
               "label"
             ],
-            "keepFields": false
-          }
-        },
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "^__val (.+)$",
-            "renamePattern": "$1"
+            "keepFields": true
           }
         }
       ]
@@ -238,7 +231,7 @@
           "editorType": "sql",
           "queryType": "table",
           "format": 0,
-          "rawSql": "SELECT COALESCE(nullIf(toString(request_target), ''), '(unknown)') AS label, sum(stress_score) AS __val FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY label ORDER BY __val DESC LIMIT 8",
+          "rawSql": "SELECT COALESCE(nullIf(toString(request_target), ''), '(unknown)') AS label, sum(stress_score) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY label ORDER BY value DESC LIMIT 8",
           "meta": {
             "builderOptions": {}
           }
@@ -269,8 +262,8 @@
         "defaults": {
           "links": [
             {
-              "title": "Filter by ${__field.name}",
-              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-target=${__field.name}",
+              "title": "Filter by ${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-target=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -284,14 +277,7 @@
             "fields": [
               "label"
             ],
-            "keepFields": false
-          }
-        },
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "^__val (.+)$",
-            "renamePattern": "$1"
+            "keepFields": true
           }
         }
       ]
@@ -321,7 +307,7 @@
           "editorType": "sql",
           "queryType": "table",
           "format": 0,
-          "rawSql": "SELECT COALESCE(nullIf(toString(request_operation), ''), '(unknown)') AS label, sum(stress_score) AS __val FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY label ORDER BY __val DESC LIMIT 8",
+          "rawSql": "SELECT COALESCE(nullIf(toString(request_operation), ''), '(unknown)') AS label, sum(stress_score) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY label ORDER BY value DESC LIMIT 8",
           "meta": {
             "builderOptions": {}
           }
@@ -352,8 +338,8 @@
         "defaults": {
           "links": [
             {
-              "title": "Filter by ${__field.name}",
-              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-operation=${__field.name}",
+              "title": "Filter by ${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-operation=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -367,14 +353,7 @@
             "fields": [
               "label"
             ],
-            "keepFields": false
-          }
-        },
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "^__val (.+)$",
-            "renamePattern": "$1"
+            "keepFields": true
           }
         }
       ]
@@ -404,7 +383,7 @@
           "editorType": "sql",
           "queryType": "table",
           "format": 0,
-          "rawSql": "SELECT COALESCE(nullIf(toString(arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names))), ''), '(unknown)') AS label, sum(stress_score) AS __val FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY label ORDER BY __val DESC LIMIT 10",
+          "rawSql": "SELECT COALESCE(nullIf(toString(arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names))), ''), '(unknown)') AS label, sum(stress_score) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY label ORDER BY value DESC LIMIT 10",
           "meta": {
             "builderOptions": {}
           }
@@ -435,8 +414,8 @@
         "defaults": {
           "links": [
             {
-              "title": "Filter by ${__field.name}",
-              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-cost_indicator=${__field.name}",
+              "title": "Filter by ${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-cost_indicator=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -450,14 +429,7 @@
             "fields": [
               "label"
             ],
-            "keepFields": false
-          }
-        },
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "^__val (.+)$",
-            "renamePattern": "$1"
+            "keepFields": true
           }
         }
       ]
@@ -487,7 +459,7 @@
           "editorType": "sql",
           "queryType": "table",
           "format": 0,
-          "rawSql": "SELECT COALESCE(nullIf(LEFT(toString(request_template), 60), ''), '(no template)') AS label, sum(stress_score) AS __val FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY label ORDER BY __val DESC LIMIT 10",
+          "rawSql": "SELECT COALESCE(nullIf(LEFT(toString(request_template), 60), ''), '(no template)') AS label, sum(stress_score) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY label ORDER BY value DESC LIMIT 10",
           "meta": {
             "builderOptions": {}
           }
@@ -518,8 +490,8 @@
         "defaults": {
           "links": [
             {
-              "title": "Filter by ${__field.name}",
-              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-template=${__field.name}",
+              "title": "Filter by ${__data.fields[0]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-template=${__data.fields[0]}",
               "targetBlank": false
             }
           ]
@@ -533,14 +505,7 @@
             "fields": [
               "label"
             ],
-            "keepFields": false
-          }
-        },
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "^__val (.+)$",
-            "renamePattern": "$1"
+            "keepFields": true
           }
         }
       ]
