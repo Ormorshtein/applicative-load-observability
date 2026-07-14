@@ -4,6 +4,36 @@
 
 ---
 
+## 2.1.14
+
+### Enhancements
+
+- **`helm/alo/values.yaml`, `templates/grafana/job-setup.yaml`,
+  `values.schema.json`**: the 2.1.13 dashboard-variable scan bounds
+  (`_VAR_LOOKBACK_DAYS`/`_VAR_SCAN_ROW_CAP`/`_VAR_OPTION_LIMIT`) were hardcoded
+  Python constants — no way to tune them per deployment without a code change.
+  Now sourced from `grafana.setup.variableLookbackDays` /
+  `variableScanRowCap` / `variableOptionLimit` (defaults 7 / 200000 / 1000,
+  unchanged behavior), passed through as `GRAFANA_VAR_*` env vars on the
+  grafana-setup Job and read via `os.getenv` in `grafana/_dashboards.py`.
+  Schema updated to document and validate the new `grafana` values tree
+  (previously an untyped free-form object). `helm lint` and `helm template`
+  verified; dashboard JSON output unchanged with default values.
+- Note: 2.1.13 (dashboard-variable OOM fix) never shipped as a standalone
+  release — its images were never pushed and no tag was cut before this
+  follow-up landed. This release supersedes it; see the entry below for the
+  underlying fix.
+
+### Images
+
+- All five release images built via the `release.yml` CI workflow (tag push)
+  at `-2.1.14`.
+
+### Chart
+- Helm chart `version` + `appVersion` → **2.1.14**.
+
+---
+
 ## 2.1.13
 
 ### Bug fixes

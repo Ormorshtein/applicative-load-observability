@@ -253,7 +253,58 @@
     },
     "grafana": {
       "type": "object",
-      "additionalProperties": true
+      "additionalProperties": true,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "external": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "url": { "type": "string" },
+            "auth": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "username": { "type": "string" },
+                "password": { "type": "string" },
+                "existingSecret": { "type": "string" }
+              }
+            }
+          }
+        },
+        "image": { "$ref": "#/$defs/image" },
+        "replicas": { "type": "integer", "minimum": 1 },
+        "adminPassword": { "type": "string" },
+        "adminPasswordExistingSecret": { "type": "string" },
+        "prometheusUrl": { "type": "string" },
+        "resources": { "$ref": "#/$defs/resources" },
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string" },
+            "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+          }
+        },
+        "setup": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "image": { "$ref": "#/$defs/image" },
+            "datasource": { "type": "boolean", "description": "Create/update the ClickHouse datasource via the Grafana API." },
+            "dashboards": { "type": "boolean", "description": "Import/update dashboards via the Grafana API." },
+            "variableLookbackDays": { "type": "integer", "minimum": 1, "description": "How far back dashboard variable option queries (Username, Cost Indicator, Template, ...) scan before dedup. Default 7." },
+            "variableScanRowCap": { "type": "integer", "minimum": 1, "description": "Max rows read before DISTINCT+LIMIT for dashboard variable option queries, independent of column cardinality. Default 200000." },
+            "variableOptionLimit": { "type": "integer", "minimum": 1, "description": "Max number of distinct option values returned per dashboard variable. Default 1000." }
+          }
+        },
+        "nodeSelector": { "$ref": "#/$defs/nodeSelector" },
+        "tolerations": { "$ref": "#/$defs/tolerations" },
+        "affinity": { "$ref": "#/$defs/affinity" },
+        "podAnnotations": { "$ref": "#/$defs/annotations" }
+      }
     },
     "ingress": { "type": "object", "additionalProperties": true },
     "route":   { "type": "object", "additionalProperties": true },

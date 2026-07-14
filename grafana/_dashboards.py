@@ -741,6 +741,19 @@ _SUMMARY_COLUMNS = {
     "request_target", "request_operation", "request_template",
 }
 
+# request_template (and other high-cardinality columns) can hold enough
+# distinct values that an unbounded `SELECT DISTINCT ... FROM table` blows
+# the query memory limit before it ever reaches ORDER BY/LIMIT — this
+# crashed ClickHouse in production once alo_summary grew past a few million
+# rows. _VAR_SCAN_ROW_CAP bounds how many raw rows get deduped regardless of
+# cardinality; _VAR_LOOKBACK_DAYS keeps the scan cheap for both tables
+# rather than assuming the summary table is small enough to skip a window.
+# Overridable via env (wired to helm grafana.setup.variable* values) for
+# deployments with unusually large or small tables.
+_VAR_LOOKBACK_DAYS = int(os.getenv("GRAFANA_VAR_LOOKBACK_DAYS", "7"))
+_VAR_SCAN_ROW_CAP = int(os.getenv("GRAFANA_VAR_SCAN_ROW_CAP", "200000"))
+_VAR_OPTION_LIMIT = int(os.getenv("GRAFANA_VAR_OPTION_LIMIT", "1000"))
+
 
 def _make_query_var(name: str, label: str, column: str) -> dict:
     bucket = _bucket_expression(column)
@@ -748,18 +761,12 @@ def _make_query_var(name: str, label: str, column: str) -> dict:
         table, time_col = TABLE_SUMMARY, "time_bucket"
     else:
         table, time_col = TABLE_RAW, TIME_COL
-    # request_template (and other high-cardinality columns) can hold enough
-    # distinct values that an unbounded `SELECT DISTINCT ... FROM table`
-    # blows the query memory limit before it ever reaches ORDER BY/LIMIT —
-    # this crashed ClickHouse in production once alo_summary grew past a
-    # few million rows. The inner LIMIT caps how many raw rows get deduped
-    # regardless of cardinality; the 7-day window keeps it cheap for both
-    # tables rather than assuming the summary table is small enough to skip.
     inner = (
         f"SELECT {bucket} AS v FROM {table} "
-        f"WHERE {time_col} > now() - INTERVAL 7 DAY LIMIT 200000"
+        f"WHERE {time_col} > now() - INTERVAL {_VAR_LOOKBACK_DAYS} DAY "
+        f"LIMIT {_VAR_SCAN_ROW_CAP}"
     )
-    sql = f"SELECT DISTINCT v FROM ({inner}) ORDER BY v LIMIT 1000"
+    sql = f"SELECT DISTINCT v FROM ({inner}) ORDER BY v LIMIT {_VAR_OPTION_LIMIT}"
     return {
         "type": "query",
         "name": name,
