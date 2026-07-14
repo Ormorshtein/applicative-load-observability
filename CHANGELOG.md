@@ -4,6 +4,45 @@
 
 ---
 
+## 2.1.10
+
+### Bug fixes
+
+- **`grafana/_dashboards.py`**: Stress Analysis dashboard audit fixes.
+  - ES CPU Usage panel permanently empty under the dashboard's default "All" cluster
+    selection — PromQL `cluster=~"$cluster"` matcher resolved to the ClickHouse-only
+    `$__all` sentinel, an invalid regex value. Matcher dropped; panel queries
+    `elasticsearch_process_cpu_percent` unfiltered, `legendFormat` still splits by cluster.
+  - "Top 10 Heaviest Operations" Cost Indicator column linked on the joined
+    `arrayStringConcat` string, which never equals a single dropdown value — link
+    removed for array columns, text display kept.
+  - Template pie chart drill-down used the 60-char-truncated label as the filter
+    value, so templates over 60 chars never matched anything when clicked. Pie query
+    now carries an untruncated `full_label` field through `partitionByValues`;
+    `_add_filter_link` gained a `field_index` param so the link targets it.
+  - Summary-table fallback queries (`_build_where_summary`) emitted predicates for
+    `username`/`client_host`/`cost_indicator` — columns `alo_summary` doesn't have —
+    which errored on any post-TTL fallback query once one of those variables left
+    "All". `_build_where` now accepts a `variables` override; the summary path only
+    emits predicates for columns that exist in `alo_summary`.
+- **`clickhouse_setup/_schema.py`**: added `bloom_filter(0.01)` skip indexes on
+  `request_target`, `identity_username`, `identity_client_host`, `request_template`,
+  `stress_cost_indicator_names` — the dashboard's filter/group columns had no index
+  support beyond the `ORDER BY` sort key, forcing full scans on `alo_raw`. Applied via
+  idempotent `ALTER TABLE ... ADD INDEX IF NOT EXISTS`; existing deployments need
+  `MATERIALIZE INDEX` to backfill already-written parts.
+
+### Images
+
+- All five release images rebuilt at `-2.1.10` per project policy. `ch-setup` and
+  `grafana-setup` actually changed; the others are tag-consistent rebuilds.
+
+### Chart
+- Helm chart `version` + `appVersion` → **2.1.10**. Values-file image tag bumps only;
+  no template changes.
+
+---
+
 ## 2.1.9
 
 ### Bug fixes

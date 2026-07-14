@@ -425,6 +425,42 @@ def raw_table_column_additions_ddl(s: TableSettings) -> list[tuple[str, str]]:
     ]
 
 
+# ── Index additions (for existing deployments) ────────────────────────────
+# Grafana's stress-analysis dashboard filters/groups alo_raw by these columns,
+# but none of them are covered by the ORDER BY sort key (cluster_name,
+# request_operation, identity_applicative_provider, timestamp) — every query
+# that filters on them forces a full column scan. bloom_filter skip indexes
+# accelerate equals/IN (String/LowCardinality) and has/hasAny (Array) — the
+# exact predicates _wildcard_predicate emits in grafana/_dashboards.py.
+# Each entry: (label_suffix, index_name, column_expr, index_type, granularity)
+_RAW_INDEX_ADDITIONS: list[tuple[str, str, str, str, int]] = [
+    ("identity_username",         "idx_identity_username",         "identity_username",           "bloom_filter(0.01)", 4),
+    ("identity_client_host",      "idx_identity_client_host",      "identity_client_host",         "bloom_filter(0.01)", 4),
+    ("request_target",            "idx_request_target",            "request_target",               "bloom_filter(0.01)", 4),
+    ("request_template",          "idx_request_template",          "request_template",             "bloom_filter(0.01)", 4),
+    ("stress_cost_indicator_names", "idx_stress_cost_indicator_names", "stress_cost_indicator_names", "bloom_filter(0.01)", 4),
+]
+
+
+def raw_table_index_additions_ddl(s: TableSettings) -> list[tuple[str, str]]:
+    """ALTER TABLE ADD INDEX IF NOT EXISTS for dashboard filter columns.
+
+    Safe to run against both fresh and existing deployments. New parts get
+    the index automatically; existing parts need an explicit
+    ``ALTER TABLE ... MATERIALIZE INDEX <name>`` to backfill (not run here —
+    it re-reads existing data, left as an operator decision).
+    """
+    table = _local_suffix(s, "alo_raw")
+    return [
+        (
+            f"alter_alo_raw_{label}_index",
+            f"ALTER TABLE {s.database}.{table}{_on_cluster(s)} "
+            f"ADD INDEX IF NOT EXISTS {name} {expr} TYPE {idx_type} GRANULARITY {granularity}",
+        )
+        for label, name, expr, idx_type, granularity in _RAW_INDEX_ADDITIONS
+    ]
+
+
 # ── Public DDL plan ───────────────────────────────────────────────────────
 
 def all_ddl(s: TableSettings) -> list[tuple[str, str]]:
@@ -440,4 +476,4 @@ def all_ddl(s: TableSettings) -> list[tuple[str, str]]:
         ("alo_summary_mv",        summary_mv_ddl(s)),
     ]
     base = [(label, ddl) for label, ddl in plan if ddl]
-    return base + raw_table_column_additions_ddl(s)
+    return base + raw_table_column_additions_ddl(s) + raw_table_index_additions_ddl(s)

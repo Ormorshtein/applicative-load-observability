@@ -36,7 +36,7 @@
             "type": "prometheus",
             "uid": "${datasource_prometheus}"
           },
-          "expr": "elasticsearch_process_cpu_percent{cluster=~\"$cluster\"}",
+          "expr": "elasticsearch_process_cpu_percent",
           "legendFormat": "{{cluster}}",
           "refId": "A"
         }
@@ -459,7 +459,7 @@
           "editorType": "sql",
           "queryType": "table",
           "format": 0,
-          "rawSql": "SELECT COALESCE(nullIf(LEFT(toString(request_template), 60), ''), '(no template)') AS label, sum(stress_score) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY label ORDER BY value DESC LIMIT 10",
+          "rawSql": "SELECT COALESCE(nullIf(LEFT(toString(request_template), 60), ''), '(no template)') AS label, any(toString(request_template)) AS full_label, sum(stress_score) AS value FROM alo.alo_raw WHERE $__timeFilter(timestamp) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY label ORDER BY value DESC LIMIT 10",
           "meta": {
             "builderOptions": {}
           }
@@ -490,8 +490,8 @@
         "defaults": {
           "links": [
             {
-              "title": "Filter by ${__data.fields[0]}",
-              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-template=${__data.fields[0]}",
+              "title": "Filter by ${__data.fields[1]}",
+              "url": "/d/${__dashboard.uid}?${__url_time_range}&var-template=${__data.fields[1]}",
               "targetBlank": false
             }
           ]
@@ -647,24 +647,6 @@
                   {
                     "title": "Filter by Target",
                     "url": "/d/${__dashboard.uid}?${__url_time_range}&var-target=${__value.raw}",
-                    "targetBlank": false
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Cost Indicators"
-            },
-            "properties": [
-              {
-                "id": "links",
-                "value": [
-                  {
-                    "title": "Filter by Cost Indicators",
-                    "url": "/d/${__dashboard.uid}?${__url_time_range}&var-cost_indicator=${__value.raw}",
                     "targetBlank": false
                   }
                 ]
@@ -1129,7 +1111,7 @@
           "editorType": "sql",
           "queryType": "timeseries",
           "format": 1,
-          "rawSql": "SELECT toStartOfHour(time_bucket) AS t, countMerge(count_state) AS \"count_summary\" FROM alo.alo_summary WHERE $__timeFilter(time_bucket) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(identity_username IN (${username:singlequote}), $username) AND $__conditionalAll(hasAny(stress_cost_indicator_names, [${cost_indicator:singlequote}]), $cost_indicator) AND $__conditionalAll(identity_client_host IN (${client_host:singlequote}), $client_host) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY t ORDER BY t",
+          "rawSql": "SELECT toStartOfHour(time_bucket) AS t, countMerge(count_state) AS \"count_summary\" FROM alo.alo_summary WHERE $__timeFilter(time_bucket) AND $__conditionalAll(cluster_name IN (${cluster:singlequote}), $cluster) AND $__conditionalAll(identity_applicative_provider IN (${application:singlequote}), $application) AND $__conditionalAll(request_target IN (${target:singlequote}), $target) AND $__conditionalAll(request_operation IN (${operation:singlequote}), $operation) AND $__conditionalAll(request_template IN (${template:singlequote}), $template) GROUP BY t ORDER BY t",
           "meta": {
             "builderOptions": {}
           },

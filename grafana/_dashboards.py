@@ -94,6 +94,9 @@ def _wildcard_predicate(var: str, column: str) -> str:
     errors in ClickHouse when no values are selected.
 
     The Array column stress_cost_indicator_names uses hasAny instead of IN.
+    The analyzer (record_builder/_assembly.py) already writes the literal
+    ['unflagged'] sentinel at ingest time when nothing is flagged — the raw
+    column is never a true empty array — so plain hasAny matches it fine.
     """
     macro = f"${{{var}:singlequote}}"
     if column == "stress_cost_indicator_names":
@@ -101,10 +104,11 @@ def _wildcard_predicate(var: str, column: str) -> str:
     return f"$__conditionalAll({column} IN ({macro}), ${var})"
 
 
-def _build_where(extra: str = "", time_col: str = TIME_COL) -> str:
+def _build_where(extra: str = "", time_col: str = TIME_COL,
+                 variables: list[tuple] | None = None) -> str:
     """Build the universal WHERE clause for ``alo_raw`` queries."""
     parts = [f"$__timeFilter({time_col})"]
-    for var, _, column in _VARIABLES:
+    for var, _, column in (_VARIABLES if variables is None else variables):
         parts.append(_wildcard_predicate(var, column))
     if extra:
         parts.append(extra)
@@ -112,8 +116,17 @@ def _build_where(extra: str = "", time_col: str = TIME_COL) -> str:
 
 
 def _build_where_summary(extra: str = "") -> str:
-    """WHERE clause for the summary table (time column is ``time_bucket``)."""
-    return _build_where(extra=extra, time_col="time_bucket")
+    """WHERE clause for the summary table (time column is ``time_bucket``).
+
+    alo_summary only carries the dimensions in _SUMMARY_COLUMNS (defined
+    below) — username, client_host, and cost_indicator have no matching
+    column there. Emitting predicates for them would reference nonexistent
+    columns and error whenever one of those variables isn't "All", so they're
+    skipped entirely for summary queries rather than relying on
+    $__conditionalAll's "All" no-op to paper over it.
+    """
+    summary_vars = [v for v in _VARIABLES if v[2] in _SUMMARY_COLUMNS]
+    return _build_where(extra=extra, time_col="time_bucket", variables=summary_vars)
 
 
 # ΓöÇΓöÇ Aggregate-function rendering ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
@@ -215,6 +228,14 @@ def mk_text(title, content, gridpos, description=None):
 
 
 def mk_cpu_panel(gridpos):
+    # No cluster label matcher: $cluster is a multi-select ClickHouse variable
+    # with no allValue (its "All" state must stay the literal $__all sentinel
+    # so $__conditionalAll works correctly for every other panel). That
+    # sentinel isn't a valid PromQL regex, so under the dashboard's own
+    # default "All" selection cluster=~"$cluster" would resolve to
+    # cluster=~"$__all" and permanently match zero series. Querying
+    # unfiltered is strictly better than "always empty by default";
+    # legendFormat still splits series per cluster if more than one reports.
     return {
         "id": _next_id(),
         "title": "ES CPU Usage",
@@ -224,7 +245,7 @@ def mk_cpu_panel(gridpos):
         "gridPos": gridpos,
         "targets": [{
             "datasource": PROMETHEUS_DS,
-            "expr": 'elasticsearch_process_cpu_percent{cluster=~"$cluster"}',
+            "expr": "elasticsearch_process_cpu_percent",
             "legendFormat": "{{cluster}}",
             "refId": "A",
         }],
@@ -266,14 +287,21 @@ def mk_stat(title, field, operation, gridpos, query="", description=None):
                        description=description)
 
 
-def _add_filter_link(panel, field, dashboard_uid="alo-main"):
+def _add_filter_link(panel, field, dashboard_uid="alo-main", field_index=0):
+    """Attach a byRow drill-down link to ``${__data.fields[field_index]}``.
+
+    Default index 0 assumes the panel's first selected column is the raw,
+    untruncated filter value. Panels that display a shortened/derived label
+    (e.g. mk_pie's 60-char template truncation) must pass the index of a
+    separate column carrying the real value instead — see mk_pie.
+    """
     var_name = _FIELD_TO_VAR.get(field)
     if not var_name:
         return
     panel["fieldConfig"]["defaults"]["links"] = [{
-        "title": "Filter by ${__data.fields[0]}",
+        "title": f"Filter by ${{__data.fields[{field_index}]}}",
         "url": f"/d/${{__dashboard.uid}}?${{__url_time_range}}"
-               f"&var-{var_name}=${{__data.fields[0]}}",
+               f"&var-{var_name}=${{__data.fields[{field_index}]}}",
         "targetBlank": False,
     }]
 
@@ -294,12 +322,21 @@ def _bucket_expression(field: str) -> str:
 def mk_pie(title, field, gridpos, size=8, dashboard_uid="alo-main",
            description=None):
     bucket = _bucket_expression(field)
-    if field == "request_template":
+    is_template = field == "request_template"
+    if is_template:
         label_expr = f"COALESCE(nullIf(LEFT(toString({bucket}), 60), ''), '(no template)')"
+        # The legend/grouping label is truncated for readability, but the
+        # drill-down filter must use the real, untruncated value or it will
+        # never match request_template — keep both, group by the truncated
+        # one, carry the full one through via any() (deterministic since
+        # truncation collisions across templates are effectively unheard of).
+        full_expr = f"any(toString({bucket}))"
+        full_col_sql = f", {full_expr} AS full_label"
     else:
         label_expr = f"COALESCE(nullIf(toString({bucket}), ''), '(unknown)')"
+        full_col_sql = ""
     sql = (
-        f"SELECT {label_expr} AS label, sum(stress_score) AS value "
+        f"SELECT {label_expr} AS label{full_col_sql}, sum(stress_score) AS value "
         f"FROM {TABLE_RAW} "
         f"WHERE {_build_where()} "
         f"GROUP BY label ORDER BY value DESC LIMIT {size}"
@@ -321,7 +358,7 @@ def mk_pie(title, field, gridpos, size=8, dashboard_uid="alo-main",
                             "options": {"fields": ["label"], "keepFields": True}},
                        ],
                        description=description)
-    _add_filter_link(panel, field, dashboard_uid)
+    _add_filter_link(panel, field, dashboard_uid, field_index=1 if is_template else 0)
     return panel
 
 
@@ -665,6 +702,11 @@ def mk_raw_docs_table(title, columns, gridpos, size=50, query="",
     )
     overrides: list[dict] = []
     for src, label in columns:
+        if src in _ARRAY_COLS:
+            # arrayStringConcat renders these as a joined "a, b, c" string —
+            # __value.raw would never equal a single dropdown value, so a
+            # link here would always filter to nothing. Show the text, no link.
+            continue
         var_name = _FIELD_TO_VAR.get(src)
         if not var_name:
             continue
