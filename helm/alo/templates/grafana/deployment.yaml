@@ -34,6 +34,18 @@ spec:
           imagePullPolicy: {{ .Values.grafana.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
+          # GF_INSTALL_PLUGINS' documented "id@version" pinning syntax does
+          # not actually work on this image (verified live against
+          # grafana/grafana:11.6.7 + grafana-clickhouse-datasource@4.15.0:
+          # the image's /run.sh passes the combined "id@version" string as a
+          # single token to `grafana cli plugins install`, which 404s — only
+          # the two-separate-args form works). Install explicitly instead of
+          # relying on the env var.
+          command: ["sh", "-c"]
+          args:
+            - |
+              grafana cli --pluginsDir /var/lib/grafana/plugins plugins install grafana-clickhouse-datasource 4.15.0
+              exec /run.sh
           env:
             - name: GF_SECURITY_ADMIN_PASSWORD
               {{- if .Values.grafana.adminPasswordExistingSecret }}
@@ -44,8 +56,6 @@ spec:
               {{- else }}
               value: {{ .Values.grafana.adminPassword | quote }}
               {{- end }}
-            - name: GF_INSTALL_PLUGINS
-              value: "grafana-clickhouse-datasource"
           ports:
             - name: http
               containerPort: 3000

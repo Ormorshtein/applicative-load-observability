@@ -4,6 +4,49 @@
 
 ---
 
+## 2.1.18
+
+### Fixes / Infra
+
+- **`docker-compose.yml`, `helm/alo/templates/grafana/deployment.yaml`,
+  `helm/alo/values.yaml`**: the dev stack and Helm chart both pinned Grafana
+  to `11.0.0`/`11.6.7` respectively but installed the ClickHouse plugin
+  unpinned (`GF_INSTALL_PLUGINS=grafana-clickhouse-datasource`), which
+  silently pulled the newest release (4.19.0) — while the actual production
+  deployment runs plugin 4.15.0. Dashboard-variable fixes verified against
+  the unpinned dev plugin (2.1.12, 2.1.17) were never actually verified
+  against what's deployed. Pinned Grafana to `11.6.7` and the plugin to
+  `4.15.0` (matching prod) in both docker-compose and the Helm chart.
+  Along the way, found and worked around a real bug: `GF_INSTALL_PLUGINS`'s
+  documented `id@version` pinning syntax doesn't work on this image —
+  `/run.sh` passes the combined string as a single token to
+  `grafana cli plugins install`, which 404s; only the two-separate-args
+  form works. Both docker-compose and the Helm Deployment now install the
+  plugin explicitly via an overridden entrypoint/command instead of relying
+  on the env var.
+- Re-verified, against the real Grafana 11.6.7 + plugin 4.15.0 combination
+  (not just the newer dev-only plugin version):
+  - The 2.1.12 structured-object variable `query` shape **does** execute
+    correctly and return real data on 4.15.0 (confirmed via network capture
+    showing `status: 200` and real `request_template` values) — initial
+    concern that it was broken on 4.15.0 turned out to be an unrelated
+    datasource-config mistake in the test setup (wrong ClickHouse host),
+    not a plugin-version incompatibility.
+  - `$__conditionalAll`'s macro logic is byte-identical between plugin
+    4.15.0 and 4.19.0 (diffed both installed `module.js` files) — the
+    2.1.17 `allValue: "$__all"` fix holds on both. Confirmed live on
+    4.15.0: "All" still renders `1=1`, no enumerated `IN (...)`.
+  - The `[object Object]` shown in the Template variable's "Query" text box
+    (Dashboard settings → Variables → template) is confirmed **cosmetic
+    only** on the real plugin version too — the query still executes and
+    "Preview of values" shows real distinct values despite the ugly
+    display. Not fixed this pass; no functional or performance impact.
+
+### Chart
+- Helm chart `version` + `appVersion` → **2.1.18**.
+
+---
+
 ## 2.1.17
 
 ### Performance / Bug fixes
