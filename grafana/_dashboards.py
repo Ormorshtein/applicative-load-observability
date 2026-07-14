@@ -796,6 +796,19 @@ def _make_query_var(name: str, label: str, column: str) -> dict:
         },
         "definition": sql,
         "includeAll": True,
+        # Pin "All" to the literal $__all sentinel via a custom allValue,
+        # rather than relying on Grafana's default (no-allValue) behavior of
+        # enumerating every fetched option into current.value on select/
+        # refresh. The clickhouse-datasource plugin's $__conditionalAll macro
+        # (confirmed by reading the installed module.js) only renders `1=1`
+        # when current.value.toString() is exactly "" or "$__all" — without
+        # a pinned allValue, a variable-options refresh (triggered here by
+        # refresh=2 on every time-range change) can silently replace that
+        # sentinel with the full list of individual option values, so "All"
+        # degenerates into a giant `IN (val1, val2, ..., valN)` instead of a
+        # no-op — a real, user-reported cause of runaway query size at high
+        # cardinality (e.g. thousands of distinct usernames/templates).
+        "allValue": "$__all",
         "multi": True,
         "sort": 1,
         "refresh": 2,

@@ -4,6 +4,35 @@
 
 ---
 
+## 2.1.17
+
+### Performance / Bug fixes
+
+- **`grafana/_dashboards.py`**: dashboard variables set to "All" could silently degenerate
+  from a `1=1` no-op into a giant `column IN (val1, val2, ..., valN)` enumerating every
+  individual option — reported live as ~2000-line queries on a real deployment. Root cause,
+  confirmed by pulling and reading the installed `grafana-clickhouse-datasource` plugin's
+  `module.js`: `$__conditionalAll` only renders `1=1` when the variable's
+  `current.value.toString()` is exactly `""` or `"$__all"`. Without a pinned `allValue`,
+  Grafana can replace that sentinel with the full array of fetched options on a
+  variable-refresh (triggered here on every time-range change), which fails the sentinel
+  check once cardinality is high (real usernames/templates/hosts). `_make_query_var` now
+  sets `"allValue": "$__all"`, which Grafana honors as a fixed literal — "All" no longer
+  enumerates individual options under any refresh/selection path. Verified live: non-"All"
+  selections still filter correctly (real `IN (...)` values), and "All" produces `1=1` even
+  across a variable-refreshing time-range change. Full confirmation that this eliminates the
+  reported query-size blowup needs checking on the actual high-cardinality deployment — not
+  reproducible on the local dev stack, which only has 1-2 distinct values per variable.
+- Investigated a separately reported `[object Object]` shown when opening a variable's query
+  options: found a real but cosmetic defect (the SQL-Editor/Query-Builder mode switcher on
+  the variable edit page renders unset instead of "SQL Editor") — the query itself executes
+  and previews correctly, no data/perf impact. Not fixed this pass.
+
+### Chart
+- Helm chart `version` + `appVersion` → **2.1.17**.
+
+---
+
 ## 2.1.16
 
 ### Performance
