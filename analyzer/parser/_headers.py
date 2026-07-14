@@ -24,10 +24,12 @@ def parse_username(headers: dict) -> str:
 
 
 def parse_applicative_provider(headers: dict[str, str]) -> str:
-    opaque: str = headers.get("x-opaque-id", "")
-    if opaque:
-        return opaque.split("/")[0]
-
+    # x-opaque-id used to be the first source checked here, but real-world
+    # values (e.g. Kibana's per-request opaque IDs) aren't a clean service
+    # name — they carry a unique/random component, which blew up
+    # identity_applicative_provider into near-unique cardinality instead of
+    # a small set of provider names. Dropped as a source; x-app-name is the
+    # explicit, low-cardinality signal callers should set instead.
     app_name: str = headers.get("x-app-name", "")
     if app_name:
         return app_name

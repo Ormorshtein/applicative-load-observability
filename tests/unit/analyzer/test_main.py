@@ -47,7 +47,7 @@ class TestAnalyzeHappyPath:
             "path": "/products/_search",
             "headers": {
                 "authorization": f"Basic {base64.b64encode(b'alice:pass').decode()}",
-                "x-opaque-id": "search-api",
+                "x-app-name": "search-api",
                 "user-agent": "elasticsearch-py/8.13.0",
             },
             "request_body": json.dumps({"query": {"match": {"title": "shoes"}}, "size": 10}),

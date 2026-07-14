@@ -81,7 +81,6 @@ All extraction, parsing, and analysis happens downstream in Python.
   "path":                "/products/_search",
   "headers": {
     "authorization":     "Basic YWxpY2U6cGFzc3dvcmQ=",
-    "x-opaque-id":       "search-api",
     "x-app-name":        "search-api",
     "user-agent":        "elasticsearch-py/8.13.0 (Python/3.11.0; linux)",
     "content-type":      "application/json"
@@ -150,7 +149,7 @@ The ruby filter extracts only the gateway fields (`method`, `path`, `headers`, `
 | Field | Header | Logic |
 |-------|--------|-------|
 | `identity.username` | `Authorization` | `Basic` → base64 decode → split `:` → first part |
-| `identity.applicative_provider` | `x-opaque-id` / `x-app-name` / `user-agent` | `x-opaque-id` (strip `/pod-suffix`) → `x-app-name` → `user-agent` (up to first `/`) → `""` |
+| `identity.applicative_provider` | `x-app-name` / `user-agent` | `x-app-name` → `user-agent` (up to first `/`) → `""` (`x-opaque-id` intentionally not used — real-world values like Kibana's per-request opaque IDs aren't a low-cardinality provider name) |
 | `identity.user_agent` | `user-agent` | Raw value |
 
 *From the Nginx payload (network level, not a header):*
@@ -548,7 +547,7 @@ All ILM policies use hot→delete phases. Hot phase rolls over at 1 day or 50 GB
 | Logstash as pipeline | HTTP input + filter + ES output — config-driven, no custom code |
 | Analyzer is stateless + pure | Single endpoint, trivially testable, no dependencies |
 | Template by scalar-scrubbing | Language-agnostic, no query schema knowledge required |
-| `applicative_provider` fallback chain | Works with ES conventions (X-Opaque-Id) and custom headers |
+| `applicative_provider` fallback chain | Works with custom `X-App-Name` headers, falls back to User-Agent parsing |
 | Stress score has no upper bound | Extreme operations should show extreme scores |
 | Nested document structure | Related fields grouped (identity, request, response, clause_counts, stress) for clarity and prevention of field-name collisions |
 | Strict ES mapping with index template | Prevents mapping explosion from dynamic `request.body` sub-fields |

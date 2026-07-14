@@ -64,18 +64,15 @@ class TestParseUsername:
 # ---------------------------------------------------------------------------
 
 class TestParseApplicativeProvider:
-    def test_x_opaque_id(self):
-        assert parse_applicative_provider({"x-opaque-id": "search-api"}) == "search-api"
-
-    def test_x_opaque_id_strips_pod_suffix(self):
-        assert parse_applicative_provider({"x-opaque-id": "search-api/pod-abc123"}) == "search-api"
-
     def test_x_app_name_fallback(self):
         assert parse_applicative_provider({"x-app-name": "catalog-sync"}) == "catalog-sync"
 
-    def test_x_opaque_id_takes_priority_over_x_app_name(self):
-        headers = {"x-opaque-id": "opaque-svc", "x-app-name": "app-svc"}
-        assert parse_applicative_provider(headers) == "opaque-svc"
+    def test_x_opaque_id_is_ignored(self):
+        # x-opaque-id (e.g. Kibana's per-request opaque IDs) is not a
+        # low-cardinality provider name — dropped as a source entirely, so
+        # its presence should fall through to the next signal.
+        headers = {"x-opaque-id": "kibana:9f2c-random-uuid", "user-agent": "curl/7.81.0"}
+        assert parse_applicative_provider(headers) == "curl"
 
     def test_user_agent_fallback(self):
         assert parse_applicative_provider({"user-agent": "elasticsearch-py/8.13.0"}) == "elasticsearch-py"

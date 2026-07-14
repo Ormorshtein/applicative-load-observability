@@ -439,6 +439,40 @@ def mk_timeseries(title, field, gridpos, metric_field="stress_score",
                        description=description)
 
 
+def _top_series_sql(table: str, where: str, time_expr: str,
+                    bucket: str, metric_sql: str, size: int) -> str:
+    """One-scan "top N series by frequency" time series.
+
+    The naive form (a WHERE ... AND bucket IN (SELECT bucket ... GROUP BY
+    bucket ORDER BY count() DESC LIMIT size)) reads the whole filtered table
+    twice — once for the candidate subquery, once for the main aggregation.
+    ClickHouse does not share/cache table subqueries across references, so at
+    hundreds of millions of rows that's a real doubling of I/O.
+
+    This form reads the table exactly once: `count() AS cnt` is computed at
+    the (t, series) grain in the same GROUP BY as the displayed metric, then
+    two chained window functions — `sum(cnt) OVER (PARTITION BY series)`
+    (total frequency per series across the whole window) and
+    `dense_rank() OVER (ORDER BY ... DESC)` — operate on that already-small
+    aggregated result (at most #buckets * #distinct-series rows), not on the
+    raw table, to pick the top `size` series without a second scan.
+    """
+    return (
+        f"SELECT t, series, value FROM ("
+        f"  SELECT t, series, value, series_total, "
+        f"    dense_rank() OVER (ORDER BY series_total DESC) AS series_rank "
+        f"  FROM ("
+        f"    SELECT t, series, value, cnt, "
+        f"      sum(cnt) OVER (PARTITION BY series) AS series_total "
+        f"    FROM ("
+        f"      SELECT {time_expr} AS t, {bucket} AS series, {metric_sql} AS value, count() AS cnt "
+        f"      FROM {table} WHERE {where} GROUP BY t, series"
+        f"    )"
+        f"  )"
+        f") WHERE series_rank <= {size} ORDER BY t"
+    )
+
+
 def _timeseries_sql(field: str | None, metric_field: str | None,
                     metric_op: str, size: int) -> str:
     metric_sql = _agg_sql(metric_op, metric_field)
@@ -452,19 +486,9 @@ def _timeseries_sql(field: str | None, metric_field: str | None,
             f"GROUP BY t ORDER BY t"
         )
     bucket = _bucket_expression(field)
-    return (
-        f"SELECT $__timeInterval({TIME_COL}) AS t, "
-        f"{bucket} AS series, "
-        f"{metric_sql} AS value "
-        f"FROM {TABLE_RAW} "
-        f"WHERE {_build_where()} "
-        f"  AND {bucket} IN ("
-        f"    SELECT {bucket} FROM {TABLE_RAW} "
-        f"    WHERE {_build_where()} "
-        f"    GROUP BY {bucket} ORDER BY count() DESC LIMIT {size}"
-        f"  ) "
-        f"GROUP BY t, series ORDER BY t"
-    )
+    return _top_series_sql(TABLE_RAW, _build_where(),
+                           f"$__timeInterval({TIME_COL})", bucket,
+                           metric_sql, size)
 
 
 _SUMMARY_AGG_OVERRIDES = {
@@ -506,19 +530,15 @@ def _summary_timeseries_sql(field: str | None, metric_field: str | None,
             f"GROUP BY t ORDER BY t"
         )
     bucket = _bucket_expression(field)
-    return (
-        f"SELECT toStartOfHour(time_bucket) AS t, "
-        f"{bucket} AS series, "
-        f"{metric_sql} AS value "
-        f"FROM {TABLE_SUMMARY} "
-        f"WHERE {_build_where_summary()} "
-        f"  AND {bucket} IN ("
-        f"    SELECT {bucket} FROM {TABLE_SUMMARY} "
-        f"    WHERE {_build_where_summary()} "
-        f"    GROUP BY {bucket} ORDER BY {metric_sql} DESC LIMIT {size}"
-        f"  ) "
-        f"GROUP BY t, series ORDER BY t"
-    )
+    # Ranks by row frequency (same criterion _top_series_sql uses for the raw
+    # path), not by the displayed metric as before — keeps the two paths
+    # picking the same top-N series at the raw/summary TTL boundary instead
+    # of two independently-ranked sets, and avoids needing to re-derive a
+    # correct whole-window average from hourly avg *state* columns (which
+    # sum/window-averaging naively would get wrong).
+    return _top_series_sql(TABLE_SUMMARY, _build_where_summary(),
+                           "toStartOfHour(time_bucket)", bucket,
+                           metric_sql, size)
 
 
 def mk_timeseries_multi(title, metrics_spec, gridpos, series_type="line",
@@ -565,19 +585,9 @@ def mk_timeseries_grouped(title, field1, field2, gridpos, size=10,
     Only the top-N most frequent combinations are shown.
     """
     combined = f"concat({field1}, '/', toString({field2}))"
-    sql = (
-        f"SELECT $__timeInterval({TIME_COL}) AS t, "
-        f"{combined} AS series, "
-        f"count() AS value "
-        f"FROM {TABLE_RAW} "
-        f"WHERE {_build_where()} "
-        f"  AND {combined} IN ("
-        f"    SELECT {combined} FROM {TABLE_RAW} "
-        f"    WHERE {_build_where()} "
-        f"    GROUP BY {combined} ORDER BY count() DESC LIMIT {size}"
-        f"  ) "
-        f"GROUP BY t, series ORDER BY t"
-    )
+    sql = _top_series_sql(TABLE_RAW, _build_where(),
+                          f"$__timeInterval({TIME_COL})", combined,
+                          "count()", size)
     custom = {"drawStyle": series_type, "fillOpacity": fill_opacity}
     defaults: dict = {"custom": custom}
     if unit:

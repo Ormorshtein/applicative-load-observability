@@ -49,7 +49,7 @@ python -m pytest tests/unit/test_stress_formulas.py::TestCalcStress::test_search
 
 | Module | Test file | Key areas |
 |--------|-----------|-----------|
-| `parser.py` | `test_parser.py` | Basic-auth username decode, applicative_provider fallback chain (x-opaque-id → x-app-name → user-agent), target/operation path parsing, size defaults, template scrubbing, hits/shards/docs_affected/es_took_ms extraction, bulk shard deduplication |
+| `parser.py` | `test_parser.py` | Basic-auth username decode, applicative_provider fallback chain (x-app-name → user-agent; x-opaque-id intentionally ignored), target/operation path parsing, size defaults, template scrubbing, hits/shards/docs_affected/es_took_ms extraction, bulk shard deduplication |
 | `stress.py` | `test_clause_counting.py` | `count_clauses()` for every clause type (bool, wildcard/regexp/prefix, fuzzy, nested, knn, script, terms, geo_*, runtime_mappings, aggs at all nesting levels) |
 | `stress.py` | `test_cost_indicators.py` | `evaluate_cost_indicators()` for all 10 indicators (presence + threshold boundaries + multiplicative compounding + detail via dict) |
 | `stress.py` | `test_stress_formulas.py` | `norm()`, `calc_stress()` for all 8 operation formulas including multiplier application vs `_NO_MULTIPLIER_OPS`, unbounded score verification |

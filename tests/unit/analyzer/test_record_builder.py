@@ -144,7 +144,7 @@ def _make_raw(**overrides: Any) -> RawFields:
         path="/products/_search",
         headers={
             "authorization": f"Basic {base64.b64encode(b'alice:pass').decode()}",
-            "x-opaque-id": "search-api",
+            "x-app-name": "search-api",
             "user-agent": "elasticsearch-py/8.13.0",
         },
         request_body={"query": {"match": {"title": "shoes"}}, "size": 10},
@@ -177,7 +177,7 @@ class TestBuildRecord:
     def test_custom_labels_from_alo_headers(self):
         headers = {
             "authorization": f"Basic {base64.b64encode(b'alice:pass').decode()}",
-            "x-opaque-id": "search-api",
+            "x-app-name": "search-api",
             "user-agent": "elasticsearch-py/8.13.0",
             "x-alo-team": "payments",
             "x-alo-env": "staging",

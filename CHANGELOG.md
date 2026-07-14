@@ -4,6 +4,56 @@
 
 ---
 
+## 2.1.16
+
+### Performance
+
+- **`grafana/_dashboards.py`**: the 6 timeseries panels showing "top N series"
+  (5 `mk_timeseries` field-mode panels — "Stress by Application/Target/
+  Operation/Cost Indicator/Template" — plus "Status Code by Operation")
+  each read the full filtered `alo_raw` window **twice**: once for a
+  `WHERE bucket IN (SELECT ... GROUP BY bucket ORDER BY count() DESC LIMIT
+  N)` candidate subquery, once for the main aggregation. ClickHouse doesn't
+  share/cache table subqueries across references, so at hundreds of millions
+  of rows this doubled I/O per panel render. Added `_top_series_sql`, a
+  single-scan rewrite: `count()` is computed at the `(t, series)` grain in
+  the same `GROUP BY` as the displayed metric, then two chained window
+  functions (`sum(cnt) OVER (PARTITION BY series)`, `dense_rank() OVER
+  (ORDER BY ... DESC)`) pick the top N from that already-small aggregated
+  result instead of re-scanning the raw table. Verified two ways against the
+  live ClickHouse container: (1) old vs. new queries return byte-identical
+  results, (2) `system.query_log.read_rows` shows the old query reading the
+  table exactly **2×** its row count and the new query reading it exactly
+  **1×** — confirmed by direct measurement, not just query-plan inspection.
+  `_summary_timeseries_sql`'s ranking criterion changed from "by the
+  displayed metric" to "by row frequency" (matching the raw path) so the
+  raw and summary-fallback portions of the same panel pick the same top-N
+  series at the TTL boundary instead of two independently-ranked sets.
+- Operational note (not a code change): the 5 `bloom_filter` skip indexes
+  added in 2.1.10 only apply to new parts (`ADD INDEX IF NOT EXISTS` doesn't
+  retroactively cover existing data). Deployments with substantial
+  pre-existing `alo_raw` data should run `ALTER TABLE alo.alo_raw
+  MATERIALIZE INDEX <name>` for each of the 5 index names in
+  `clickhouse_setup/_schema.py`'s `_RAW_INDEX_ADDITIONS` to backfill already-
+  written parts — otherwise those columns' filters keep doing full scans
+  over the bulk of the table regardless of this release's fixes.
+
+### Bug fixes
+
+- **`analyzer/parser/_headers.py`**: `parse_applicative_provider` checked
+  `x-opaque-id` first, splitting on `/` to strip a pod suffix. Real-world
+  values (e.g. Kibana's per-request opaque IDs) don't follow that shape —
+  they carry a unique/random component with no `/` separator, so the whole
+  opaque ID became the provider value, blowing `identity_applicative_provider`
+  cardinality from a handful of service names to near-unique-per-request.
+  `x-opaque-id` is no longer used as a source; the fallback chain is now
+  `x-app-name` → `user-agent` → `""`.
+
+### Chart
+- Helm chart `version` + `appVersion` → **2.1.16**.
+
+---
+
 ## 2.1.15
 
 ### Bug fixes
