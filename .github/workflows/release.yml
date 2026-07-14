@@ -1,0 +1,46 @@
+name: Release images
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - image: ch-setup
+            context: .
+            dockerfile: clickhouse_setup/Dockerfile
+          - image: logstash
+            context: .
+            dockerfile: logstash/Dockerfile
+          - image: analyzer
+            context: .
+            dockerfile: analyzer/Dockerfile
+          - image: gateway
+            context: gateway
+            dockerfile: gateway/Dockerfile
+          - image: grafana-setup
+            context: grafana
+            dockerfile: grafana/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: oracle1012/applicative-load-observability:${{ matrix.image }}-${{ steps.version.outputs.version }}
