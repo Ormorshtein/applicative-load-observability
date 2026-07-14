@@ -4,6 +4,35 @@
 
 ---
 
+## 2.1.15
+
+### Bug fixes
+
+- **`grafana/Dockerfile`**: `grafana-setup` crashed with
+  `ModuleNotFoundError: No module named 'grafana._health_dashboard'` — the
+  `COPY` line never included `_health_dashboard.py` or `_health_panels.py`,
+  and `setup.py` imports `_health_dashboard` unconditionally at module load
+  (not lazily inside the health-dashboard code path), so every invocation of
+  the container failed at import time regardless of `--no-health-dashboard`.
+  Added both files to the `COPY` line. This time verified by actually
+  running the built image end-to-end against the live stack (`docker run
+  ... python -m grafana.setup --mode api`), not just `docker build` — the
+  2.1.14 image built successfully and was pushed without ever being run,
+  which is how the missing files went unnoticed.
+
+### Images
+
+- All five release images built via CI (`release.yml`) at `-2.1.15`. Only
+  `grafana-setup` actually changed; the fix was additionally smoke-tested by
+  running `ch-setup`, `analyzer`, `gateway`, and `logstash` -2.1.14 images
+  directly (import checks / config-test / version check) to confirm none of
+  them share the same class of "builds but doesn't run" bug.
+
+### Chart
+- Helm chart `version` + `appVersion` → **2.1.15**.
+
+---
+
 ## 2.1.14
 
 ### Enhancements
