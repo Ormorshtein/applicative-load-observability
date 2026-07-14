@@ -736,8 +736,6 @@ def mk_raw_docs_table(title, columns, gridpos, size=50, query="",
 
 # Columns present in alo_summary — use it for variable queries (fast, pre-agg).
 # Others fall back to alo_raw with a memory cap.
-# Columns in alo_summary — tiny pre-aggregated table, safe without time filter.
-# Others fall back to alo_raw scoped to last 7 days to limit scan.
 _SUMMARY_COLUMNS = {
     "cluster_name", "identity_applicative_provider",
     "request_target", "request_operation", "request_template",
@@ -747,16 +745,21 @@ _SUMMARY_COLUMNS = {
 def _make_query_var(name: str, label: str, column: str) -> dict:
     bucket = _bucket_expression(column)
     if column in _SUMMARY_COLUMNS:
-        sql = (
-            f"SELECT DISTINCT {bucket} FROM {TABLE_SUMMARY} "
-            f"ORDER BY 1 LIMIT 1000"
-        )
+        table, time_col = TABLE_SUMMARY, "time_bucket"
     else:
-        sql = (
-            f"SELECT DISTINCT {bucket} FROM {TABLE_RAW} "
-            f"WHERE {TIME_COL} > now() - INTERVAL 7 DAY "
-            f"ORDER BY 1 LIMIT 500"
-        )
+        table, time_col = TABLE_RAW, TIME_COL
+    # request_template (and other high-cardinality columns) can hold enough
+    # distinct values that an unbounded `SELECT DISTINCT ... FROM table`
+    # blows the query memory limit before it ever reaches ORDER BY/LIMIT —
+    # this crashed ClickHouse in production once alo_summary grew past a
+    # few million rows. The inner LIMIT caps how many raw rows get deduped
+    # regardless of cardinality; the 7-day window keeps it cheap for both
+    # tables rather than assuming the summary table is small enough to skip.
+    inner = (
+        f"SELECT {bucket} AS v FROM {table} "
+        f"WHERE {time_col} > now() - INTERVAL 7 DAY LIMIT 200000"
+    )
+    sql = f"SELECT DISTINCT v FROM ({inner}) ORDER BY v LIMIT 1000"
     return {
         "type": "query",
         "name": name,

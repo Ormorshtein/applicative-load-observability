@@ -1650,13 +1650,13 @@
         "query": {
           "editorType": "sql",
           "queryType": "table",
-          "rawSql": "SELECT DISTINCT cluster_name FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+          "rawSql": "SELECT DISTINCT v FROM (SELECT cluster_name AS v FROM alo.alo_summary WHERE time_bucket > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
           "format": 0,
           "meta": {
             "builderOptions": {}
           }
         },
-        "definition": "SELECT DISTINCT cluster_name FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+        "definition": "SELECT DISTINCT v FROM (SELECT cluster_name AS v FROM alo.alo_summary WHERE time_bucket > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
         "includeAll": true,
         "multi": true,
         "sort": 1,
@@ -1678,13 +1678,13 @@
         "query": {
           "editorType": "sql",
           "queryType": "table",
-          "rawSql": "SELECT DISTINCT identity_applicative_provider FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+          "rawSql": "SELECT DISTINCT v FROM (SELECT identity_applicative_provider AS v FROM alo.alo_summary WHERE time_bucket > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
           "format": 0,
           "meta": {
             "builderOptions": {}
           }
         },
-        "definition": "SELECT DISTINCT identity_applicative_provider FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+        "definition": "SELECT DISTINCT v FROM (SELECT identity_applicative_provider AS v FROM alo.alo_summary WHERE time_bucket > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
         "includeAll": true,
         "multi": true,
         "sort": 1,
@@ -1706,13 +1706,13 @@
         "query": {
           "editorType": "sql",
           "queryType": "table",
-          "rawSql": "SELECT DISTINCT request_target FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+          "rawSql": "SELECT DISTINCT v FROM (SELECT request_target AS v FROM alo.alo_summary WHERE time_bucket > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
           "format": 0,
           "meta": {
             "builderOptions": {}
           }
         },
-        "definition": "SELECT DISTINCT request_target FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+        "definition": "SELECT DISTINCT v FROM (SELECT request_target AS v FROM alo.alo_summary WHERE time_bucket > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
         "includeAll": true,
         "multi": true,
         "sort": 1,
@@ -1734,13 +1734,13 @@
         "query": {
           "editorType": "sql",
           "queryType": "table",
-          "rawSql": "SELECT DISTINCT request_operation FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+          "rawSql": "SELECT DISTINCT v FROM (SELECT request_operation AS v FROM alo.alo_summary WHERE time_bucket > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
           "format": 0,
           "meta": {
             "builderOptions": {}
           }
         },
-        "definition": "SELECT DISTINCT request_operation FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+        "definition": "SELECT DISTINCT v FROM (SELECT request_operation AS v FROM alo.alo_summary WHERE time_bucket > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
         "includeAll": true,
         "multi": true,
         "sort": 1,
@@ -1762,13 +1762,13 @@
         "query": {
           "editorType": "sql",
           "queryType": "table",
-          "rawSql": "SELECT DISTINCT identity_username FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
+          "rawSql": "SELECT DISTINCT v FROM (SELECT identity_username AS v FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
           "format": 0,
           "meta": {
             "builderOptions": {}
           }
         },
-        "definition": "SELECT DISTINCT identity_username FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
+        "definition": "SELECT DISTINCT v FROM (SELECT identity_username AS v FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
         "includeAll": true,
         "multi": true,
         "sort": 1,
@@ -1790,13 +1790,13 @@
         "query": {
           "editorType": "sql",
           "queryType": "table",
-          "rawSql": "SELECT DISTINCT arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names)) FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
+          "rawSql": "SELECT DISTINCT v FROM (SELECT arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names)) AS v FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
           "format": 0,
           "meta": {
             "builderOptions": {}
           }
         },
-        "definition": "SELECT DISTINCT arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names)) FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
+        "definition": "SELECT DISTINCT v FROM (SELECT arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names)) AS v FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
         "includeAll": true,
         "multi": true,
         "sort": 1,
@@ -1818,13 +1818,13 @@
         "query": {
           "editorType": "sql",
           "queryType": "table",
-          "rawSql": "SELECT DISTINCT identity_client_host FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
+          "rawSql": "SELECT DISTINCT v FROM (SELECT identity_client_host AS v FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
           "format": 0,
           "meta": {
             "builderOptions": {}
           }
         },
-        "definition": "SELECT DISTINCT identity_client_host FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
+        "definition": "SELECT DISTINCT v FROM (SELECT identity_client_host AS v FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
         "includeAll": true,
         "multi": true,
         "sort": 1,
@@ -1846,13 +1846,13 @@
         "query": {
           "editorType": "sql",
           "queryType": "table",
-          "rawSql": "SELECT DISTINCT request_template FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+          "rawSql": "SELECT DISTINCT v FROM (SELECT request_template AS v FROM alo.alo_summary WHERE time_bucket > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
           "format": 0,
           "meta": {
             "builderOptions": {}
           }
         },
-        "definition": "SELECT DISTINCT request_template FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+        "definition": "SELECT DISTINCT v FROM (SELECT request_template AS v FROM alo.alo_summary WHERE time_bucket > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
         "includeAll": true,
         "multi": true,
         "sort": 1,

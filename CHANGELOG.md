@@ -4,6 +4,36 @@
 
 ---
 
+## 2.1.13
+
+### Bug fixes
+
+- **`grafana/_dashboards.py`**: the `Template` dashboard variable (and other
+  summary-table-backed variables) crashed ClickHouse with `MEMORY_LIMIT_EXCEEDED`
+  (overcommit tracker killed the query mid-`MergeTreeSelect`) — reported live as
+  `SELECT DISTINCT request_template FROM alo.alo_summary ORDER BY 1 LIMIT 1000`
+  attempting to allocate past the 84.83 GiB server limit. Root cause: the summary
+  branch of `_make_query_var` had **no time bound at all** on a comment-asserted
+  "tiny pre-aggregated table" — false once `alo_summary` accumulates real
+  history, since `request_template` is high-cardinality and an unbounded
+  `DISTINCT` has to materialize every distinct value across the table's full
+  lifetime before it can even sort/limit. Both the summary and raw branches now
+  scan through an inner subquery (`WHERE time_col > now() - INTERVAL 7 DAY LIMIT
+  200000`) that caps rows read before dedup, independent of column cardinality.
+  Verified fixed against the live ClickHouse container and the Template variable
+  dropdown in a live browser session.
+
+### Images
+
+- All five release images rebuilt at `-2.1.13` per project policy. Only
+  `grafana-setup` actually changed.
+
+### Chart
+- Helm chart `version` + `appVersion` → **2.1.13**. Values-file image tag bumps
+  only; no template changes.
+
+---
+
 ## 2.1.12
 
 ### Bug fixes
