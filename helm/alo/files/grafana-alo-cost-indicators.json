@@ -1128,7 +1128,15 @@
           "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": "SELECT DISTINCT cluster_name FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+        "query": {
+          "editorType": "sql",
+          "queryType": "table",
+          "rawSql": "SELECT DISTINCT cluster_name FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+          "format": 0,
+          "meta": {
+            "builderOptions": {}
+          }
+        },
         "definition": "SELECT DISTINCT cluster_name FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
         "includeAll": true,
         "multi": true,
@@ -1148,7 +1156,15 @@
           "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": "SELECT DISTINCT identity_applicative_provider FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+        "query": {
+          "editorType": "sql",
+          "queryType": "table",
+          "rawSql": "SELECT DISTINCT identity_applicative_provider FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+          "format": 0,
+          "meta": {
+            "builderOptions": {}
+          }
+        },
         "definition": "SELECT DISTINCT identity_applicative_provider FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
         "includeAll": true,
         "multi": true,
@@ -1168,7 +1184,15 @@
           "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": "SELECT DISTINCT request_target FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+        "query": {
+          "editorType": "sql",
+          "queryType": "table",
+          "rawSql": "SELECT DISTINCT request_target FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+          "format": 0,
+          "meta": {
+            "builderOptions": {}
+          }
+        },
         "definition": "SELECT DISTINCT request_target FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
         "includeAll": true,
         "multi": true,
@@ -1188,7 +1212,15 @@
           "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": "SELECT DISTINCT request_operation FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+        "query": {
+          "editorType": "sql",
+          "queryType": "table",
+          "rawSql": "SELECT DISTINCT request_operation FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+          "format": 0,
+          "meta": {
+            "builderOptions": {}
+          }
+        },
         "definition": "SELECT DISTINCT request_operation FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
         "includeAll": true,
         "multi": true,
@@ -1208,7 +1240,15 @@
           "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": "SELECT DISTINCT identity_username FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
+        "query": {
+          "editorType": "sql",
+          "queryType": "table",
+          "rawSql": "SELECT DISTINCT identity_username FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
+          "format": 0,
+          "meta": {
+            "builderOptions": {}
+          }
+        },
         "definition": "SELECT DISTINCT identity_username FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
         "includeAll": true,
         "multi": true,
@@ -1228,7 +1268,15 @@
           "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": "SELECT DISTINCT arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names)) FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
+        "query": {
+          "editorType": "sql",
+          "queryType": "table",
+          "rawSql": "SELECT DISTINCT arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names)) FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
+          "format": 0,
+          "meta": {
+            "builderOptions": {}
+          }
+        },
         "definition": "SELECT DISTINCT arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names)) FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
         "includeAll": true,
         "multi": true,
@@ -1248,7 +1296,15 @@
           "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": "SELECT DISTINCT identity_client_host FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
+        "query": {
+          "editorType": "sql",
+          "queryType": "table",
+          "rawSql": "SELECT DISTINCT identity_client_host FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
+          "format": 0,
+          "meta": {
+            "builderOptions": {}
+          }
+        },
         "definition": "SELECT DISTINCT identity_client_host FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY ORDER BY 1 LIMIT 500",
         "includeAll": true,
         "multi": true,
@@ -1268,7 +1324,15 @@
           "type": "grafana-clickhouse-datasource",
           "uid": "${datasource}"
         },
-        "query": "SELECT DISTINCT request_template FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+        "query": {
+          "editorType": "sql",
+          "queryType": "table",
+          "rawSql": "SELECT DISTINCT request_template FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
+          "format": 0,
+          "meta": {
+            "builderOptions": {}
+          }
+        },
         "definition": "SELECT DISTINCT request_template FROM alo.alo_summary ORDER BY 1 LIMIT 1000",
         "includeAll": true,
         "multi": true,

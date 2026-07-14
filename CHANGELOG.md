@@ -4,6 +4,33 @@
 
 ---
 
+## 2.1.12
+
+### Bug fixes
+
+- **`grafana/_dashboards.py`**: every dashboard query variable (`cluster`,
+  `application`, `target`, `operation`, `username`, `cost_indicator`,
+  `client_host`, `template`) showed "Couldn't find any field of type string in
+  the results" instead of its option list. `_make_query_var` set `query` to a
+  bare SQL string; plugin `grafana-clickhouse-datasource` 4.19's reworked
+  "guided variable editor" expects the same structured sql-editor object
+  regular panel targets use (`editorType`/`queryType`/`rawSql`), not a raw
+  string — confirmed via a direct `/api/ds/query` call showing the structured
+  form returns a typed `string` field while the bare-string form doesn't.
+  `query` now carries `{editorType: "sql", queryType: "table", rawSql, ...}`.
+  Live-verified: all variable dropdowns populate correctly after the fix.
+
+### Images
+
+- All five release images rebuilt at `-2.1.12` per project policy. Only
+  `grafana-setup` actually changed.
+
+### Chart
+- Helm chart `version` + `appVersion` → **2.1.12**. Values-file image tag bumps
+  only; no template changes.
+
+---
+
 ## 2.1.11
 
 ### Bug fixes

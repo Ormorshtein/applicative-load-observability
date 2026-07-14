@@ -762,7 +762,18 @@ def _make_query_var(name: str, label: str, column: str) -> dict:
         "name": name,
         "label": label,
         "datasource": DATASOURCE,
-        "query": sql,
+        # Plugin 4.19's variable editor expects the same structured sql-editor
+        # query object regular panel targets use (editorType/queryType/rawSql).
+        # A bare SQL string here isn't recognized as SQL by the plugin and the
+        # variable comes back with no string field ("Couldn't find any field
+        # of type string in the results").
+        "query": {
+            "editorType": "sql",
+            "queryType": "table",
+            "rawSql": sql,
+            "format": 0,
+            "meta": {"builderOptions": {}},
+        },
         "definition": sql,
         "includeAll": True,
         "multi": True,
