@@ -4,6 +4,28 @@
 
 ---
 
+## 2.1.11
+
+### Bug fixes
+
+- **`clickhouse_setup/setup.py`**: `ch-setup` job crashed with `KeyError` on
+  `_SECTION_LABELS_TO_FLAG[label]` for every `alter_alo_raw_*_index` DDL entry.
+  2.1.10 added `_RAW_INDEX_ADDITIONS`/`raw_table_index_additions_ddl` (the 5 new
+  bloom_filter indexes) but the flag map only ever accounted for the older
+  `_RAW_COLUMN_ADDITIONS` labels — the new index-DDL labels were never registered.
+  Added the missing map entries.
+
+### Images
+
+- All five release images rebuilt at `-2.1.11` per project policy. Only `ch-setup`
+  actually changed.
+
+### Chart
+- Helm chart `version` + `appVersion` → **2.1.11**. Values-file image tag bumps only;
+  no template changes.
+
+---
+
 ## 2.1.10
 
 ### Bug fixes

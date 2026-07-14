@@ -24,7 +24,7 @@ import argparse
 import sys
 
 from ._client import ClickHouseConfig, execute_or_die, wait_clickhouse
-from ._schema import TableSettings, _RAW_COLUMN_ADDITIONS, all_ddl
+from ._schema import TableSettings, _RAW_COLUMN_ADDITIONS, _RAW_INDEX_ADDITIONS, all_ddl
 
 
 def _build_arg_parser(cfg: ClickHouseConfig, settings: TableSettings) -> argparse.ArgumentParser:
@@ -140,6 +140,7 @@ _SECTION_LABELS_TO_FLAG: dict[str, str] = {
     "alo_summary":           "summary_table",
     "alo_summary_mv":        "materialized_view",
     **{f"alter_alo_raw_{label}": "raw_table" for label, *_ in _RAW_COLUMN_ADDITIONS},
+    **{f"alter_alo_raw_{label}_index": "raw_table" for label, *_ in _RAW_INDEX_ADDITIONS},
 }
 
 
