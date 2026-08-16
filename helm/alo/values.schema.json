@@ -33,7 +33,8 @@
           "description": "Extra SETTINGS for alo_summary.",
           "additionalProperties": { "type": ["string", "number", "boolean"] }
         },
-        "shardingKey": { "type": "string", "description": "Sharding key for the Distributed engine in cluster mode." }
+        "shardingKey": { "type": "string", "description": "Sharding key for the Distributed engine in cluster mode." },
+        "summaryExcludeUnknownOperation": { "type": "boolean", "description": "Drop request_operation='unknown' rows from alo_summary_mv. Default false (include them)." }
       }
     },
     "clickhouse": {
@@ -70,6 +71,17 @@
                 "insecureSkipVerify": { "type": "boolean" }
               }
             }
+          }
+        },
+        "grafana": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Grafana ClickHouse datasource connection. Applies whether ClickHouse is internal or external.",
+          "properties": {
+            "protocol": { "type": "string", "enum": ["native", "http"], "description": "Default native (port 9000). Use http for deployments that only expose the HTTP port." },
+            "port": { "type": ["integer", "string"], "description": "Port override. Empty = derive from protocol (service.nativePort / service.httpPort)." },
+            "path": { "type": "string", "description": "Optional HTTP path prefix (e.g. behind an ingress). Ignored for native." },
+            "secure": { "type": ["boolean", "string"], "description": "Empty string = sniff TLS from clickhouse url's scheme; set true/false to force." }
           }
         },
         "image": { "$ref": "#/$defs/image" },
@@ -295,8 +307,6 @@
             "image": { "$ref": "#/$defs/image" },
             "datasource": { "type": "boolean", "description": "Create/update the ClickHouse datasource via the Grafana API." },
             "dashboards": { "type": "boolean", "description": "Import/update dashboards via the Grafana API." },
-            "variableLookbackDays": { "type": "integer", "minimum": 1, "description": "How far back dashboard variable option queries (Username, Cost Indicator, Template, ...) scan before dedup. Default 7." },
-            "variableScanRowCap": { "type": "integer", "minimum": 1, "description": "Max rows read before DISTINCT+LIMIT for dashboard variable option queries, independent of column cardinality. Default 200000." },
             "variableOptionLimit": { "type": "integer", "minimum": 1, "description": "Max number of distinct option values returned per dashboard variable. Default 1000." }
           }
         },

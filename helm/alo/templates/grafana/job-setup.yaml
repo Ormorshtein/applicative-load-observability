@@ -74,10 +74,19 @@ spec:
             {{- end }}
             - name: CLICKHOUSE_INSECURE
               value: {{ include "alo.clickhouseInsecure" . | quote }}
-            - name: GRAFANA_VAR_LOOKBACK_DAYS
-              value: {{ $gf.variableLookbackDays | quote }}
-            - name: GRAFANA_VAR_SCAN_ROW_CAP
-              value: {{ $gf.variableScanRowCap | quote }}
+            # Datasource protocol/port/path/secure — see clickhouse.grafana.*.
+            # Without these the API-upsert path below always defaulted to
+            # native/9000 regardless of clickhouse.grafana.protocol.
+            - name: CLICKHOUSE_PROTOCOL
+              value: {{ include "alo.clickhouseGrafanaProtocol" . | quote }}
+            - name: CLICKHOUSE_PORT
+              value: {{ include "alo.clickhouseGrafanaPort" . | quote }}
+            {{- with .Values.clickhouse.grafana.path }}
+            - name: CLICKHOUSE_PATH
+              value: {{ . | quote }}
+            {{- end }}
+            - name: CLICKHOUSE_SECURE
+              value: {{ include "alo.clickhouseGrafanaSecure" . | quote }}
             - name: GRAFANA_VAR_OPTION_LIMIT
               value: {{ $gf.variableOptionLimit | quote }}
             {{- if .Values.grafana.external.enabled }}

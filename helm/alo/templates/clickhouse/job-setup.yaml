@@ -66,6 +66,9 @@ spec:
             {{- with .Values.tableSettings.shardingKey }}
             - {{ printf "--sharding-key=%s" . | quote }}
             {{- end }}
+            {{- if .Values.tableSettings.summaryExcludeUnknownOperation }}
+            - --no-include-unknown-operation
+            {{- end }}
           env:
             - name: CLICKHOUSE_URL
               value: {{ include "alo.clickhouseUrl" . | quote }}

@@ -59,8 +59,15 @@ class TestSingleNodeMode:
             "identity_applicative_provider, timestamp)" in ddl
         )
 
-    def test_mv_filters_unknown_operations(self):
+    def test_mv_includes_unknown_operations_by_default(self):
+        # Default changed: a cluster sending only unparsed traffic should
+        # still show up in alo_summary instead of being silently dropped.
         ddl = self.by_label["alo_summary_mv"]
+        assert "WHERE request_operation != 'unknown'" not in ddl
+
+    def test_mv_filters_unknown_operations_when_excluded(self):
+        plan = all_ddl(TableSettings(summary_include_unknown_operation=False))
+        ddl = dict(plan)["alo_summary_mv"]
         assert "WHERE request_operation != 'unknown'" in ddl
 
     def test_dynamic_stress_maps_are_typed(self):

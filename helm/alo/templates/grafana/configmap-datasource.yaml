@@ -12,9 +12,10 @@ data:
     datasources:
       {{- $chAuth := eq (include "alo.clickhouseAuthEnabled" .) "true" }}
       {{- $chInsecure := eq (include "alo.clickhouseInsecure" .) "true" }}
-      {{- $chHost := include "alo.clickhouseNativeHost" . | trim }}
-      {{- $chPort := .Values.clickhouse.service.nativePort | int }}
-      {{- $chSecure := hasPrefix "https://" (include "alo.clickhouseUrl" .) }}
+      {{- $chHost := include "alo.clickhouseGrafanaHost" . | trim }}
+      {{- $chPort := include "alo.clickhouseGrafanaPort" . | trim }}
+      {{- $chProtocol := include "alo.clickhouseGrafanaProtocol" . | trim }}
+      {{- $chSecure := include "alo.clickhouseGrafanaSecure" . | trim }}
       - name: ClickHouse (ALO)
         type: grafana-clickhouse-datasource
         uid: alo-clickhouse
@@ -23,9 +24,12 @@ data:
         jsonData:
           host: {{ $chHost | quote }}
           port: {{ $chPort }}
-          protocol: native
+          protocol: {{ $chProtocol }}
           secure: {{ $chSecure }}
           tlsSkipVerify: {{ $chInsecure }}
+          {{- with .Values.clickhouse.grafana.path }}
+          path: {{ . | quote }}
+          {{- end }}
           {{- if $chAuth }}
           username: {{ .Values.clickhouse.external.auth.username | default .Values.clickhouse.auth.username | default "default" | quote }}
           {{- else }}

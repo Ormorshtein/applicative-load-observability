@@ -60,6 +60,12 @@ class TableSettings:
     raw_extra_settings:       dict[str, str] = field(default_factory=dict)
     summary_extra_settings:   dict[str, str] = field(default_factory=dict)
 
+    # When False, alo_summary_mv drops rows whose request_operation didn't
+    # parse into a known operation ('unknown'). Default True (include them)
+    # so a cluster sending only unparsed traffic still shows up in the
+    # summary table / dashboard variables instead of silently disappearing.
+    summary_include_unknown_operation: bool = True
+
 
 # ── Column inventory ───────────────────────────────────────────────────────
 # Order matters: the table is created in this order, which matches the
@@ -357,13 +363,17 @@ def summary_mv_ddl(s: TableSettings) -> str:
 
     select_sql = ",\n    ".join(select_parts)
     group_by = ", ".join(name for name, _ in _SUMMARY_DIMENSIONS)
+    where_clause = (
+        "" if s.summary_include_unknown_operation
+        else "WHERE request_operation != 'unknown'\n"
+    )
     return (
         f"CREATE MATERIALIZED VIEW IF NOT EXISTS "
         f"{s.database}.alo_summary_mv{_on_cluster(s)}\n"
         f"TO {s.database}.{dest} AS\n"
         f"SELECT\n    {select_sql}\n"
         f"FROM {s.database}.{src}\n"
-        f"WHERE request_operation != 'unknown'\n"
+        f"{where_clause}"
         f"GROUP BY {group_by}"
     )
 

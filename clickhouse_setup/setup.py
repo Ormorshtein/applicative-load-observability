@@ -23,8 +23,8 @@ Usage::
 import argparse
 import sys
 
-from ._client import ClickHouseConfig, execute_or_die, wait_clickhouse
-from ._schema import TableSettings, _RAW_COLUMN_ADDITIONS, _RAW_INDEX_ADDITIONS, all_ddl
+from ._client import ClickHouseConfig, execute, execute_or_die, wait_clickhouse
+from ._schema import TableSettings, _RAW_COLUMN_ADDITIONS, _RAW_INDEX_ADDITIONS, all_ddl, _on_cluster
 
 
 def _build_arg_parser(cfg: ClickHouseConfig, settings: TableSettings) -> argparse.ArgumentParser:
@@ -79,6 +79,11 @@ def _build_arg_parser(cfg: ClickHouseConfig, settings: TableSettings) -> argpars
                         help="Extra SETTINGS for alo_summary as k=v,k=v")
     tuning.add_argument("--sharding-key", default=settings.sharding_key,
                         help="Sharding key for Distributed engine (default: %(default)s)")
+    _add_bool_flag(tuning, "include-unknown-operation",
+                   settings.summary_include_unknown_operation,
+                   "include request_operation='unknown' rows in alo_summary "
+                   "(off drops them from the materialized view, matching the "
+                   "old always-excluded behavior)")
     return parser
 
 
@@ -115,6 +120,7 @@ def _settings_from_args(args: argparse.Namespace) -> TableSettings:
         summary_ttl_clause=     args.summary_ttl,
         raw_extra_settings=     _parse_kv_pairs(args.raw_settings),
         summary_extra_settings= _parse_kv_pairs(args.summary_settings),
+        summary_include_unknown_operation=args.include_unknown_operation,
     )
 
 
@@ -144,6 +150,33 @@ _SECTION_LABELS_TO_FLAG: dict[str, str] = {
 }
 
 
+def _reconcile_summary_mv(cfg: ClickHouseConfig, settings: TableSettings) -> None:
+    """DROP + recreate ``alo_summary_mv`` if its unknown-operation filter is stale.
+
+    The MV's ``CREATE MATERIALIZED VIEW IF NOT EXISTS`` is a silent no-op when
+    the view already exists, so flipping ``summary_include_unknown_operation``
+    would otherwise never take effect on an existing install. This does NOT
+    backfill: rows dropped under the old filter are gone for good, and only
+    traffic ingested after the swap picks up the new behavior.
+    """
+    query = (
+        "SELECT create_table_query FROM system.tables "
+        f"WHERE database = '{settings.database}' AND name = 'alo_summary_mv' "
+        "FORMAT TSVRaw"
+    )
+    status, body = execute(cfg, query, use_database=False)
+    if status != 200 or not body.strip():
+        return  # doesn't exist yet — plain CREATE below handles it
+    has_filter = "request_operation != 'unknown'" in body
+    wants_filter = not settings.summary_include_unknown_operation
+    if has_filter == wants_filter:
+        return  # already matches desired definition
+    print("  MIGRATE: alo_summary_mv definition changed (unknown-operation filter) — "
+          "dropping and recreating (no backfill of past rows)")
+    drop_sql = f"DROP VIEW IF EXISTS {settings.database}.alo_summary_mv{_on_cluster(settings)}"
+    execute_or_die(cfg, "drop_alo_summary_mv", drop_sql, use_database=False)
+
+
 def main() -> None:
     cfg_defaults = ClickHouseConfig()
     settings_defaults = TableSettings()
@@ -161,6 +194,9 @@ def main() -> None:
     print()
 
     wait_clickhouse(cfg)
+
+    if args.materialized_view:
+        _reconcile_summary_mv(cfg, settings)
 
     plan = all_ddl(settings)
     all_ok = True

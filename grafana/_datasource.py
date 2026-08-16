@@ -32,13 +32,27 @@ def generate_datasource_yaml(clickhouse_url: str = "http://clickhouse:8123",
                              username: str = "default",
                              password: str = "",
                              insecure_skip_verify: bool = False,
-                             ch_ca_cert: str = "") -> str:
-    host, http_port, secure = _parse_host(clickhouse_url)
-    # The plugin reads its primary connection from `host`/`port`/`protocol`.
-    # `protocol: native` is faster (typed wire format) so we expose the
-    # native port and fall back to HTTP if the user only exposed 8123.
-    port = native_port if native_port else http_port
-    protocol = "native" if native_port else "http"
+                             ch_ca_cert: str = "",
+                             protocol: str = "",
+                             port: int = 0,
+                             path: str = "",
+                             secure: bool | None = None) -> str:
+    """Write the ClickHouse datasource provisioning YAML.
+
+    ``protocol``/``port``/``secure`` are the primary controls. ``native_port``
+    is kept as a backward-compatible alias: ``native_port=0`` (or explicit
+    ``protocol="http"``) selects HTTP; any nonzero ``native_port`` with no
+    explicit ``protocol`` selects native on that port.
+    """
+    host, http_port, url_secure = _parse_host(clickhouse_url)
+    if not protocol:
+        protocol = "native" if native_port else "http"
+    if not port:
+        port = (native_port if protocol == "native" else 0) or (
+            http_port if protocol == "http" else native_port)
+    if secure is None:
+        secure = url_secure
+    path_line = f"\n              path: {path}" if path else ""
     cert_pem = _read_cert(ch_ca_cert)
     tls_auth = f"\n              tlsAuthWithCACert: true" if cert_pem else ""
     if cert_pem:
@@ -62,7 +76,7 @@ def generate_datasource_yaml(clickhouse_url: str = "http://clickhouse:8123",
               port: {port}
               protocol: {protocol}
               secure: {str(secure).lower()}
-              tlsSkipVerify: {str(insecure_skip_verify).lower()}{tls_auth}
+              tlsSkipVerify: {str(insecure_skip_verify).lower()}{path_line}{tls_auth}
               username: "{username}"
               defaultDatabase: {database}
             secureJsonData:
