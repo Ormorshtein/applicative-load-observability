@@ -73,17 +73,6 @@
             }
           }
         },
-        "grafana": {
-          "type": "object",
-          "additionalProperties": false,
-          "description": "Grafana ClickHouse datasource connection. Applies whether ClickHouse is internal or external.",
-          "properties": {
-            "protocol": { "type": "string", "enum": ["native", "http"], "description": "Default native (port 9000). Use http for deployments that only expose the HTTP port." },
-            "port": { "type": ["integer", "string"], "description": "Port override. Empty = derive from protocol (service.nativePort / service.httpPort)." },
-            "path": { "type": "string", "description": "Optional HTTP path prefix (e.g. behind an ingress). Ignored for native." },
-            "secure": { "type": ["boolean", "string"], "description": "Empty string = sniff TLS from clickhouse url's scheme; set true/false to force." }
-          }
-        },
         "image": { "$ref": "#/$defs/image" },
         "replicas": { "type": "integer", "minimum": 1 },
         "resources": { "$ref": "#/$defs/resources" },
@@ -306,6 +295,17 @@
             "enabled": { "type": "boolean" },
             "image": { "$ref": "#/$defs/image" },
             "datasource": { "type": "boolean", "description": "Create/update the ClickHouse datasource via the Grafana API." },
+            "connection": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Grafana ClickHouse datasource connection. Applies whether ClickHouse is internal or external.",
+              "properties": {
+                "protocol": { "type": "string", "enum": ["native", "http"], "description": "Default native (port 9000). Use http for deployments that only expose the HTTP port." },
+                "port": { "type": ["integer", "string"], "description": "Port override. Empty = derive from protocol (service.nativePort / service.httpPort)." },
+                "path": { "type": "string", "description": "Optional HTTP path prefix (e.g. behind an ingress). Ignored for native." },
+                "secure": { "type": ["boolean", "string"], "description": "Empty string = sniff TLS from clickhouse url's scheme; set true/false to force." }
+              }
+            },
             "dashboards": { "type": "boolean", "description": "Import/update dashboards via the Grafana API." },
             "variableOptionLimit": { "type": "integer", "minimum": 1, "description": "Max number of distinct option values returned per dashboard variable. Default 1000." }
           }
