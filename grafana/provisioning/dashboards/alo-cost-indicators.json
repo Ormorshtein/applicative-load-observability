@@ -1131,13 +1131,13 @@
         "query": {
           "editorType": "sql",
           "queryType": "table",
-          "rawSql": "SELECT DISTINCT v FROM (SELECT cluster_name AS v FROM alo.alo_summary WHERE time_bucket > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
+          "rawSql": "SELECT cluster_name AS v FROM alo.alo_summary WHERE time_bucket >= toStartOfHour($__fromTime) AND time_bucket <= $__toTime GROUP BY v ORDER BY v LIMIT 1000",
           "format": 0,
           "meta": {
             "builderOptions": {}
           }
         },
-        "definition": "SELECT DISTINCT v FROM (SELECT cluster_name AS v FROM alo.alo_summary WHERE time_bucket > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
+        "definition": "SELECT cluster_name AS v FROM alo.alo_summary WHERE time_bucket >= toStartOfHour($__fromTime) AND time_bucket <= $__toTime GROUP BY v ORDER BY v LIMIT 1000",
         "includeAll": true,
         "allValue": "$__all",
         "multi": true,
@@ -1160,13 +1160,13 @@
         "query": {
           "editorType": "sql",
           "queryType": "table",
-          "rawSql": "SELECT DISTINCT v FROM (SELECT identity_applicative_provider AS v FROM alo.alo_summary WHERE time_bucket > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
+          "rawSql": "SELECT identity_applicative_provider AS v FROM alo.alo_summary WHERE time_bucket >= toStartOfHour($__fromTime) AND time_bucket <= $__toTime GROUP BY v ORDER BY v LIMIT 1000",
           "format": 0,
           "meta": {
             "builderOptions": {}
           }
         },
-        "definition": "SELECT DISTINCT v FROM (SELECT identity_applicative_provider AS v FROM alo.alo_summary WHERE time_bucket > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
+        "definition": "SELECT identity_applicative_provider AS v FROM alo.alo_summary WHERE time_bucket >= toStartOfHour($__fromTime) AND time_bucket <= $__toTime GROUP BY v ORDER BY v LIMIT 1000",
         "includeAll": true,
         "allValue": "$__all",
         "multi": true,
@@ -1189,13 +1189,13 @@
         "query": {
           "editorType": "sql",
           "queryType": "table",
-          "rawSql": "SELECT DISTINCT v FROM (SELECT request_target AS v FROM alo.alo_summary WHERE time_bucket > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
+          "rawSql": "SELECT request_target AS v FROM alo.alo_summary WHERE time_bucket >= toStartOfHour($__fromTime) AND time_bucket <= $__toTime GROUP BY v ORDER BY v LIMIT 1000",
           "format": 0,
           "meta": {
             "builderOptions": {}
           }
         },
-        "definition": "SELECT DISTINCT v FROM (SELECT request_target AS v FROM alo.alo_summary WHERE time_bucket > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
+        "definition": "SELECT request_target AS v FROM alo.alo_summary WHERE time_bucket >= toStartOfHour($__fromTime) AND time_bucket <= $__toTime GROUP BY v ORDER BY v LIMIT 1000",
         "includeAll": true,
         "allValue": "$__all",
         "multi": true,
@@ -1218,13 +1218,13 @@
         "query": {
           "editorType": "sql",
           "queryType": "table",
-          "rawSql": "SELECT DISTINCT v FROM (SELECT request_operation AS v FROM alo.alo_summary WHERE time_bucket > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
+          "rawSql": "SELECT request_operation AS v FROM alo.alo_summary WHERE time_bucket >= toStartOfHour($__fromTime) AND time_bucket <= $__toTime GROUP BY v ORDER BY v LIMIT 1000",
           "format": 0,
           "meta": {
             "builderOptions": {}
           }
         },
-        "definition": "SELECT DISTINCT v FROM (SELECT request_operation AS v FROM alo.alo_summary WHERE time_bucket > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
+        "definition": "SELECT request_operation AS v FROM alo.alo_summary WHERE time_bucket >= toStartOfHour($__fromTime) AND time_bucket <= $__toTime GROUP BY v ORDER BY v LIMIT 1000",
         "includeAll": true,
         "allValue": "$__all",
         "multi": true,
@@ -1247,13 +1247,13 @@
         "query": {
           "editorType": "sql",
           "queryType": "table",
-          "rawSql": "SELECT DISTINCT v FROM (SELECT identity_username AS v FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
+          "rawSql": "SELECT identity_username AS v FROM alo.alo_raw WHERE $__timeFilter(timestamp) GROUP BY v ORDER BY v LIMIT 1000",
           "format": 0,
           "meta": {
             "builderOptions": {}
           }
         },
-        "definition": "SELECT DISTINCT v FROM (SELECT identity_username AS v FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
+        "definition": "SELECT identity_username AS v FROM alo.alo_raw WHERE $__timeFilter(timestamp) GROUP BY v ORDER BY v LIMIT 1000",
         "includeAll": true,
         "allValue": "$__all",
         "multi": true,
@@ -1276,13 +1276,13 @@
         "query": {
           "editorType": "sql",
           "queryType": "table",
-          "rawSql": "SELECT DISTINCT v FROM (SELECT arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names)) AS v FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
+          "rawSql": "SELECT arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names)) AS v FROM alo.alo_raw WHERE $__timeFilter(timestamp) GROUP BY v ORDER BY v LIMIT 1000",
           "format": 0,
           "meta": {
             "builderOptions": {}
           }
         },
-        "definition": "SELECT DISTINCT v FROM (SELECT arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names)) AS v FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
+        "definition": "SELECT arrayJoin(if(empty(stress_cost_indicator_names), ['unflagged'], stress_cost_indicator_names)) AS v FROM alo.alo_raw WHERE $__timeFilter(timestamp) GROUP BY v ORDER BY v LIMIT 1000",
         "includeAll": true,
         "allValue": "$__all",
         "multi": true,
@@ -1305,13 +1305,13 @@
         "query": {
           "editorType": "sql",
           "queryType": "table",
-          "rawSql": "SELECT DISTINCT v FROM (SELECT identity_client_host AS v FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
+          "rawSql": "SELECT identity_client_host AS v FROM alo.alo_raw WHERE $__timeFilter(timestamp) GROUP BY v ORDER BY v LIMIT 1000",
           "format": 0,
           "meta": {
             "builderOptions": {}
           }
         },
-        "definition": "SELECT DISTINCT v FROM (SELECT identity_client_host AS v FROM alo.alo_raw WHERE timestamp > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
+        "definition": "SELECT identity_client_host AS v FROM alo.alo_raw WHERE $__timeFilter(timestamp) GROUP BY v ORDER BY v LIMIT 1000",
         "includeAll": true,
         "allValue": "$__all",
         "multi": true,
@@ -1334,13 +1334,13 @@
         "query": {
           "editorType": "sql",
           "queryType": "table",
-          "rawSql": "SELECT DISTINCT v FROM (SELECT request_template AS v FROM alo.alo_summary WHERE time_bucket > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
+          "rawSql": "SELECT request_template AS v FROM alo.alo_summary WHERE time_bucket >= toStartOfHour($__fromTime) AND time_bucket <= $__toTime GROUP BY v ORDER BY v LIMIT 1000",
           "format": 0,
           "meta": {
             "builderOptions": {}
           }
         },
-        "definition": "SELECT DISTINCT v FROM (SELECT request_template AS v FROM alo.alo_summary WHERE time_bucket > now() - INTERVAL 7 DAY LIMIT 200000) ORDER BY v LIMIT 1000",
+        "definition": "SELECT request_template AS v FROM alo.alo_summary WHERE time_bucket >= toStartOfHour($__fromTime) AND time_bucket <= $__toTime GROUP BY v ORDER BY v LIMIT 1000",
         "includeAll": true,
         "allValue": "$__all",
         "multi": true,

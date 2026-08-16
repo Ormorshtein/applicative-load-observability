@@ -4,6 +4,64 @@
 
 ---
 
+## 2.1.19
+
+### Fixes
+
+- **`grafana/_dashboards.py`**: dashboard variable option queries (Cluster,
+  Operation, Template, Username, ...) used a fixed `now() - INTERVAL 7 DAY`
+  window plus a `LIMIT 200000` row cap with no `ORDER BY` before
+  `DISTINCT`/`ORDER BY`. Scan order was unspecified — in practice it read
+  `alo_summary` in primary-key order (which starts with `time_bucket`), so
+  once a 7-day window held more than 200k summary rows, any cluster/value
+  that started appearing after the cap was structurally invisible in the
+  dropdown, regardless of the dashboard's actual time range. Rewrote the
+  queries to scope to the dashboard time range
+  (`$__timeFilter`/`$__fromTime`/`$__toTime`, already refreshed on range
+  change) and bound memory with `GROUP BY` instead of a row cap — this was
+  the real OOM guard the cap existed for, just applied at the wrong
+  granularity (rows scanned instead of distinct values). Removed the now-dead
+  `grafana.setup.variableLookbackDays` / `variableScanRowCap` Helm values
+  (kept `variableOptionLimit`). Regenerated the committed dashboard JSON
+  (`grafana/provisioning/dashboards/*.json`, `helm/alo/files/grafana-*.json`).
+- **`clickhouse_setup/_schema.py`**: `alo_summary_mv` unconditionally dropped
+  rows whose `request_operation` didn't parse into a known operation
+  (`WHERE request_operation != 'unknown'`), so a cluster sending only
+  unparsed traffic never appeared in `alo_summary` — or its dashboard
+  variables — at all, independent of the query-cap bug above. Added
+  `TableSettings.summary_include_unknown_operation` (default `True`, i.e.
+  include them) / Helm `tableSettings.summaryExcludeUnknownOperation`
+  (default `false`) to control this. Because `CREATE MATERIALIZED VIEW IF
+  NOT EXISTS` is a no-op on an existing install, `clickhouse_setup/setup.py`
+  now compares the deployed MV definition against the desired one and
+  `DROP`s + recreates it on a mismatch — **this does not backfill**; only
+  traffic ingested after the change is affected by the new filter setting.
+- **Grafana ClickHouse datasource protocol/port hardcoded to `native`/9000**
+  in all four places it's defined (Helm ConfigMap, the two Python
+  generators, and the `grafana-setup` Job's API-upsert path), with no way to
+  select HTTP for deployments that only expose the HTTP port (e.g. 80/8123).
+  Added `clickhouse.grafana.{protocol,port,path,secure}` Helm values
+  (default: `protocol: native`, unchanged behavior) plumbed through
+  `alo.clickhouseGrafana*` helpers into all four sites, plus
+  `--protocol`/`--ch-port`/`--ch-path`/`--ch-secure` flags on
+  `grafana.setup`. Also fixes two bugs found while wiring this up:
+  `helm/alo/templates/grafana/job-setup.yaml` never passed a port/protocol
+  at all, so the API-upsert path (used with `grafana.external.enabled=true`)
+  always wrote native/9000 regardless of any config; and
+  `clickhouse.external.host` empty rendered an empty datasource `host` even
+  though the value's own description promised it "defaults to url's host"
+  — the helper never actually parsed `external.url`.
+
+### Release
+
+- Republished all five ALO images (`ch-setup`, `logstash`, `analyzer`,
+  `gateway`, `grafana-setup`) at `2.1.19` for tag consistency —
+  `release.yml`'s build matrix always builds all five on any `v*` tag push.
+  Only `ch-setup` and `grafana-setup` have code changes in this release;
+  `logstash`/`analyzer`/`gateway` are content-identical rebuilds.
+
+---
+
 ## 2.1.18
 
 ### Fixes / Infra

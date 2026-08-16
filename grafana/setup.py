@@ -89,19 +89,26 @@ def wait_grafana(grafana_url, username, password):
 
 def create_datasource(grafana_url, clickhouse_url, username, password,
                       ch_user="default", ch_password="", ch_database="alo",
-                      ch_native_port=9000, ch_insecure=False):
-    host, http_port, secure = _parse_host(clickhouse_url)
-    port = ch_native_port if ch_native_port else http_port
-    protocol = "native" if ch_native_port else "http"
+                      ch_native_port=9000, ch_insecure=False,
+                      ch_protocol="", ch_port=0, ch_path="", ch_secure=None):
+    host, http_port, url_secure = _parse_host(clickhouse_url)
+    if not ch_protocol:
+        ch_protocol = "native" if ch_native_port else "http"
+    if not ch_port:
+        ch_port = (ch_native_port if ch_protocol == "native" else 0) or (
+            http_port if ch_protocol == "http" else ch_native_port)
+    secure = url_secure if ch_secure is None else ch_secure
     json_data = {
         "host": host,
-        "port": port,
-        "protocol": protocol,
+        "port": ch_port,
+        "protocol": ch_protocol,
         "secure": secure,
         "tlsSkipVerify": ch_insecure,
         "username": ch_user,
         "defaultDatabase": ch_database,
     }
+    if ch_path:
+        json_data["path"] = ch_path
     secure_json = {"password": ch_password}
     body = {
         "name": "ClickHouse (ALO)",
@@ -174,6 +181,7 @@ def import_dashboard(grafana_url, dashboard, username, password):
 def do_api_setup(grafana_url, clickhouse_url, username, password,
                  ch_user="default", ch_password="", ch_database="alo",
                  ch_native_port=9000, ch_insecure=False, ch_ca_cert="",
+                 ch_protocol="", ch_port=0, ch_path="", ch_secure=None,
                  datasource=True, dashboards=True, health_dashboard=True,
                  prometheus_url=""):
     if not wait_grafana(grafana_url, username, password):
@@ -186,7 +194,9 @@ def do_api_setup(grafana_url, clickhouse_url, username, password,
                                    ch_user=ch_user, ch_password=ch_password,
                                    ch_database=ch_database,
                                    ch_native_port=ch_native_port,
-                                   ch_insecure=ch_insecure)
+                                   ch_insecure=ch_insecure,
+                                   ch_protocol=ch_protocol, ch_port=ch_port,
+                                   ch_path=ch_path, ch_secure=ch_secure)
         if prometheus_url:
             all_ok &= create_prometheus_datasource(
                 grafana_url, prometheus_url, username, password)
@@ -213,7 +223,8 @@ def do_api_setup(grafana_url, clickhouse_url, username, password,
 
 def do_provision(clickhouse_url, grafana_url, prometheus_url="",
                  ch_user="default", ch_password="", ch_database="alo",
-                 ch_native_port=9000, ch_insecure=False, ch_ca_cert=""):
+                 ch_native_port=9000, ch_insecure=False, ch_ca_cert="",
+                 ch_protocol="", ch_port=0, ch_path="", ch_secure=None):
     print("  Generating provisioning files:\n")
     generate_datasource_yaml(clickhouse_url=clickhouse_url,
                              database=ch_database,
@@ -221,7 +232,9 @@ def do_provision(clickhouse_url, grafana_url, prometheus_url="",
                              username=ch_user,
                              password=ch_password,
                              insecure_skip_verify=ch_insecure,
-                             ch_ca_cert=ch_ca_cert)
+                             ch_ca_cert=ch_ca_cert,
+                             protocol=ch_protocol, port=ch_port,
+                             path=ch_path, secure=ch_secure)
     generate_prometheus_datasource_yaml(prometheus_url)
     export_dashboards()
     print(f"\n  Main dashboard:            {grafana_url}/d/alo-main")
@@ -274,7 +287,23 @@ def main():
     ch_auth.add_argument(
         "--native-port", type=int,
         default=int(os.getenv("CLICKHOUSE_NATIVE_PORT", "9000") or 9000),
-        help="CH native protocol port (default: %(default)s; 0 = HTTP only)")
+        help="CH native protocol port (default: %(default)s; 0 = HTTP only). "
+             "Superseded by --protocol/--ch-port when either is set.")
+    ch_auth.add_argument(
+        "--protocol", choices=["native", "http"],
+        default=os.getenv("CLICKHOUSE_PROTOCOL", ""),
+        help="Datasource protocol (default: native, or http if --native-port=0)")
+    ch_auth.add_argument(
+        "--ch-port", type=int,
+        default=int(os.getenv("CLICKHOUSE_PORT", "0") or 0),
+        help="Datasource port override (default: derived from protocol)")
+    ch_auth.add_argument(
+        "--ch-path", default=os.getenv("CLICKHOUSE_PATH", ""),
+        help="Optional HTTP path prefix (ignored for native protocol)")
+    ch_auth.add_argument(
+        "--ch-secure", choices=["true", "false"],
+        default=os.getenv("CLICKHOUSE_SECURE", ""),
+        help="Force datasource TLS on/off (default: sniff from --clickhouse-url scheme)")
     ch_auth.add_argument(
         "--insecure", action="store_true",
         default=os.getenv("CLICKHOUSE_INSECURE", "").lower() in ("1", "true", "yes"),
@@ -297,6 +326,7 @@ def main():
              "Set --no-health-dashboard when no exporter is on the cluster.")
 
     args = parser.parse_args()
+    ch_secure = {"true": True, "false": False, "": None}[args.ch_secure]
 
     print(f"\n  ClickHouse: {args.clickhouse_url}")
     print(f"  Grafana:    {args.grafana}")
@@ -310,6 +340,8 @@ def main():
                           ch_native_port=args.native_port,
                           ch_insecure=args.insecure,
                           ch_ca_cert=args.ch_ca_cert,
+                          ch_protocol=args.protocol, ch_port=args.ch_port,
+                          ch_path=args.ch_path, ch_secure=ch_secure,
                           datasource=args.datasource,
                           dashboards=args.dashboards,
                           health_dashboard=args.health_dashboard,
@@ -321,7 +353,9 @@ def main():
                           ch_database=args.database,
                           ch_native_port=args.native_port,
                           ch_insecure=args.insecure,
-                          ch_ca_cert=args.ch_ca_cert)
+                          ch_ca_cert=args.ch_ca_cert,
+                          ch_protocol=args.protocol, ch_port=args.ch_port,
+                          ch_path=args.ch_path, ch_secure=ch_secure)
 
     sys.exit(0 if ok else 1)
 

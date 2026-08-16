@@ -745,7 +745,7 @@ def mk_raw_docs_table(title, columns, gridpos, size=50, query="",
 # ΓöÇΓöÇ Templating variables ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 # Columns present in alo_summary — use it for variable queries (fast, pre-agg).
-# Others fall back to alo_raw with a memory cap.
+# Others (not aggregated in the summary table) fall back to alo_raw.
 _SUMMARY_COLUMNS = {
     "cluster_name", "identity_applicative_provider",
     "request_target", "request_operation", "request_template",
@@ -753,30 +753,34 @@ _SUMMARY_COLUMNS = {
 
 # request_template (and other high-cardinality columns) can hold enough
 # distinct values that an unbounded `SELECT DISTINCT ... FROM table` blows
-# the query memory limit before it ever reaches ORDER BY/LIMIT — this
-# crashed ClickHouse in production once alo_summary grew past a few million
-# rows. _VAR_SCAN_ROW_CAP bounds how many raw rows get deduped regardless of
-# cardinality; _VAR_LOOKBACK_DAYS keeps the scan cheap for both tables
-# rather than assuming the summary table is small enough to skip a window.
-# Overridable via env (wired to helm grafana.setup.variable* values) for
-# deployments with unusually large or small tables.
-_VAR_LOOKBACK_DAYS = int(os.getenv("GRAFANA_VAR_LOOKBACK_DAYS", "7"))
-_VAR_SCAN_ROW_CAP = int(os.getenv("GRAFANA_VAR_SCAN_ROW_CAP", "200000"))
+# the query memory limit — this crashed ClickHouse in production once
+# alo_summary grew past a few million rows. `GROUP BY v` bounds memory by
+# the number of *distinct values* rather than rows scanned (unlike the old
+# row-capped subquery, which silently dropped rows past the cap with no
+# ORDER BY — new clusters past the cap never appeared). The dashboard time
+# range (`$__timeFilter`/`$__fromTime`/`$__toTime`, refresh=2 on range
+# change) bounds the scan instead of a fixed lookback window, so the
+# option list always reflects what's actually being viewed.
 _VAR_OPTION_LIMIT = int(os.getenv("GRAFANA_VAR_OPTION_LIMIT", "1000"))
 
 
 def _make_query_var(name: str, label: str, column: str) -> dict:
     bucket = _bucket_expression(column)
     if column in _SUMMARY_COLUMNS:
-        table, time_col = TABLE_SUMMARY, "time_bucket"
+        # time_bucket = toStartOfHour(timestamp) (see clickhouse_setup/_schema.py).
+        # A plain $__timeFilter(time_bucket) on a sub-hour range excludes the
+        # bucket containing $__from (e.g. "last 15m" at 10:50 spans 10:35-10:50,
+        # missing the 10:00 bucket) and empties the dropdown. Widen the lower
+        # bound to the start of that hour; the upper bound needs no adjustment.
+        where = "time_bucket >= toStartOfHour($__fromTime) AND time_bucket <= $__toTime"
     else:
-        table, time_col = TABLE_RAW, TIME_COL
-    inner = (
+        where = "$__timeFilter(timestamp)"
+    table = TABLE_SUMMARY if column in _SUMMARY_COLUMNS else TABLE_RAW
+    sql = (
         f"SELECT {bucket} AS v FROM {table} "
-        f"WHERE {time_col} > now() - INTERVAL {_VAR_LOOKBACK_DAYS} DAY "
-        f"LIMIT {_VAR_SCAN_ROW_CAP}"
+        f"WHERE {where} "
+        f"GROUP BY v ORDER BY v LIMIT {_VAR_OPTION_LIMIT}"
     )
-    sql = f"SELECT DISTINCT v FROM ({inner}) ORDER BY v LIMIT {_VAR_OPTION_LIMIT}"
     return {
         "type": "query",
         "name": name,

@@ -56,13 +56,51 @@ ClickHouse (analytics sink) — used by logstash, analyzer, grafana, ch-setup
 {{- end }}
 
 {{/*
-Host used by the Grafana ClickHouse datasource (native protocol).
+=============================================================================
+Grafana ClickHouse datasource connection (clickhouse.grafana.*).
+Protocol defaults to native/9000 (unchanged behavior); set
+clickhouse.grafana.protocol=http to use the HTTP port instead (e.g. for
+deployments that only expose 8123/80 and not the native TCP port).
+=============================================================================
 */}}
-{{- define "alo.clickhouseNativeHost" -}}
+
+{{- define "alo.clickhouseGrafanaHost" -}}
 {{- if .Values.clickhouse.external.enabled }}
-{{- .Values.clickhouse.external.host | default "" }}
+{{- if .Values.clickhouse.external.host }}
+{{- .Values.clickhouse.external.host }}
+{{- else }}
+{{- $url := .Values.clickhouse.external.url }}
+{{- $noScheme := $url | trimPrefix "http://" | trimPrefix "https://" }}
+{{- (splitList ":" (splitList "/" $noScheme | first)) | first }}
+{{- end }}
 {{- else }}
 {{- printf "%s-clickhouse" (include "alo.fullname" .) }}
+{{- end }}
+{{- end }}
+
+{{- define "alo.clickhouseGrafanaProtocol" -}}
+{{- .Values.clickhouse.grafana.protocol | default "native" }}
+{{- end }}
+
+{{- define "alo.clickhouseGrafanaPort" -}}
+{{- if .Values.clickhouse.grafana.port }}
+{{- .Values.clickhouse.grafana.port | int }}
+{{- else if eq (include "alo.clickhouseGrafanaProtocol" .) "http" }}
+{{- .Values.clickhouse.service.httpPort | int }}
+{{- else }}
+{{- .Values.clickhouse.service.nativePort | int }}
+{{- end }}
+{{- end }}
+
+{{/*
+"true"/"false" string. Explicit clickhouse.grafana.secure overrides; else
+sniffed from the HTTP URL scheme (alo.clickhouseUrl).
+*/}}
+{{- define "alo.clickhouseGrafanaSecure" -}}
+{{- if ne (.Values.clickhouse.grafana.secure | toString) "" }}
+{{- .Values.clickhouse.grafana.secure }}
+{{- else }}
+{{- hasPrefix "https://" (include "alo.clickhouseUrl" .) }}
 {{- end }}
 {{- end }}
 
