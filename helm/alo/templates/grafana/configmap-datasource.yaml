@@ -27,7 +27,7 @@ data:
           protocol: {{ $chProtocol }}
           secure: {{ $chSecure }}
           tlsSkipVerify: {{ $chInsecure }}
-          {{- with .Values.clickhouse.grafana.path }}
+          {{- with .Values.grafana.setup.connection.path }}
           path: {{ . | quote }}
           {{- end }}
           {{- if $chAuth }}

@@ -64,20 +64,6 @@ clickhouse:
       create: false
       insecureSkipVerify: false
 
-  # -- Grafana datasource connection (grafana-clickhouse-datasource plugin) --
-  # Applies whether ClickHouse is internal or external.enabled=true.
-  grafana:
-    # native (default, port 9000) or http (e.g. for deployments that only
-    # expose the HTTP port, like port 80/8123, and not the native TCP port).
-    protocol: native
-    # Port override. Empty = derive from protocol (service.nativePort for
-    # native, service.httpPort for http).
-    port: ""
-    # Optional HTTP path prefix (e.g. behind an ingress). Ignored for native.
-    path: ""
-    # "" = sniff TLS from clickhouse url's scheme; set "true"/"false" to force.
-    secure: ""
-
   # -- Internal deployment (ignored when external.enabled=true) --
   image:
     repository: clickhouse/clickhouse-server
@@ -375,6 +361,19 @@ grafana:
       pullPolicy: IfNotPresent
     # Create/update the ClickHouse datasource via the Grafana API.
     datasource: true
+    # -- ClickHouse datasource connection (grafana-clickhouse-datasource plugin) --
+    # Applies whether ClickHouse is internal or external.enabled=true.
+    connection:
+      # native (default, port 9000) or http (e.g. for deployments that only
+      # expose the HTTP port, like port 80/8123, and not the native TCP port).
+      protocol: native
+      # Port override. Empty = derive from protocol (service.nativePort for
+      # native, service.httpPort for http).
+      port: ""
+      # Optional HTTP path prefix (e.g. behind an ingress). Ignored for native.
+      path: ""
+      # "" = sniff TLS from clickhouse url's scheme; set "true"/"false" to force.
+      secure: ""
     # Import/update dashboards via the Grafana API.
     dashboards: true
     # Dashboard variable (Username/Cost Indicator/Template/...) option queries

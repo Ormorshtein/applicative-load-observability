@@ -74,14 +74,14 @@ spec:
             {{- end }}
             - name: CLICKHOUSE_INSECURE
               value: {{ include "alo.clickhouseInsecure" . | quote }}
-            # Datasource protocol/port/path/secure — see clickhouse.grafana.*.
+            # Datasource protocol/port/path/secure — see grafana.setup.connection.*.
             # Without these the API-upsert path below always defaulted to
-            # native/9000 regardless of clickhouse.grafana.protocol.
+            # native/9000 regardless of grafana.setup.connection.protocol.
             - name: CLICKHOUSE_PROTOCOL
               value: {{ include "alo.clickhouseGrafanaProtocol" . | quote }}
             - name: CLICKHOUSE_PORT
               value: {{ include "alo.clickhouseGrafanaPort" . | quote }}
-            {{- with .Values.clickhouse.grafana.path }}
+            {{- with .Values.grafana.setup.connection.path }}
             - name: CLICKHOUSE_PATH
               value: {{ . | quote }}
             {{- end }}

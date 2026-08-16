@@ -57,9 +57,9 @@ ClickHouse (analytics sink) — used by logstash, analyzer, grafana, ch-setup
 
 {{/*
 =============================================================================
-Grafana ClickHouse datasource connection (clickhouse.grafana.*).
+Grafana ClickHouse datasource connection (grafana.setup.connection.*).
 Protocol defaults to native/9000 (unchanged behavior); set
-clickhouse.grafana.protocol=http to use the HTTP port instead (e.g. for
+grafana.setup.connection.protocol=http to use the HTTP port instead (e.g. for
 deployments that only expose 8123/80 and not the native TCP port).
 =============================================================================
 */}}
@@ -79,12 +79,12 @@ deployments that only expose 8123/80 and not the native TCP port).
 {{- end }}
 
 {{- define "alo.clickhouseGrafanaProtocol" -}}
-{{- .Values.clickhouse.grafana.protocol | default "native" }}
+{{- .Values.grafana.setup.connection.protocol | default "native" }}
 {{- end }}
 
 {{- define "alo.clickhouseGrafanaPort" -}}
-{{- if .Values.clickhouse.grafana.port }}
-{{- .Values.clickhouse.grafana.port | int }}
+{{- if .Values.grafana.setup.connection.port }}
+{{- .Values.grafana.setup.connection.port | int }}
 {{- else if eq (include "alo.clickhouseGrafanaProtocol" .) "http" }}
 {{- .Values.clickhouse.service.httpPort | int }}
 {{- else }}
@@ -93,12 +93,12 @@ deployments that only expose 8123/80 and not the native TCP port).
 {{- end }}
 
 {{/*
-"true"/"false" string. Explicit clickhouse.grafana.secure overrides; else
+"true"/"false" string. Explicit grafana.setup.connection.secure overrides; else
 sniffed from the HTTP URL scheme (alo.clickhouseUrl).
 */}}
 {{- define "alo.clickhouseGrafanaSecure" -}}
-{{- if ne (.Values.clickhouse.grafana.secure | toString) "" }}
-{{- .Values.clickhouse.grafana.secure }}
+{{- if ne (.Values.grafana.setup.connection.secure | toString) "" }}
+{{- .Values.grafana.setup.connection.secure }}
 {{- else }}
 {{- hasPrefix "https://" (include "alo.clickhouseUrl" .) }}
 {{- end }}
