@@ -17,6 +17,9 @@
 <p style="text-align: right; margin: 0.15em 0">‫• <b>תבניות עם מחווני עלות רבים</b> — מועמדות לאופטימיזציה של שאילתות‬</p>
 <p style="text-align: right; margin: 0.15em 0">‫• <b>קפיצות השהיה</b> התואמות לפעולות או לתבניות מסוימות‬</p>
 
-<p style="text-align: right; margin: 0.15em 0"><b>‫סינון לפי תוויות מותאמות:‬</b></p>
-<p style="text-align: right; margin: 0.15em 0">‫אם הבקשות כוללות כותרות <code>x-alo-*</code> (למשל <code>x-alo-team: payments</code>), סננו לפיהן בסרגל <b>Filters</b> שבראש הדשבורד: לחצו <code>+</code>, הקלידו <code>identity.labels.team</code> וקבעו <code>= payments</code>.‬</p>
+<p style="text-align: right; margin: 0.15em 0"><b>‫סינון:‬</b></p>
+<p style="text-align: right; margin: 0.15em 0">‫השתמשו ברשימות הנפתחות שבראש הדשבורד (Cluster, Application, Target, Operation, Username, Cost Indicator, Client Host, Template), או בסרגל <b>Filters</b> לכל עמודה אחרת בטבלת <code>alo_raw</code> — למשל <code>request_target = products</code>.‬</p>
+
+<p style="text-align: right; margin: 0.15em 0"><b>‫תוויות מותאמות (כותרות <code>x-alo-*</code>):‬</b></p>
+<p style="text-align: right; margin: 0.15em 0">‫התוויות נשמרות בעמודת ה-Map בשם <code>identity_labels</code> ולא כעמודות נפרדות, ולכן אינן מופיעות ברשימות הנפתחות. ניתן לשאול אותן ישירות ב-Explore או בשאילתת פאנל: <code>WHERE identity_labels['team'] = 'payments'</code>.‬</p>
 </div>

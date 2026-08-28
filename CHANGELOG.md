@@ -4,6 +4,72 @@
 
 ---
 
+## 2.1.20
+
+Documentation release — no runtime behaviour changes. The doc set still described the
+pre-2.0 stack (Elasticsearch as the observability sink, Kibana dashboards, index
+templates + ILM, a NiFi pipeline mode, a `kibana/` source directory), none of which has
+existed since 2.0.
+
+### Documentation
+
+- **`docs/ARCHITECTURE.md`**: full rewrite against the current code. The sink is
+  ClickHouse (`alo_raw` / `alo_summary` + materialized view / `alo_dead_letter`, 3-day raw
+  and 120-day summary TTL, bloom-filter skip indexes, optional Replicated + Distributed
+  cluster mode) rather than ES index templates and ILM policies. Documented for the first
+  time: `_msearch` fan-out (one row per sub-query, correlated by `msearch_request_id`),
+  gzip/deflate body handling via the `gzip+b64:` prefix, the `/analyze/bulk` endpoint,
+  gateway and analyzer Prometheus metrics, request-body truncation
+  (`ALO_REQUEST_BODY_STORE_MAX_BYTES`), dead-letter routing, and the `stress_components_*`
+  columns. Corrected: 11 cost indicators (`unbound_hits` was missing), the
+  `geo_vertex_count` bonus replacing the old `geo_total` entry, the `_bulk` took override
+  (`resolve_bulk_took`) replacing the documented nanosecond ÷1e6 guard, ClickHouse-backed
+  dynamic baselines, the flat snake_case record shape (the doc showed a nested document),
+  the repository tree, and the environment-variable table.
+- **`docs/HELM.md`**: rewritten around the actual `values.yaml`. Removed `pipelineMode`,
+  external NiFi, external Kibana, `dashboardUI`, and `elasticsearch.exporter` — none exist
+  in the chart. Added `gateway.elasticsearch.*` (the monitored cluster), `clickhouse.*`
+  including external and cluster modes, `tableSettings.*`, both setup Jobs including
+  `grafana.setup.connection.*`, ingress/routes, ServiceMonitors, and the correct five-image
+  list.
+- **`README.md`**, **`CONTRIBUTING.md`**, **`tests/help.md`**, **`tools/stress/README.md`**,
+  **`.env.example`**, **`grafana/cheat_sheet.md`** + **`cheat_sheet_he.html`**: aligned to
+  the ClickHouse/Grafana stack — five dashboards (including the Hebrew and Stack Health
+  variants), five images published by the `v*` tag workflow rather than six built by hand,
+  ClickHouse env vars, and label filtering via `identity_labels['team']` instead of the
+  Kibana-era `identity.labels.team`.
+- Noted the Compose/Helm split where the gateway reads the same value from `LOGSTASH_URL`
+  and `PIPELINE_URL` respectively.
+
+### Fixes
+
+- **`tools/stress/stress.py`**: the end-of-run summary printed "Kibana filters" with
+  `request.target` / `identity.applicative_provider` — field names from the ES-era schema
+  that match no ClickHouse column. Now prints the Grafana/ClickHouse names
+  (`request_target`, `identity_applicative_provider`). Same correction in two challenge
+  hint strings.
+- **Version drift**: `pyproject.toml` had been left at `2.1.0` since 2.1.0 while the
+  images and chart advanced to 2.1.19. `pyproject.toml`, `docker-compose.yml`,
+  `helm/alo/values.yaml`, and `helm/alo/Chart.yaml` (`version` + `appVersion`) are now all
+  at 2.1.20, and `CONTRIBUTING.md`'s release checklist calls out `Chart.yaml`, which it
+  previously omitted.
+
+### Removed
+
+- `helm/alo/files/nifi-seed-flow.json.gz` — no NiFi templates remain in the chart and
+  nothing referenced the file.
+- `tests/integration/verify_kibana_dashboard_integrity.py` — Kibana is gone;
+  `verify_grafana_dashboards.py` replaces it.
+- The stale `nifi/` entry in `.dockerignore` and the "unchanged from the ES era" comment in
+  `helm/alo/templates/_helpers.tpl`.
+
+### Release
+
+- Republished all five ALO images (`ch-setup`, `logstash`, `analyzer`, `gateway`,
+  `grafana-setup`) at `2.1.20` — `release.yml`'s build matrix always builds all five on any
+  `v*` tag push. No image has code changes in this release; the tags exist so the chart,
+  Compose file, and published images stay on one consistent version.
+
 ## 2.1.19
 
 ### Fixes

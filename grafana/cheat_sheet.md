@@ -15,5 +15,17 @@
 - **Templates with many cost indicators** — query optimization candidates
 - **Latency spikes** correlating with specific operations or templates
 
-**Filtering by custom labels:**
-If your requests include `x-alo-*` headers (e.g., `x-alo-team: payments`), filter by them using the **Filters** bar at the top: click `+`, type `identity.labels.team`, set `= payments`.
+**Filtering:**
+Use the variable dropdowns at the top (Cluster, Application, Target, Operation, Username, Cost Indicator, Client Host, Template), or the ad-hoc **Filters** bar for any other `alo_raw` column — e.g. `request_target = products`.
+
+**Custom labels (`x-alo-*` headers):**
+Labels are stored in the `identity_labels` Map column, not as separate columns, so they are not in the variable dropdowns. Query them with a map subscript in Explore or a panel query:
+
+```sql
+SELECT request_template, count(), avg(stress_score)
+FROM alo.alo_raw
+WHERE identity_labels['team'] = 'payments'
+  AND $__timeFilter(timestamp)
+GROUP BY request_template
+ORDER BY 3 DESC;
+```

@@ -138,9 +138,9 @@ def main() -> None:
     snap = metrics.snapshot()
     print(format_report(snap, label=f"Stress: {args.workload}"))
 
-    print(f"  Kibana filters:")
-    print(f"    request.target:                 {index}")
-    print(f"    identity.applicative_provider:  {app_name}\n")
+    print("  Grafana filters:")
+    print(f"    request_target:                 {index}")
+    print(f"    identity_applicative_provider:  {app_name}\n")
 
     if args.cleanup:
         delete_index(gateway, index)
