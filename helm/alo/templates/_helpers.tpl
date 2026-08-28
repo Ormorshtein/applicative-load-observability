@@ -190,7 +190,7 @@ Required when the gateway is enabled.
 
 {{/*
 =============================================================================
-NiFi / Grafana / Logstash URL helpers (unchanged from the ES era).
+Grafana / Logstash URL helpers.
 =============================================================================
 */}}
 

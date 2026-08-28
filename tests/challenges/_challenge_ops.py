@@ -11,7 +11,7 @@ CULPRIT = "prefetch"
 DESCRIPTION = "Challenge v2: Operation Forensics — find the bad background task"
 HINT = (
     "Hint: 'Stress by Application' won't help - it's all one app.\n"
-    "  Use Kibana to narrow down which queries cause the stress,\n"
+    "  Use Grafana to narrow down which queries cause the stress,\n"
     "  then figure out which task sends them."
 )
 CULPRIT_EXPLANATION = (

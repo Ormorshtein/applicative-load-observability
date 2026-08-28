@@ -2,7 +2,7 @@
 """Challenge v1: detect the stress source among 4 simulated applications.
 
 Four apps hit a shared index simultaneously — most doing normal work, one
-hiding expensive query patterns in its traffic. Monitor Kibana dashboards
+hiding expensive query patterns in its traffic. Monitor the Grafana dashboards
 to identify and kill the culprit.
 
 Usage:

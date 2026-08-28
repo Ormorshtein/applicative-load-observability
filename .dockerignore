@@ -24,9 +24,6 @@ docker-compose.override.yml
 README.md
 docs/
 
-# NiFi flow (not needed in service image builds)
-nifi/
-
 # OS
 .DS_Store
 Thumbs.db
