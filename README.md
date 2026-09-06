@@ -95,6 +95,8 @@ Five dashboards are provisioned automatically in Grafana:
 | Document | Description |
 |----------|-------------|
 | [Architecture](docs/ARCHITECTURE.md) | Pipeline design, stress formulas, record schema, ClickHouse schema, env vars |
+| [Rationale](docs/RATIONALE.md) | Why the gateway, pipeline, and sink are built the way they are, and what was considered instead |
+| [TODO](docs/TODO.md) | Deferred scoring, parsing, and dashboard ideas — pruned and ranked |
 | [Helm Deployment](docs/HELM.md) | Kubernetes/OpenShift deployment, ClickHouse + Grafana configuration |
 | [Dashboard Cheat Sheet](grafana/cheat_sheet.md) | How to read the dashboards and what to look for |
 | [Stress Tool](tools/stress/README.md) | Load generation tool with 11 workload profiles |

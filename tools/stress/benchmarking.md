@@ -182,7 +182,7 @@ Use them as a starting point -- validate with the benchmark procedure above.
 2. Ruby filter: extract 10 fields into clean payload
 3. Synchronous HTTP POST to analyzer (blocks until response, ~2-5ms typical)
 4. Ruby filter: replace event with analyzer response, add routing metadata
-5. Batch write to Elasticsearch data stream
+5. Batch write to ClickHouse
 
 **Analyzer (Python/FastAPI)**
 1. Parse JSON payload

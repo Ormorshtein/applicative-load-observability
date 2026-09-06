@@ -4,6 +4,39 @@
 
 ---
 
+## 2.1.21
+
+Documentation release — no runtime behaviour changes, except pinning one previously
+unpinned plugin version.
+
+### Documentation
+
+- **`docs/RATIONALE.md`** (new): the reasoning behind the gateway, pipeline, and sink
+  choices — why OpenResty over HAProxy/eBPF/Envoy, why Logstash over NiFi/Kafka/Vector,
+  why the sink moved from Elasticsearch to ClickHouse — and what was considered and
+  rejected along the way.
+- **`docs/TODO.md`** (new): the deferred scoring, parsing, and dashboard ideas moved out
+  of `ARCHITECTURE.md` §9, so that file stays a description of what ships rather than a
+  wishlist.
+- **`docs/ARCHITECTURE.md`**: replaced the standalone "why not HAProxy?" note and the
+  "config-driven, no custom code" claim about Logstash with pointers to `RATIONALE.md`;
+  documented that response-body accumulation in `body_filter_by_lua_block` has no size
+  cap or spool fallback, unlike the request body; pointed the deferred-ideas section and
+  the geo-recommendation-signal note at `TODO.md`.
+- **`analyzer/record_builder/_assembly.py`**: corrected the `resolve_bulk_took` docstring
+  — 8.16, not 8.13, introduced `_bulk` `took` quantization, and Elastic has confirmed it's
+  intended behaviour (elastic/elasticsearch#129894), not a bug.
+- **`tools/stress/benchmarking.md`**: fixed a stale reference to writing to an
+  Elasticsearch data stream — the sink has been ClickHouse since 2.0.0.
+- **`README.md`**: added `docs/RATIONALE.md` to the documentation index.
+
+### Fixes
+
+- **`logstash/Dockerfile`**: pinned `logstash-output-clickhouse` to `0.1.5`, the latest
+  published version — it was previously installed unversioned.
+
+---
+
 ## 2.1.20
 
 Documentation release — no runtime behaviour changes. The doc set still described the

@@ -70,7 +70,9 @@ All extraction, parsing, and analysis happens downstream in Python.
   avoids false positives on payloads that happen to start with `0x1f 0x8b`).
 - `body_filter_by_lua_block` accumulates response chunks with `table.insert` +
   `table.concat` (O(n) instead of O(n²) concatenation) into `ngx.ctx.resp_body`. True
-  `response_size_bytes` is tracked via a separate counter (`ngx.ctx.resp_size`).
+  `response_size_bytes` is tracked via a separate counter (`ngx.ctx.resp_size`). Unlike the
+  request body, this has no size cap and no spool-to-disk fallback — the full response is
+  always held in worker memory until `log_by_lua_block` runs.
 - `log_by_lua_block` fires `ngx.timer.at(0, notify_logstash, ctx)` — this runs after the
   response is already sent to the client. Context references are nilled to free memory.
 - Request bodies larger than `client_body_buffer_size` are spooled to disk by nginx; the
@@ -368,7 +370,7 @@ Since latency is 40–70 % of the score, that noise would bury the signal from g
 expensive queries. (`_bulk` is the deliberate exception, §2.3.)
 
 **Trade-off:** `es_took_ms` is blind to response transfer cost. The `hits` factor
-partially compensates. See §9.
+partially compensates. See [TODO.md](TODO.md) (`response_size_bytes` as a stress factor).
 
 #### Baselines
 
@@ -721,7 +723,7 @@ always gets its ES response.
 | Gateway sends raw headers | No Lua auth/provider extraction; Python handles it |
 | Fire-and-forget after response | Zero client latency impact |
 | Drop > degrade | No queue in the gateway, instant drop if Logstash is unavailable |
-| Logstash as pipeline | HTTP input + filter + CH output — config-driven, no custom code |
+| Logstash as pipeline | HTTP input, `logstash-filter-http` call to the analyzer, CH output — see [Rationale](RATIONALE.md#2-the-pipeline) for why, and for the embedded Ruby filters this glosses over |
 | Analyzer is stateless | Single-purpose endpoints, trivially testable |
 | ClickHouse as sink | Columnar store sized for high-cardinality analytics; raw TTL + AggregatingMergeTree summary give short-term detail and long-term trend at bounded cost, without touching the monitored ES |
 | Flat snake_case record | Column-per-field maps directly onto ClickHouse — no nested-type gymnastics, no mapping explosion |
@@ -738,11 +740,9 @@ always gets its ES response.
 based on total vertex count (tessellation CPU), not search area — ES tessellates query
 polygons into triangles at query time, and cost scales with vertices. The area mostly
 determines how many documents match, which the `hits` component already captures.
-Threshold: `STRESS_GEO_VERTEX_THRESHOLD` (default 10).
-
-> **Future recommendation candidate:** geo search area and a `broad_geo` indicator were
-> considered and removed — redundant with hits for *scoring*. They remain valuable as
-> *recommendation* signals ("you're querying a 500 km radius — intentional?").
+Threshold: `STRESS_GEO_VERTEX_THRESHOLD` (default 10). (Geo area as a
+*recommendation* signal, distinct from scoring, is tracked in
+[TODO.md](TODO.md).)
 
 **Hit count is best-effort.** ES caps `hits.total.value` at 10 000 unless the client sends
 `track_total_hits: true`. ALO records what ES returns, so `response_hits` can be a lower
@@ -768,7 +768,9 @@ applicative-load-observability/
 ├── docs/
 │   ├── ARCHITECTURE.md              # this file
 │   ├── HELM.md                      # Kubernetes / OpenShift deployment
-│   └── PRODUCT_SPEC.md              # original product vision
+│   ├── PRODUCT_SPEC.md              # original product vision
+│   ├── RATIONALE.md                 # why, not how — decisions and trade-offs
+│   └── TODO.md                      # deferred scoring/parsing/dashboard ideas
 │
 ├── gateway/
 │   ├── nginx.conf.template          # Nginx config template (envsubst at startup)
@@ -856,51 +858,8 @@ to monitor, then point clients at the gateway (`localhost:9200`) instead of ES d
 
 ---
 
-## 9. Future implementation ideas
-
-- `response_size_bytes` as a stress factor — the formulas use `es_took_ms`, which is blind
-  to transfer cost: a query with `es_took=30ms` returning 5 MB imposes real serialization
-  load the score ignores. It would add signal for heavy documents, missing source
-  filtering, highlight / `script_fields` inflation, and large aggregation payloads.
-  Deferred because it is partly redundant with hits, penalises "fat" indexes regardless of
-  query quality, and has a skewed distribution that makes baseline selection hard. If
-  undetected response-heavy patterns show up in production, add it to `StressContext` with
-  a low weight (0.05–0.10) carved from the latency share.
-- Cost indicator threshold and multiplier tuning against real firing rates and their
-  correlation with `response_es_took_ms`.
-- `search_type` classification (`agg` / `knn` / `geo` / `text` / `simple`). Deferred: naive
-  top-level detection misclassifies expensive clauses nested inside a `bool`. Requires
-  recursive detection with a priority order.
-- Per-operation write weights — `_create`, `_doc` PUT, and `_doc` DELETE share a formula
-  despite different read depth (PUT is a pure write; DELETE reads version/seq_no;
-  `_update` reads the full `_source`).
-- Upsert detection — `_update` with `upsert` / `doc_as_upsert` follows a conditional
-  create-vs-update path; probabilistic cost modeling once hit/miss rates are observable.
-- Auto-generated vs user-provided `_id` — `POST /<index>/_doc` skips the existence check;
-  `PUT /<index>/_doc/<id>` does not. Detectable from the path segment after `_doc`.
-- Bulk action breakdown — count `index`/`create`/`update`/`delete` actions within a `_bulk`
-  for a sharper signal than the flat action-line count.
-- `has_highlight` — extra per-result CPU.
-- Depth-weighted agg scoring — weight aggs by nesting depth instead of a flat node count.
-- Deep pagination scoring — `log10(1 + from) * 4`; ES must score and discard all preceding
-  docs.
-- Scroll detection — `has_scroll` indicator; scroll holds long-lived shard-level search
-  contexts across requests.
-- `timed_out` — query hit the ES timeout threshold.
-- Separate `cpu_stress_score` and `memory_stress_score`, once real data allows
-  resource-type attribution.
-- Join queries (`has_child` / `has_parent`) and `function_score`.
-- Gateway response time panels — dropped from the main dashboard because
-  `response_gateway_took_ms` includes gateway↔ES network time (infrastructure noise rather
-  than query cost). Worth re-adding if network issues become a diagnostic concern.
-
----
-
 ## Note: why not HAProxy?
 
-OpenShift's built-in HAProxy ingress controller **cannot replace the OpenResty gateway**.
-The gateway needs to capture full request and response bodies and fire async POST
-notifications after the response is sent — HAProxy Lua lacks reliable response body
-capture, has no post-response async phase, and doesn't support request body template
-scrubbing. See the original analysis in git history (`docs/haproxy-gateway-analysis.md`,
-removed in 1.15.0).
+See [Rationale, section 1 — Why not HAProxy at all](RATIONALE.md#1-the-gateway-position) for the full
+analysis (buffer size limits, no post-response async phase, and the OpenShift Route
+constraints).

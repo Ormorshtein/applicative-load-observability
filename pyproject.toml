@@ -1,6 +1,6 @@
 [project]
 name = "applicative-load-observability"
-version = "2.1.20"
+version = "2.1.21"
 description = "Applicative load observability for Elasticsearch (analytics sink: ClickHouse)"
 requires-python = ">=3.11"
 dependencies = [

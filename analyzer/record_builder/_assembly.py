@@ -69,15 +69,16 @@ def _output_clause_counts(counts: dict[str, int]) -> dict[str, int]:
 def resolve_bulk_took(operation: str, es_took_ms: float, gateway_took_ms: float) -> float:
     """Use the gateway-observed elapsed time as the bulk ``took``.
 
-    ES ``_bulk took`` has been wrong on every version since 8.13:
+    ES ``_bulk took`` can't be trusted from inside ES:
         * 8.13-8.15 reported it in nanoseconds (#111854 / #111863).
-        * 8.16+ reads it from a 200ms-cached clock so values are quantized
-          to {0, 200, 400, ...} (see BULK_TOOK_ISSUE_DRAFT.md).
+        * 8.16+ reads it from a 200ms-cached clock, so values are quantized
+          to {0, 200, 400, ...}. Elastic has confirmed this is intended
+          behaviour, not a bug (elastic/elasticsearch#129894).
 
     Gateway round-trip time is the ES processing time plus a tiny network
     hop, so it's a strictly better signal for ``_bulk``. Non-bulk
     operations keep using the upstream ``took`` since their query path is
-    not affected by these bugs.
+    not affected by this.
     """
     if operation == "_bulk" and gateway_took_ms > 0:
         return gateway_took_ms

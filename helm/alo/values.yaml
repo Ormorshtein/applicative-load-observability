@@ -114,7 +114,7 @@ clickhouse:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: ch-setup-2.1.20
+      tag: ch-setup-2.1.21
       pullPolicy: IfNotPresent
     database: true
     rawTable: true
@@ -135,7 +135,7 @@ logstash:
 
   image:
     repository: oracle1012/applicative-load-observability
-    tag: logstash-2.1.20
+    tag: logstash-2.1.21
     pullPolicy: IfNotPresent
   replicas: 1
   resources:
@@ -206,7 +206,7 @@ analyzer:
   enabled: true
   image:
     repository: oracle1012/applicative-load-observability
-    tag: analyzer-2.1.20
+    tag: analyzer-2.1.21
     pullPolicy: IfNotPresent
   replicas: 2
   port: 8000
@@ -262,7 +262,7 @@ gateway:
   dnsResolver: ""
   image:
     repository: oracle1012/applicative-load-observability
-    tag: gateway-2.1.20
+    tag: gateway-2.1.21
     pullPolicy: IfNotPresent
   replicas: 2
   port: 9200
@@ -357,7 +357,7 @@ grafana:
     enabled: true
     image:
       repository: oracle1012/applicative-load-observability
-      tag: grafana-setup-2.1.20
+      tag: grafana-setup-2.1.21
       pullPolicy: IfNotPresent
     # Create/update the ClickHouse datasource via the Grafana API.
     datasource: true
