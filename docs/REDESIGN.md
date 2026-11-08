@@ -3,6 +3,7 @@
 > **Status:** proposal, approved in direction (2026-11-08). Not implemented yet.
 > **Scope:** phase 1 only. Phase 2 (storing full content, e.g. in S3) is out of scope,
 > but the design keeps the door open for it.
+> **Implementing it with a coding agent:** see [v3-agent-prompts/](v3-agent-prompts/README.md) — one instruction file per model.
 > **Audience:** the people building and operating ALO. Read §1–§4 for the "what and why",
 > §5 for the gateway deep-dive (the part we are most worried about), §8 for how releases work.
 
@@ -881,7 +882,7 @@ Each step is one PR and is reviewable on its own.
 | 5 | ClickHouse | Kafka engine tables, materialized views, error stream → dead letter, `ON CLUSTER` schema mode for external clusters. | Records land in `alo_raw`; malformed messages land in `alo_dead_letter` |
 | 6 | Deployment | Compose (Kafka, no Logstash), Helm (`kafka:` block, rollout strategy, probes on, single-node in-chart ClickHouse), release workflow, Prometheus config, Stack Health dashboard. | `helm template` / `helm test` green; compose stack runs end to end |
 | 7 | Tests | Integration, resilience and challenge suites moved off Logstash. Latency regression job. | Full suite green |
-| 8 | **Repo cleanup, part B** + docs + release | Every removal that only becomes possible once the Kafka path exists (§10.1 part B). Then `ARCHITECTURE`, `HELM`, `README`, `CHANGELOG`, new `RATIONALE` section "Why Kafka now" (§13, Q7), and this file folded in and deleted. Tag `v3.0.0`. | Every item in §10.1 part B is done; released |
+| 8 | **Repo cleanup, part B** + docs + release | Every removal that only becomes possible once the Kafka path exists (§10.1 part B). Then `ARCHITECTURE`, `HELM`, `README`, `CHANGELOG`, new `RATIONALE` section "Why Kafka now" (§13, Q7), and the decision log folded into RATIONALE. Version set to `3.0.0`. The human reviews, tags `v3.0.0`, and deletes this file, `docs/v3-agent-prompts/` and `V3_PROGRESS.md`. | Every item in §10.1 part B is done; ready to release |
 
 ### 10.1 Repository simplification (steps 1 and 8)
 
@@ -1014,8 +1015,8 @@ has not been updated since the `shared/` refactor.
 | `docs/ARCHITECTURE.md` | Rewritten for v3. Drop the repo file tree (~40 lines that drift). |
 | `docs/HELM.md` | `kafka:` block, gateway-only installs per ECK environment, single-node in-chart ClickHouse |
 | `docs/RATIONALE.md` | Replace "Kafka — a natural alternative we didn't pursue" with "Why Kafka now"; move in the decision log from §13 of this file |
-| `docs/REDESIGN.md` (this file) | **Delete** once v3 ships. It is a proposal; afterwards the design lives in ARCHITECTURE and the decisions in RATIONALE. |
-| `docs/V3_AGENT_PROMPTS.md` | **Delete** together with this file. |
+| `docs/REDESIGN.md` (this file) | **Delete** once v3 ships. It is a proposal; afterwards the design lives in ARCHITECTURE and the decisions in RATIONALE. The human deletes it at release, not the agent doing step 8 (it is the agent's spec). |
+| `docs/v3-agent-prompts/`, `V3_PROGRESS.md` | **Delete** together with this file, by the human, at release. |
 | `tools/stress/benchmarking.md` (292 lines) | Rewrite around the step-0 method and numbers; drop the Logstash sizing |
 | `CHANGELOG.md` | The 3.0.0 entry lists every removal above, as breaking changes |
 

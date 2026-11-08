@@ -45,6 +45,3 @@ CLAUDE.md
 .cursor/
 .aider*
 .copilot/
-
-# Agent hand-off notes (docs/V3_AGENT_PROMPTS.md)
-PR_NOTES.md
