@@ -874,13 +874,172 @@ Each step is one PR and is reviewable on its own.
 | # | Step | Contents | Done when |
 |---|---|---|---|
 | **0** | **Gateway spike (go/no-go)** | Prototype `capture` + `strip` (bulk_summary only) + `lua-resty-kafka` (Kong fork) in the gateway image. Verify: SCRAM-SHA-256 against our on-prem cluster with our OpenResty version; `ngx.run_worker_thread` with `cjson` and `lua-ffi-zlib` inside the thread; the hardlink hand-off of spooled bodies. Benchmark: p50/p99 proxy latency with capture `off` vs. `strip`, under a mix of large bulks, large responses and `_msearch`. | The numbers are written down and the added p99 is **≤ 2 ms**. If SCRAM fails: switch to the Fluent Bit sidecar fallback (§5.7). **If the overhead is above 2 ms, we revisit before building anything else.** |
-| 1 | Event contract + analyzer parsers | `schema_version: 2`; summary-aware parsers (bulk summary, response head, `_msearch` windows, gzip head); golden fixtures; privacy backstop; still accepts raw. Pure Python. | Unit tests green on the fixtures |
-| 2 | Gateway | Lua modules, thin `nginx.conf` (image + Helm ConfigMap), rule table from config, thread pool, budgets, degradation, Kafka producer, header allowlist + username in gateway, kill switch, metrics. busted + budget tests in CI. | CI gates from §8.3 green |
-| 3 | Analyzer transport | Kafka consumer/producer loop, at-least-once, `_msearch` fan-out, dead letters marked with `kind` on the results topic, `/health` + `/metrics`. | Integration test: gateway → Kafka → analyzer → Kafka |
-| 4 | ClickHouse | Kafka engine tables, materialized views, error stream → dead letter, cluster mode. | Records land in `alo_raw`; malformed messages land in `alo_dead_letter` |
-| 5 | Deployment | Compose (Kafka, no Logstash), Helm (`kafka:` block, remove Logstash, rollout strategy, probes on), release workflow, Prometheus config, Stack Health dashboard. | `helm template` / `helm test` green; compose stack runs end to end |
-| 6 | Tests | Integration, resilience and challenge suites moved off Logstash. Latency regression job. | Full suite green |
-| 7 | Docs + release | `ARCHITECTURE`, `HELM`, `README`, `CHANGELOG`, new `RATIONALE` section "Why Kafka now" (§13, Q7). Tag `v3.0.0`. | Released |
+| 1 | **Repo cleanup, part A** | Simplifications that don't depend on Kafka: one copy of each dashboard, stale-content fixes, decided deletions, tools reorganised, one CI script for GitHub and GitLab. Exact list in §10.1. | Every item in §10.1 part A is done; CI green; compose stack still runs end to end on the 2.x pipeline |
+| 2 | Event contract + analyzer parsers | `schema_version: 2`; summary-aware parsers (bulk summary, response head, `_msearch` windows, gzip head); golden fixtures; privacy backstop; still accepts raw. Pure Python. | Unit tests green on the fixtures |
+| 3 | Gateway | Lua modules, **one** `nginx.conf.template` in the image (the Helm copy is deleted, §10.1 B4), rule table from config, thread pool, budgets, degradation, Kafka producer, header allowlist + username in gateway, kill switch, metrics. busted + budget tests in CI. | CI gates from §8.3 green |
+| 4 | Analyzer transport | Kafka consumer/producer loop, at-least-once, `_msearch` fan-out, dead letters marked with `kind` on the results topic, `/health` + `/metrics`. | Integration test: gateway → Kafka → analyzer → Kafka |
+| 5 | ClickHouse | Kafka engine tables, materialized views, error stream → dead letter, `ON CLUSTER` schema mode for external clusters. | Records land in `alo_raw`; malformed messages land in `alo_dead_letter` |
+| 6 | Deployment | Compose (Kafka, no Logstash), Helm (`kafka:` block, rollout strategy, probes on, single-node in-chart ClickHouse), release workflow, Prometheus config, Stack Health dashboard. | `helm template` / `helm test` green; compose stack runs end to end |
+| 7 | Tests | Integration, resilience and challenge suites moved off Logstash. Latency regression job. | Full suite green |
+| 8 | **Repo cleanup, part B** + docs + release | Every removal that only becomes possible once the Kafka path exists (§10.1 part B). Then `ARCHITECTURE`, `HELM`, `README`, `CHANGELOG`, new `RATIONALE` section "Why Kafka now" (§13, Q7), and this file folded in and deleted. Tag `v3.0.0`. | Every item in §10.1 part B is done; released |
+
+### 10.1 Repository simplification (steps 1 and 8)
+
+**Goal:** after v3, the repo holds only what the product ships, what tests it, and what
+documents it as it is. Each artifact has **one** source of truth.
+
+Today: 194 tracked files, about 41,000 lines. About **8,900 of those lines are
+byte-identical copies** of the dashboard JSON.
+
+All decisions below are already made (§13, Q14), so the people doing these steps don't
+need to choose anything. Line counts were measured on `main` at v2.1.21.
+
+#### Part A — step 1 (no dependency on Kafka; ships on the 2.x pipeline)
+
+**A1. Dashboards: one committed copy, one delivery path per Grafana type**
+
+| Action | Files | Why |
+|---|---|---|
+| Delete | `grafana/provisioning/dashboards/*.json` (5 files, 8,928 lines) | Byte-identical to `helm/alo/files/grafana-*.json`. The Helm copy stays because Helm's `.Files.Get` can only read files inside the chart. |
+| Change | `docker-compose.yml`: Grafana mounts `./helm/alo/files` as its dashboards folder; update the path in `grafana/provisioning/dashboards/dashboards.yml` | Compose and Helm load the same files. |
+| Change | `grafana/_dashboards.py` `export_dashboards()`: write only to `helm/alo/files/` | One output location. |
+| Add | `tests/unit/grafana/test_dashboards_in_sync.py`: build every dashboard in memory and compare with the committed JSON | CI fails if someone changes a builder and forgets to regenerate. Today nothing catches that. |
+| Change | `helm/alo/templates/grafana/job-setup.yaml`: run only when `grafana.external.enabled=true` | Today an in-chart Grafana gets its dashboards **twice** — from the provisioning ConfigMaps and again from the API job. In-chart Grafana: provisioning only. External Grafana: API job only. |
+
+**A2. Stale content and encoding fixes**
+
+| Action | Where | Fix |
+|---|---|---|
+| Fix text | `grafana/_dashboard_builders.py` (lines ~190, ~509), Hebrew in `grafana/_strings.py` (line ~129) → regenerate JSON | "hourly summary-index fallback (survives raw-data ILM expiry)" is Elasticsearch-era wording → "hourly `alo_summary` fallback (survives the raw-table TTL)". |
+| Fix comment + default | `analyzer/record_builder/__init__.py` (lines 32–37), `.env.example` | The comment explains the cap with the ES keyword limit (no longer relevant). Rewrite it as "storage cap for `request_body` in ClickHouse". Code says 32000 and `.env.example` says 32768 → both 32000. |
+| Fix text | `helm/alo/values.schema.json` line 43 | "replaces v1's Elasticsearch sink" → a plain description. |
+| Fix encoding | `grafana/setup.py`, `grafana/_dashboards.py`, `grafana/_dashboard_builders.py` | Remove the UTF-8 byte-order mark at the top of each file. Replace the garbled box-drawing characters (`ΓöÇ`, 21+ lines) with `─`. |
+| Fix encoding | `CHANGELOG.md` | One garbled line, same fix. |
+| Prevent | `.pre-commit-config.yaml` | Add the `fix-byte-order-marker` hook. |
+
+**A3. Decided deletions**
+
+| Delete | Lines | Also update |
+|---|---|---|
+| `docs/PRODUCT_SPEC.md` | 160 | README docs table |
+| `tests/integration/verify_grafana_dashboards.py`, `tests/integration/_grafana_debug.py` (Playwright) | 564 | `tests/help.md` |
+
+**A4. Tools: one home, no path hacks**
+
+The interactive challenges are kept (decided), but they are load *tools*, not tests.
+`shared/` is used only by tools and tests, never by the product.
+
+| Action | From → to |
+|---|---|
+| Move | `tests/challenges/` → `tools/challenges/`; scenario modules `_challenge_<name>.py` → `tools/challenges/scenarios/<name>.py`; `_challenge_v1.py` → `scenarios/four_apps.py` |
+| Replace | The 15 thin wrappers (`challenge.py`, `challenge_*.py`; 259 lines) → one entry point: `python -m tools.challenges <name> [--seed …]`, `--list`, default `four_apps` |
+| Move | `shared/` → `tools/common/` |
+| Delete | The three re-export shims and their `sys.path` hacks: `tests/challenges/helpers.py`, `tests/integration/helpers.py`, `tools/stress/_helpers.py` (89 lines). Callers import `tools.common` directly. |
+| Change | The stress tool runs as `python -m tools.stress`; update `tools/stress/Dockerfile` `COPY` paths |
+| Move | `tests/unit/challenges/test_infra.py` → `tests/unit/tools/test_challenge_infra.py`; `tests/unit/shared/test_latency_tracker.py` → `tests/unit/tools/test_stats.py` |
+| Change | `pyproject.toml` isort `known-first-party`: `shared` → `tools` |
+
+**A5. One CI definition for GitHub and GitLab**
+
+Both CIs are kept (decided). Today their job logic is written twice, and `.gitlab-ci.yml`
+has not been updated since the `shared/` refactor.
+
+- Add `scripts/ci.sh` with subcommands `lint`, `typecheck` and `test`. Steps 3 and 6 later
+  add `lua` and `chart`.
+- `.github/workflows/ci.yml` and `.gitlab-ci.yml` each become a thin list of
+  `scripts/ci.sh <job>` calls, so the two cannot drift. The image build stays in GitHub
+  `release.yml`.
+
+**A6. Documentation trims**
+
+| File | Change |
+|---|---|
+| `tests/help.md` (260 lines) | Down to ~40 lines: how to run each suite. Drop the file-by-file tree and per-file tables; they go stale with every change and the repo itself shows the tree. |
+| `README.md` | Remove the PRODUCT_SPEC row; update the paths for the challenges and stress tool. |
+
+#### Part B — step 8 (after the Kafka path works)
+
+**B1. Logstash, everywhere**
+
+| Delete / change | Detail |
+|---|---|
+| Delete `logstash/` | 4 files, 152 lines |
+| Delete `helm/alo/templates/logstash/` | 7 files, 408 lines; plus `values.logstash`, its `values.schema.json` entries, and the `ingress.logstash` / `route.logstash` values |
+| Change `docker-compose.yml` | Remove the `logstash` and `logstash-exporter` services |
+| Change `prometheus/prometheus.yml` | Remove the `logstash` job and fix the `CLUSTER_NAME` comment (it now comes from the gateway, not Logstash) |
+| Change `.github/workflows/release.yml` | Stop building the `logstash` image |
+| Change `grafana/_health_panels.py`, `grafana/_health_dashboard.py` | Replace the Logstash panels (44 references) with Kafka/analyzer panels, then regenerate |
+| Change `helm/alo/templates/grafana/configmap-dashboards.yaml`, `job-setup.yaml` | Drop the `logstash.exporter.enabled` conditions |
+| Change `.env.example` | Remove the Logstash block; add the Kafka block |
+| Rewrite `helm/alo/templates/tests/test-pipeline.yaml` | Test gateway → Kafka → ClickHouse |
+
+**B2. The analyzer's HTTP surface**
+
+| Delete / change | Detail |
+|---|---|
+| Delete `analyzer/_routes.py` | `/analyze` and the unused `/analyze/bulk` |
+| Change `analyzer/main.py` | No FastAPI app; Kafka loop plus a small `/health` + `/metrics` server |
+| Change `pyproject.toml` | Remove `fastapi`, `uvicorn`, `prometheus-fastapi-instrumentator`; add `confluent-kafka`, `prometheus-client`. Update the mypy `additional_dependencies` in `.pre-commit-config.yaml`. |
+| Replace `tests/unit/analyzer/test_main.py` (424 lines) | With tests for the consumer loop (batching, `_msearch` fan-out, dead-letter marking, commit-after-produce) |
+| Shrink `analyzer/_decompression.py` + its test (155 lines) | Remove the latin-1 / magic-byte recovery path. It only existed for Logstash's ISO-8859-1 codec. What remains is gzip-prefix inflation of response heads (§5.4). |
+
+**B3. Helm analyzer exposure**
+- Delete `helm/alo/templates/analyzer/ingress.yaml` and `route.yaml` (53 lines) and the
+  `ingress.analyzer` / `route.analyzer` values. The analyzer no longer accepts requests.
+  Its Service stays for metrics scraping.
+
+**B4. One gateway config**
+- Delete `helm/alo/templates/gateway/configmap.yaml` (255 lines; it is a second,
+  diverged copy of the gateway config).
+- Move its Helm-only features into the image's `gateway/nginx.conf.template`, driven by
+  env vars: Elasticsearch auth header injection (basic / API key), upstream TLS (SNI,
+  CA, verify depth, insecure skip), worker processes, timeouts, error log level. Compose
+  and Helm then run **the same** config.
+- The `LOGSTASH_URL` / `PIPELINE_URL` naming split disappears along with both variables.
+
+**B5. In-chart ClickHouse: single node only** (decided)
+- Delete `clickhouse.cluster.{shards,replicas,keeper}` and the `01-cluster.xml` block in
+  `helm/alo/templates/clickhouse/configmap.yaml`; the StatefulSet is fixed at one replica.
+- Schema-level cluster mode stays, because the on-prem ClickHouse is a cluster: ch-setup
+  keeps `ON CLUSTER` + `Replicated*MergeTree` + `Distributed`, enabled only with external
+  ClickHouse (`clickhouse.external.cluster: "<cluster name>"`).
+- Because the in-chart ClickHouse must read Kafka too, the chart renders its Kafka SCRAM
+  settings from the `kafka` secret. This applies only to the in-chart instance; external
+  ClickHouse is configured on-prem.
+
+**B6. Final documentation**
+
+| File | Change |
+|---|---|
+| `docs/ARCHITECTURE.md` | Rewritten for v3. Drop the repo file tree (~40 lines that drift). |
+| `docs/HELM.md` | `kafka:` block, gateway-only installs per ECK environment, single-node in-chart ClickHouse |
+| `docs/RATIONALE.md` | Replace "Kafka — a natural alternative we didn't pursue" with "Why Kafka now"; move in the decision log from §13 of this file |
+| `docs/REDESIGN.md` (this file) | **Delete** once v3 ships. It is a proposal; afterwards the design lives in ARCHITECTURE and the decisions in RATIONALE. |
+| `tools/stress/benchmarking.md` (292 lines) | Rewrite around the step-0 method and numbers; drop the Logstash sizing |
+| `CHANGELOG.md` | The 3.0.0 entry lists every removal above, as breaking changes |
+
+#### Deliberately kept
+
+| Kept | Why |
+|---|---|
+| Hebrew dashboard (`alo-main-he`, `_strings.py`, `cheat_sheet_he.html`) | Decided. Hebrew-speaking users rely on it. |
+| `.gitlab-ci.yml` | Decided. It runs CI on the on-prem mirror. Kept in sync through `scripts/ci.sh` (A5). |
+| Interactive challenges | Decided. Moved to `tools/` (A4). |
+| Prometheus compose profile + exporters | Decided. Updated for Kafka (B1). |
+| `docs/TODO.md`, `CHANGELOG.md` history | Still accurate and useful. |
+| `grafana/cheat_sheet.md` | Embedded into the dashboards at build time. |
+| `tools/stress/` | Used by the latency gate (§8.3) and by step 0. |
+
+#### Expected result
+
+| | Before | After (estimate) |
+|---|---|---|
+| Duplicated dashboard JSON | 8,928 lines | 0 |
+| Copies of the gateway nginx config | 2 (diverged) | 1 |
+| Places CI job logic is defined | 2 | 1 |
+| Ways dashboards reach an in-chart Grafana | 2 | 1 |
+| Services in Compose (default profile) | 6 | 6 (Logstash out, Kafka in) |
+| Lines removed (excluding new v3 code) | — | ≈ 11,000 |
 
 ---
 
@@ -975,7 +1134,7 @@ Each objection listed there is now answered:
 | Consumer offsets make the analyzer stateful | Offsets are stored in Kafka, not in the analyzer. Building a record stays a pure, stateless function. |
 | A platform nobody here operates | The clusters now exist and are operated outside ALO. |
 
-That section of RATIONALE will be replaced by "Why Kafka now" as part of step 7.
+That section of RATIONALE will be replaced by "Why Kafka now" as part of step 8.
 
 **Q8. Who creates the Kafka topics, and how many are there?**
 The Kafka cluster and its topics are shared by all our ECK environments. There is one
@@ -1011,3 +1170,14 @@ and checked in step 0 (§5.1).
 A gateway-only install of the chart in each ECK environment, all writing to the shared
 gateway-events topic, plus one central install of the analyzer, ClickHouse and Grafana
 (§3).
+
+**Q14. Should v3 also clean up the repo?**
+Yes. It is a step of its own, split in two (§10.1): part A (step 1) covers what doesn't
+depend on Kafka; part B (step 8) covers what Kafka makes removable. Decisions made up front:
+- **In-chart ClickHouse:** single node only. The chart no longer runs a sharded or
+  replicated ClickHouse itself, but table creation keeps cluster mode for external
+  ClickHouse clusters.
+- **Kept:** the Hebrew dashboard; GitLab CI (kept in sync with GitHub through one
+  shared CI script); the interactive challenges (moved to `tools/`); the Prometheus
+  compose profile.
+- **Deleted:** `docs/PRODUCT_SPEC.md` and the Playwright dashboard scripts.
