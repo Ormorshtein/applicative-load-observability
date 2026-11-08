@@ -1015,6 +1015,7 @@ has not been updated since the `shared/` refactor.
 | `docs/HELM.md` | `kafka:` block, gateway-only installs per ECK environment, single-node in-chart ClickHouse |
 | `docs/RATIONALE.md` | Replace "Kafka — a natural alternative we didn't pursue" with "Why Kafka now"; move in the decision log from §13 of this file |
 | `docs/REDESIGN.md` (this file) | **Delete** once v3 ships. It is a proposal; afterwards the design lives in ARCHITECTURE and the decisions in RATIONALE. |
+| `docs/V3_AGENT_PROMPTS.md` | **Delete** together with this file. |
 | `tools/stress/benchmarking.md` (292 lines) | Rewrite around the step-0 method and numbers; drop the Logstash sizing |
 | `CHANGELOG.md` | The 3.0.0 entry lists every removal above, as breaking changes |
 
